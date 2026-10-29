@@ -2369,7 +2369,7 @@ function calcLog(){
   if(minutes&&!isNaN(minutes))addM=minutes;else if(!audio&&addP&&g.estimate){const p=pace(b.id);if(p)addM=addP/p}
   const lbl=dt===today()?'Today':fmtDate(dt);
   const tm=`${Math.round(ts.mins+addM)} / ${g.goalMinutes} min`,tp=`${ts.pages+addP} / ${g.goalPages} pages`;
-  parts.push(`${lbl} after saving <b>${g.goalType==='minutes'?tm:g.goalType==='pages'?tp:tm+', '+tp}</b>`);
+  parts.push(`${lbl} after saving <b>${g.goalType==='minutes'?tm:g.goalType==='pages'?tp:tm+', '+tp}</b><button type="button" class="edit-goal" data-act="editGoal">${ic('pencil')}Edit Goal</button>`);
   el.innerHTML=parts.map(p=>`<span>${p}</span>`).join('');
 }
 logForm.addEventListener('input',e=>{
@@ -2462,6 +2462,8 @@ goalForm.addEventListener('submit',e=>{
   Object.assign(S.settings,{goalType:f.type,goalMinutes:gm,goalPages:gp,estimate:!!f.est,restDays:+f.rest});
   save();goalDlg.close();render();toast('Goal saved.');
 });
+/* Opened from Log Reading: the goal form sits on top of it, so what was typed stays put. Refresh the goal line for the new goal. */
+goalDlg.addEventListener('close',()=>{if(logDlg.open&&logForm.dataset.mode==='log'){calcLog();logForm.querySelector('#calc [data-act=editGoal]')?.focus()}});
 
 /* ---------- edit book ---------- */
 const editDlg=document.getElementById('editDlg'),editForm=document.getElementById('editForm');
