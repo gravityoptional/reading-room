@@ -1,0 +1,4 @@
+# Keep planning documents in the repository but off the published site.
+exclude:
+  - docs
+  - README.md

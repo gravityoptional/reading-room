@@ -156,7 +156,8 @@ main{max-width:1240px;margin:0 auto;padding:20px 20px 40px}
 .cover{width:72px;aspect-ratio:2/3;border-radius:4px 7px 7px 4px;position:relative;overflow:hidden;color:#fff;padding:8px 7px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:inset 4px 0 0 rgba(0,0,0,.18),0 2px 6px rgba(15,23,42,.18)}
 .cover .ct{font-family:var(--serif);font-size:11px;line-height:1.15;font-weight:600}
 .cover .ca{font-size:8.5px;opacity:.85}
-.cover .fmt{position:absolute;right:4px;bottom:4px;opacity:.9}
+.cover .fmt{position:absolute;right:4px;bottom:4px;opacity:.9;z-index:1}
+.cover .cimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .cover .fmt svg.i{width:13px;height:13px}
 .bk-t{font-weight:600;font-size:14px;line-height:1.3}
 .bk-a{font-size:12px;color:var(--text-2)}
@@ -1063,8 +1064,8 @@ const monthPages=()=>S.sessions.filter(s=>s.date.slice(0,7)===today().slice(0,7)
 
 /* ---------- rendering pieces ---------- */
 function cover(b,w){
-  const bg=COVERS[b.c%COVERS.length];
-  return `<div class="cover" style="background:linear-gradient(160deg,${bg},color-mix(in srgb,${bg} 70%,#000));${w?`width:${w}px`:''}" aria-hidden="true"><div class="ct">${esc(b.title)}</div><div class="ca">${esc(b.author)}</div>${b.format==='audio'?`<span class="fmt">${ic('head')}</span>`:''}</div>`;
+  const bg=COVERS[b.c%COVERS.length],src=b.cover||(b.titleId&&titleById(b.titleId)?.cover)||'';
+  return `<div class="cover" style="background:linear-gradient(160deg,${bg},color-mix(in srgb,${bg} 70%,#000));${w?`width:${w}px`:''}" aria-hidden="true"><div class="ct">${esc(b.title)}</div><div class="ca">${esc(b.author)}</div>${src?`<img class="cimg" src="${esc(src)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`:''}${b.format==='audio'?`<span class="fmt">${ic('head')}</span>`:''}</div>`;
 }
 function ring(val,max,unit,size){
   const r=size/2-8,c=2*Math.PI*r,f=Math.min(1,max?val/max:0);
@@ -1389,7 +1390,7 @@ function avStack(tid){const owners=[...new Set(copiesOf(tid).map(c=>c.owner))];i
   return `<span class="av-stack" aria-hidden="true">${owners.slice(0,3).map(o=>`<span class="avatar" style="background:${colorOf(o)}">${initOf(o)}</span>`).join('')}</span><span class="xs muted">${owners.length===1?`Owned by ${nameOf(owners[0])}`:`${owners.length} owners`}</span>`}
 const fmtChips=tid=>[...new Set(copiesOf(tid).map(c=>c.format))].map(f=>`<span class="fchip">${FMT[f]}</span>`).join('');
 const STATUS={reading:'Currently Reading',paused:'Paused',finished:'Finished',dnf:'Did Not Finish',want:'On To Read'};
-const libCover=(t,w)=>cover({title:t.title,author:t.author,c:t.c,format:'print'},w);
+const libCover=(t,w)=>cover({title:t.title,author:t.author,c:t.c,cover:t.cover,titleId:t.titleId,format:'print'},w);
 function cardAction(t){
   const r=myReading(t.id);
   if(r&&r.status==='want')return `<button class="btn btn-ghost sm on" data-act="toggleWant" data-id="${t.id}" aria-pressed="true">${ic('check')}On To Read</button>`;
@@ -1623,23 +1624,75 @@ function renderBD(){
 /* ---------- add a book ---------- */
 const addDlg=document.getElementById('addDlg'),addBody=document.getElementById('addBody');
 let ad={tab:'search',q:'',own:null};
-function openAdd(){ad={tab:'search',q:'',own:null};renderAdd();addDlg.showModal();setTimeout(()=>document.getElementById('adQ')?.focus(),30)}
+function openAdd(){ad={tab:'search',q:'',own:null,olOwn:null,ol:null};renderAdd();addDlg.showModal();setTimeout(()=>document.getElementById('adQ')?.focus(),30)}
 function adResults(){
-  const q=ad.q.trim().toLowerCase();
-  if(!q)return `<p class="xs muted" style="margin:0">Type a title or author. Right now this searches books already in Reading Room; once it’s on its own host, it will search all books and fill in covers and details.</p>`;
-  const res=S.titles.filter(t=>(t.title+' '+t.author).toLowerCase().includes(q));
-  if(!res.length)return `<div class="empty"><h3>No Matches Yet</h3><p>Online search will find any book once Reading Room is on its own host. For now, add it yourself.</p><button class="btn btn-ghost" data-act="adTab" data-v="manual">Add It Yourself</button></div>`;
-  return `<div class="pick-list">${res.map(t=>{const r=myReading(t.id),own=copiesOf(t.id).some(c=>c.owner==='me');
+  const raw=ad.q.trim(),q=raw.toLowerCase(),isbn=raw.replace(/[-\s]/g,'');
+  if(!q)return `<p class="xs muted" style="margin:0">Type a title, author, or ISBN. Books already in Reading Room show first, then matches from Open Library with covers and details.</p>`;
+  const res=S.titles.filter(t=>(t.title+' '+t.author).toLowerCase().includes(q)||t.isbn&&t.isbn===isbn);
+  const local=res.length?`<div class="pick-h">In Reading Room</div><div class="pick-list">${res.map(adLocalRow).join('')}</div>`:'';
+  return local+olSection(res);
+}
+function adLocalRow(t){const r=myReading(t.id),own=copiesOf(t.id).some(c=>c.owner==='me');
     return `<div class="pick ad-row">${libCover(t)}<span class="ad-info"><span class="pick-t">${esc(t.title)}</span><span class="xs muted">${esc(t.author)}${t.pages?` · ${t.pages} pages`:''}${copiesOf(t.id).length?' · in the group library':''}</span></span>
     <span class="ad-acts">${ad.own===t.id?`<span class="small muted">Format:</span>${['physical','ebook','audio'].map(f=>`<button class="btn btn-primary sm" data-act="adOwnGo" data-id="${t.id}" data-f="${f}">${FMT[f]}</button>`).join('')}`
       :`<button class="btn btn-ghost sm" data-act="adOwn" data-id="${t.id}" ${own?'disabled':''}>${own?'You Own It':'I Own It'}</button>`}
-    ${r&&r.status==='want'?`<span class="xs muted">On To Read</span>`:r&&r.status!=='finished'&&r.status!=='dnf'?`<span class="xs muted">${STATUS[r.status]}</span>`:`<button class="btn btn-ghost sm" data-act="toggleWant" data-id="${t.id}">Add to To Read</button>`}</span></div>`}).join('')}</div>`;
+    ${r&&r.status==='want'?`<span class="xs muted">On To Read</span>`:r&&r.status!=='finished'&&r.status!=='dnf'?`<span class="xs muted">${STATUS[r.status]}</span>`:`<button class="btn btn-ghost sm" data-act="toggleWant" data-id="${t.id}">Add to To Read</button>`}</span></div>`}
+/* Open Library search. Runs in the reader's browser; no account or key needed. */
+const OL_FIELDS='key,title,author_name,first_publish_year,number_of_pages_median,cover_i';
+let olTimer,olCtl;
+const olKey=raw=>raw.trim().toLowerCase().replace(/\s+/g,' ');
+const olIsbn=raw=>{const d=raw.replace(/[-\s]/g,'');return /^(\d{9}[\dXx]|\d{13})$/.test(d)?d.toUpperCase():''};
+const olExisting=x=>S.titles.find(t=>t.olKey===x.key||t.title.toLowerCase()===x.title.toLowerCase()&&t.author.toLowerCase()===x.author.toLowerCase());
+function olQueue(){
+  clearTimeout(olTimer);const raw=ad.q.trim(),k=olKey(raw);
+  if(raw.length<3){olCtl?.abort();ad.ol=null;return}
+  if(ad.ol&&ad.ol.q===k&&ad.ol.state!=='error')return;
+  ad.ol={q:k,state:'loading',items:[]};olTimer=setTimeout(()=>olFetch(raw),350);
 }
+async function olFetch(raw){
+  const k=olKey(raw),isbn=olIsbn(raw);
+  olCtl?.abort();olCtl=new AbortController();
+  const url=`https://openlibrary.org/search.json?q=${encodeURIComponent(isbn?'isbn:'+isbn:k)}&fields=${OL_FIELDS}&limit=12`;
+  try{
+    const r=await fetch(url,{signal:olCtl.signal,headers:{Accept:'application/json'}});
+    if(!r.ok)throw new Error('Open Library '+r.status);
+    const j=await r.json();
+    const items=(j.docs||[]).filter(d=>d.title).map(d=>({key:d.key,title:d.title,author:(d.author_name||[]).slice(0,2).join(', ')||'Unknown author',year:d.first_publish_year||'',pages:d.number_of_pages_median||0,coverId:d.cover_i||0,isbn}));
+    if(ad.ol?.q===k)ad.ol={q:k,state:'done',items};
+  }catch(e){if(e.name==='AbortError')return;if(ad.ol?.q===k)ad.ol={q:k,state:'error',items:[]}}
+  const el=document.getElementById('adRes');if(el&&addDlg.open&&ad.tab==='search')el.innerHTML=adResults();
+}
+function olSection(res){
+  const raw=ad.q.trim(),o=ad.ol,h='<div class="pick-h">From Open Library</div>';
+  const manual=`<button class="btn btn-ghost sm" data-act="adTab" data-v="manual">Add It Yourself</button>`;
+  if(raw.length<3)return res.length?'':`<p class="xs muted" style="margin:0">Keep typing to search Open Library.</p>`;
+  if(!o||o.q!==olKey(raw)||o.state==='loading')return h+`<p class="xs muted" role="status">Searching Open Library…</p>`;
+  if(o.state==='error')return h+`<div class="empty"><h3>Search Isn’t Working Right Now</h3><p>Open Library didn’t answer. Check your connection and try again, or add the book yourself.</p><button class="btn btn-ghost" data-act="adRetry">Try Again</button> ${manual}</div>`;
+  const items=o.items.map((x,i)=>({x,i})).filter(({x})=>{const t=olExisting(x);return !t||!res.includes(t)});
+  if(!items.length)return res.length?`<p class="xs muted">Not the book you want? ${manual}</p>`:`<div class="empty"><h3>No Matches Found</h3><p>Open Library doesn’t have a match. Check the spelling, try the author or ISBN, or add the book yourself.</p>${manual}</div>`;
+  return h+`<div class="pick-list">${items.map(({x,i})=>{
+    const t=olExisting(x),r=t&&myReading(t.id),own=t&&copiesOf(t.id).some(c=>c.owner==='me');
+    const cv=libCover({title:x.title,author:x.author,c:hashStr(x.title)%COVERS.length,cover:x.coverId?`https://covers.openlibrary.org/b/id/${x.coverId}-S.jpg`:''});
+    return `<div class="pick ad-row">${cv}<span class="ad-info"><span class="pick-t">${esc(x.title)}</span><span class="xs muted">${[esc(x.author),x.year,x.pages?`${x.pages} pages`:''].filter(Boolean).join(' · ')}</span></span>
+    <span class="ad-acts">${ad.olOwn===i?`<span class="small muted">Format:</span>${['physical','ebook','audio'].map(f=>`<button class="btn btn-primary sm" data-act="adOLGo" data-i="${i}" data-f="${f}">${FMT[f]}</button>`).join('')}`
+      :`<button class="btn btn-ghost sm" data-act="adOLOwn" data-i="${i}" ${own?'disabled':''}>${own?'You Own It':'I Own It'}</button>`}
+    ${r&&r.status==='want'?`<span class="xs muted">On To Read</span>`:r&&r.status!=='finished'&&r.status!=='dnf'?`<span class="xs muted">${STATUS[r.status]}</span>`:`<button class="btn btn-ghost sm" data-act="adOLWant" data-i="${i}">Add to To Read</button>`}</span></div>`}).join('')}</div>
+  <p class="xs muted">Not the book you want? ${manual}</p><p class="xs muted" style="margin:0">Book details and covers from <a href="https://openlibrary.org" target="_blank" rel="noopener">Open Library</a>.</p>`;
+}
+/* Turns an Open Library result into a Reading Room title, reusing the existing one if it's already here. */
+function olTitle(i){
+  const x=ad.ol.items[i],ex=olExisting(x);if(ex)return ex;
+  const t={id:'t'+uid(),title:x.title,author:x.author,pages:x.pages||undefined,genre:'',c:hashStr(x.title)%COVERS.length,added:Date.now(),olKey:x.key};
+  if(x.coverId)t.cover=`https://covers.openlibrary.org/b/id/${x.coverId}-M.jpg`;
+  if(x.isbn)t.isbn=x.isbn;if(x.year)t.year=x.year;
+  S.titles.push(t);return t;
+}
+function addCopy(tid,f){const t=titleById(tid);const sh=!S.settings.solo&&ad.share!==false,had=copiesOf(t.id).some(c=>!c.private);S.copies.push({id:'c'+uid(),titleId:t.id,owner:'me',format:f,where:'',loanTo:null,private:!sh||undefined});if(sh)post('library',had?`added a${f==='physical'?'':'n'} ${FMT[f].toLowerCase()} copy of`:'added a book to the group library:',t.title);ad.own=null;ad.olOwn=null;save();refreshLib();toast(`Added your ${FMT[f].toLowerCase()} copy of ${t.title}.`)}
 function renderAdd(keep){
   if(keep&&ad.tab==='search'){const el=document.getElementById('adRes');if(el){el.innerHTML=adResults();return}}
   const tabs=[['search','Search'],['manual','Add It Yourself'],['import','Import']];
   let body='';
-  if(ad.tab==='search')body=`<label class="search">${ic('search')}<input id="adQ" type="search" placeholder="Search by title or author" value="${esc(ad.q)}" aria-label="Search for a book" autocomplete="off"></label><div id="adRes" style="margin-top:12px">${adResults()}</div>`;
+  if(ad.tab==='search')body=`<label class="search">${ic('search')}<input id="adQ" type="search" placeholder="Search by title, author, or ISBN" value="${esc(ad.q)}" aria-label="Search for a book" autocomplete="off"></label><div id="adRes" style="margin-top:12px">${adResults()}</div>`;
   else if(ad.tab==='manual')body=`<div class="form">
     <label class="f">Title<input class="inp" id="amTitle" autocomplete="off"></label>
     <label class="f"><span>Author <span class="sub">(optional)</span></span><input class="inp" id="amAuthor" autocomplete="off"></label>
@@ -1667,7 +1720,7 @@ function addManual(mode){
 }
 document.addEventListener('input',e=>{
   if(e.target.id==='libQ'){lib.q=e.target.value;document.getElementById('libResults').innerHTML=libResults()}
-  else if(e.target.id==='adQ'){ad.q=e.target.value;ad.own=null;document.getElementById('adRes').innerHTML=adResults()}
+  else if(e.target.id==='adQ'){ad.q=e.target.value;ad.own=null;ad.olOwn=null;olQueue();document.getElementById('adRes').innerHTML=adResults()}
   else if(e.target.id==='bdNotes'){S.notes[bd.id]=e.target.value;save()}
 });
 document.addEventListener('change',e=>{
@@ -2554,7 +2607,11 @@ document.addEventListener('click',e=>{
     case 'closeAdd':addDlg.close();refreshLib();break;
     case 'adTab':ad.tab=a.dataset.v;ad.own=null;renderAdd();if(ad.tab==='search')setTimeout(()=>document.getElementById('adQ')?.focus(),30);if(ad.tab==='manual')setTimeout(()=>document.getElementById('amTitle')?.focus(),30);break;
     case 'adOwn':ad.own=a.dataset.id;renderAdd(true);break;
-    case 'adOwnGo':{const t=titleById(a.dataset.id);const sh=!S.settings.solo&&ad.share!==false,had=copiesOf(t.id).some(c=>!c.private);S.copies.push({id:'c'+uid(),titleId:t.id,owner:'me',format:a.dataset.f,where:'',loanTo:null,private:!sh||undefined});if(sh)post('library',had?`added a${a.dataset.f==='physical'?'':'n'} ${FMT[a.dataset.f].toLowerCase()} copy of`:'added a book to the group library:',t.title);ad.own=null;save();refreshLib();toast(`Added your ${FMT[a.dataset.f].toLowerCase()} copy of ${t.title}.`);break}
+    case 'adOwnGo':addCopy(a.dataset.id,a.dataset.f);break;
+    case 'adOLOwn':ad.olOwn=+a.dataset.i;ad.own=null;renderAdd(true);break;
+    case 'adOLGo':addCopy(olTitle(+a.dataset.i).id,a.dataset.f);break;
+    case 'adOLWant':{const t=olTitle(+a.dataset.i),r=myReading(t.id);if(r&&r.status==='want'){toast(`${t.title} is already on your To Read list.`);renderAdd(true)}else toggleWant(t.id);break}
+    case 'adRetry':ad.ol=null;olQueue();renderAdd(true);break;
     case 'adManualGo':addManual(a.dataset.v);break;
     case 'closeBD':bookDlg.close();break;
     case 'bdTab':bd.tab=a.dataset.v;renderBD();break;
