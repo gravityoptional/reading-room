@@ -439,6 +439,16 @@ textarea.inp{resize:vertical;min-height:64px}
 .sp-a{font-size:9px;opacity:.85;white-space:nowrap}
 .bd-h .cover{width:84px}
 .bd-acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.te-cover{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start}
+.te-prev{display:grid;gap:8px;justify-items:center;width:120px}
+.te-prev .cover{width:110px;padding:12px 10px}
+.te-panel{flex:1;min-width:220px;display:grid;gap:10px}
+.te-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px;max-height:236px;overflow:auto;padding:3px}
+.te-grid button{border:1px solid var(--border);background:var(--surface-alt);padding:0;border-radius:6px;overflow:hidden;aspect-ratio:2/3}
+.te-grid button[aria-pressed="true"]{outline:3px solid var(--primary);outline-offset:2px}
+.te-grid img{width:100%;height:100%;object-fit:cover;display:block}
+.te-row{display:flex;gap:8px;align-items:center}
+.te-row .inp{flex:1;min-width:0}
 .bd-tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-top:16px;overflow-x:auto}
 .bd-tab{border:0;background:none;padding:9px 12px;font-size:14px;color:var(--text-2);border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
 .bd-tab[aria-selected="true"]{color:var(--primary);border-color:var(--primary);font-weight:600}
@@ -831,6 +841,7 @@ main section.card .card-h .ico{display:none}
 <dialog id="goalDlg" aria-labelledby="goalTitle"><form class="dlg" id="goalForm" method="dialog" novalidate></form></dialog>
 <dialog id="editDlg" aria-labelledby="editTitle"><form class="dlg" id="editForm" method="dialog" novalidate></form></dialog>
 <dialog id="bookDlg" aria-labelledby="bdTitle"><div class="dlg" id="bookBody"></div></dialog>
+<dialog id="titleDlg" aria-labelledby="teTitle"><form class="dlg" id="titleForm" method="dialog" novalidate></form></dialog>
 <dialog id="addDlg" aria-labelledby="adTitle"><div class="dlg" id="addBody"></div></dialog>
 <dialog id="chDlg" aria-labelledby="chTitle"><div class="dlg" id="chBody"></div></dialog>
 <dialog id="recDlg" aria-labelledby="rpTitle"><div class="dlg" id="recBody"></div></dialog>
@@ -1591,6 +1602,7 @@ function renderBD(){
   else if(r&&r.status==='dnf')prim=`<button class="btn btn-primary" data-act="pickup" data-book="${r.id}">${ic('play')}Pick Up Again</button>`;
   else prim=`<button class="btn btn-primary" data-act="toggleWant" data-id="${t.id}">${ic('plus')}Add to To Read</button>`;
   prim+=`<button class="btn btn-ghost" data-act="bdRec" aria-expanded="${bd.rec}">${ic('send')}Recommend</button>`;
+  if(canEditTitle(t))prim+=`<button class="btn btn-ghost" data-act="teOpen" data-id="${t.id}">${ic('pencil')}Edit Book</button>`;
   const tabs=[['copies',`Copies (${cs.length})`],['mine','My Reading'],['activity',`${GN()} Activity`],['notes','Notes']];
   let body='';
   if(bd.tab==='copies'){
@@ -1620,6 +1632,110 @@ function renderBD(){
     <div class="bd-tabs" role="tablist">${tabs.map(([k,l])=>`<button class="bd-tab" role="tab" aria-selected="${bd.tab===k}" data-act="bdTab" data-v="${k}">${l}</button>`).join('')}</div>
     <div class="bd-body">${body}</div>`;
 }
+
+/* ---------- edit a library entry ---------- */
+/* Edits the shared title record. Owners of a copy and group admins can edit; every reading of the title follows. */
+const titleDlg=document.getElementById('titleDlg'),titleForm=document.getElementById('titleForm');
+const canEditTitle=t=>!!t&&(S.me.admin||copiesOf(t.id).some(c=>c.owner==='me'));
+let te={id:null,cover:'',src:'',tab:'url',url:'',q:'',ol:null,bad:false,touched:false};
+function openTitleEdit(id){
+  const t=titleById(id);if(!canEditTitle(t))return;
+  te={id,cover:t.cover||'',src:t.cover?(t.cover.startsWith('data:')?'upload':/openlibrary\.org/.test(t.cover)?'ol':'url'):'gen',tab:'ol',url:'',q:t.isbn||`${t.title} ${t.author!=='Unknown author'?t.author:''}`.trim(),ol:null,bad:false,touched:false};
+  if(te.src==='url'){te.tab='url';te.url=t.cover}
+  const genres=[...new Set(S.titles.map(x=>x.genre).filter(Boolean))].sort(),series=[...new Set(S.titles.map(x=>x.series).filter(Boolean))].sort();
+  titleForm.innerHTML=`<div class="dlg-h"><div style="flex:1;min-width:0"><h2 id="teTitle">Edit Book</h2><div class="muted small">Changes apply to everyone${S.settings.solo?'':` in the ${esc(GN())} Library`} and to every reading of this book.</div></div><button type="button" class="icon-btn x" data-act="teClose" aria-label="Close">${ic('x')}</button></div>
+  <div class="form">
+    <label class="f">Title<input class="inp" name="tTitle" value="${esc(t.title)}" autocomplete="off"></label>
+    <label class="f">Author<input class="inp" name="tAuthor" value="${esc(t.author==='Unknown author'?'':t.author)}" placeholder="Unknown author" autocomplete="off"></label>
+    <div class="f2"><label class="f"><span>Number of Pages <span class="sub">(if known)</span></span><input class="inp" name="tPages" inputmode="numeric" value="${t.pages||''}"></label>
+    <label class="f"><span>ISBN <span class="sub">(optional)</span></span><input class="inp" name="tIsbn" inputmode="numeric" value="${esc(t.isbn||'')}" autocomplete="off"></label></div>
+    <label class="f"><span>Genre <span class="sub">(optional)</span></span><input class="inp" name="tGenre" list="teGenres" value="${esc(t.genre||'')}" autocomplete="off"><datalist id="teGenres">${genres.map(g=>`<option value="${esc(g)}">`).join('')}</datalist></label>
+    <div class="f2"><label class="f"><span>Series Name <span class="sub">(optional)</span></span><input class="inp" name="tSeries" list="teSeries" value="${esc(t.series||'')}" autocomplete="off"><datalist id="teSeries">${series.map(n=>`<option value="${esc(n)}">`).join('')}</datalist></label>
+    <label class="f">Book Number<input class="inp" name="tSeriesNo" inputmode="decimal" value="${t.seriesNo??''}"></label></div>
+    <label class="f"><span>Books in the Series <span class="sub">(if known)</span></span><input class="inp" name="tSeriesLen" inputmode="numeric" value="${t.series?(S.seriesLen?.[t.series]??''):''}"></label>
+    <div class="section-t">Cover</div>
+    <div class="te-cover"><div class="te-prev"><div id="tePrev"></div><span class="xs muted" id="teSrc" aria-live="polite"></span><button type="button" class="link-btn sm" data-act="teGen">Use Generated Cover</button></div>
+      <div class="te-panel"><div class="vseg ad-tabs" role="tablist" aria-label="Cover source">${[['url','Web Address'],['upload','Upload'],['ol','Open Library']].map(([k,l])=>`<button type="button" role="tab" aria-pressed="${te.tab===k}" data-act="teTab" data-v="${k}">${l}</button>`).join('')}</div><div id="tePanel"></div></div></div>
+    <div class="err" id="teErr" role="alert"></div>
+    <div class="dlg-f"><button type="button" class="btn btn-ghost" data-act="teClose">Cancel</button><button type="submit" class="btn btn-primary">Save Changes</button></div>
+  </div>`;
+  tePanel();tePreview();titleDlg.showModal();
+}
+function tePreview(){
+  const t=titleById(te.id),v=n=>titleForm.querySelector(`[name=${n}]`)?.value.trim();
+  document.getElementById('tePrev').innerHTML=cover({title:v('tTitle')||t.title,author:v('tAuthor')||'Unknown author',c:t.c,cover:te.cover,format:'print'},110);
+  document.getElementById('teSrc').textContent=te.bad?'That image didn’t load.':{gen:'Generated cover',url:'From a web address',upload:'Uploaded image, saved in this browser',ol:'From Open Library'}[te.src];
+  if(te.cover){const im=new Image();im.onload=()=>{if(te.bad){te.bad=false;tePreview()}};im.onerror=()=>{if(!te.bad){te.bad=true;tePreview()}};im.src=te.cover}
+}
+function tePanel(){
+  const el=document.getElementById('tePanel');
+  titleForm.querySelectorAll('[data-act=teTab]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===te.tab));
+  if(te.tab==='url')el.innerHTML=`<label class="f"><span>Image Web Address</span><input class="inp" name="teUrl" type="url" inputmode="url" value="${esc(te.url)}" placeholder="https://…" autocomplete="off"></label><span class="xs muted">Paste the address of an image, ending in .jpg, .png, or .webp.</span>`;
+  else if(te.tab==='upload')el.innerHTML=`<label class="btn btn-ghost" style="justify-self:start">${ic('plus')}Choose an Image<input type="file" id="teFile" accept="image/jpeg,image/png,image/webp" hidden></label><span class="xs muted">JPG, PNG, or WebP. It’s resized and saved in this browser for now, so other devices won’t see it yet.</span>`;
+  else{
+    const o=te.ol;
+    el.innerHTML=`<div class="te-row"><input class="inp" id="teQ" type="search" value="${esc(te.q)}" placeholder="ISBN or title" aria-label="Search Open Library covers by ISBN or title" autocomplete="off"><button type="button" class="btn btn-ghost sm" data-act="teSearch">${ic('search')}Search</button></div>
+    ${!o?`<span class="xs muted">Search by ISBN or title to see covers from Open Library, then pick one.</span>`
+    :o.state==='loading'?`<span class="xs muted" role="status">Searching Open Library…</span>`
+    :o.state==='error'?`<span class="xs muted" role="status">Open Library didn’t answer. Check your connection and try again.</span>`
+    :!o.ids.length?`<span class="xs muted" role="status">No covers found. Try the ISBN, or a shorter title.</span>`
+    :`<span class="xs muted" role="status">${o.ids.length} cover${o.ids.length===1?'':'s'} found. Pick one.</span><div class="te-grid">${o.ids.map(i=>{const u=`https://covers.openlibrary.org/b/id/${i}-M.jpg`;return `<button type="button" data-act="tePick" data-v="${i}" aria-pressed="${te.cover===u}" aria-label="Cover ${o.ids.indexOf(i)+1}"><img src="${u}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.remove()"></button>`}).join('')}</div>`}`;
+  }
+}
+async function teSearch(){
+  const q=te.q.trim(),id=te.id;if(!q)return;
+  te.ol={state:'loading',ids:[]};tePanel();
+  try{
+    const isbn=olIsbn(q),ids=[],add=i=>{if(i>0&&!ids.includes(i))ids.push(i)};
+    const r=await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(isbn?'isbn:'+isbn:q)}&fields=key,cover_i&limit=8`,{headers:{Accept:'application/json'}});
+    if(!r.ok)throw new Error('Open Library '+r.status);
+    const docs=(await r.json()).docs||[];docs.forEach(d=>add(d.cover_i));
+    if(docs[0]?.key){const e=await fetch(`https://openlibrary.org${docs[0].key}/editions.json?limit=50`,{headers:{Accept:'application/json'}});if(e.ok)((await e.json()).entries||[]).forEach(x=>(x.covers||[]).forEach(add))}
+    te.ol={state:'done',ids:ids.slice(0,24)};
+  }catch(e){te.ol={state:'error',ids:[]}}
+  if(te.id===id&&titleDlg.open&&te.tab==='ol')tePanel();
+}
+async function teUpload(file){
+  if(!/^image\/(jpeg|png|webp)$/.test(file.type)){document.getElementById('teErr').textContent='Choose a JPG, PNG, or WebP image.';return}
+  try{
+    const bmp=await createImageBitmap(file),sc=Math.min(1,300/bmp.width,450/bmp.height);
+    const cv=document.createElement('canvas');cv.width=Math.round(bmp.width*sc);cv.height=Math.round(bmp.height*sc);
+    cv.getContext('2d').drawImage(bmp,0,0,cv.width,cv.height);bmp.close?.();
+    te.cover=cv.toDataURL('image/jpeg',.82);te.src='upload';te.bad=false;te.touched=true;document.getElementById('teErr').textContent='';tePreview();
+  }catch(e){document.getElementById('teErr').textContent='That image couldn’t be opened. Try a different file.'}
+}
+titleForm.addEventListener('input',e=>{
+  const n=e.target.name;
+  if(n==='teUrl'){te.url=e.target.value.trim();te.touched=true;if(/^https?:\/\/\S+$/i.test(te.url)){te.cover=te.url;te.src='url'}else if(te.src==='url'){te.cover='';te.src='gen'}te.bad=false;tePreview()}
+  else if(e.target.id==='teQ')te.q=e.target.value;
+  else if(n==='tTitle'||n==='tAuthor')tePreview();
+});
+titleForm.addEventListener('change',e=>{if(e.target.id==='teFile'){const f=e.target.files?.[0];e.target.value='';if(f)teUpload(f)}});
+titleForm.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='teQ'){e.preventDefault();teSearch()}});
+titleForm.addEventListener('submit',e=>{
+  e.preventDefault();
+  const t=titleById(te.id);if(!canEditTitle(t))return titleDlg.close();
+  const v=n=>(titleForm.querySelector(`[name=${n}]`)?.value||'').trim(),er=m=>{document.getElementById('teErr').textContent=m};
+  const title=v('tTitle'),author=v('tAuthor')||'Unknown author',pages=v('tPages'),isbn=v('tIsbn').replace(/[-\s]/g,'').toUpperCase(),sn=v('tSeries'),no=v('tSeriesNo'),len=v('tSeriesLen');
+  if(!title)return er('Enter a title.');
+  if(S.titles.some(x=>x!==t&&x.title.toLowerCase()===title.toLowerCase()&&x.author.toLowerCase()===author.toLowerCase()))return er('Another book in Reading Room already has this title and author.');
+  if(pages&&!(/^\d+$/.test(pages)&&+pages>0))return er('Enter the number of pages as a whole number, or leave it blank.');
+  const mine=S.books.filter(b=>b.titleId===t.id);
+  const past=pages&&mine.find(b=>b.format!=='audio'&&b.pos>+pages);
+  if(past)return er(`Your reading is already at page ${past.pos}, so the book can’t have fewer pages than that.`);
+  if(isbn&&!/^(\d{9}[\dX]|\d{13})$/.test(isbn))return er('An ISBN has 10 or 13 digits. Check it, or leave it blank.');
+  if(no&&(!sn||isNaN(+no)||+no<=0))return er(sn?'Enter the book number as a number, for example 2.':'Add a series name to go with the book number.');
+  if(len&&(!sn||!/^\d+$/.test(len)||+len<=0))return er(sn?'Enter how many books are in the series as a whole number.':'Add a series name to go with the series length.');
+  if(te.bad)return er('The cover image didn’t load. Choose a different one, or use the generated cover.');
+  const old=t.title;
+  Object.assign(t,{title,author,pages:pages?+pages:undefined,isbn:isbn||undefined,genre:v('tGenre'),series:sn||undefined,seriesNo:sn&&no?+no:undefined});
+  if(sn&&len)(S.seriesLen=S.seriesLen||{})[sn]=+len;
+  if(te.touched){if(te.cover){t.cover=te.cover;delete t.noAutoCover}else{delete t.cover;t.noAutoCover=true}}
+  else if(!t.cover&&!t.noAutoCover&&old!==title){delete t.coverTried;setTimeout(coverFill,500)}
+  mine.forEach(b=>{b.title=title;b.author=author;if(b.format!=='audio'&&pages)b.total=+pages});
+  if(old!==title)S.activity.forEach(a=>{if(a.book===old)a.book=title});
+  save();titleDlg.close();render();if(bookDlg.open)renderBD();toast(`Saved changes to ${title}.`);
+});
 
 /* ---------- add a book ---------- */
 const addDlg=document.getElementById('addDlg'),addBody=document.getElementById('addBody');
@@ -1706,7 +1822,7 @@ function coverRedraw(){
 async function coverFill(){
   if(coverBusy||navigator.onLine===false)return;coverBusy=true;
   try{
-    const todo=S.titles.filter(t=>!t.cover&&!(t.coverTried>Date.now()-COVER_RETRY));
+    const todo=S.titles.filter(t=>!t.cover&&!t.noAutoCover&&!(t.coverTried>Date.now()-COVER_RETRY));
     for(const t of todo){
       if(t.cover||!S.titles.includes(t))continue;
       let d;try{d=await olCoverFor(t)}catch(e){break}
@@ -2674,6 +2790,12 @@ document.addEventListener('click',e=>{
     case 'discardTimer':{const snap=snapshot();S.timer=null;save();render();toast('Timer discarded.',restoreTo(snap));break}
     case 'editBook':openEdit(id);break;
     case 'closeEdit':editDlg.close();break;
+    case 'teOpen':openTitleEdit(a.dataset.id);break;
+    case 'teClose':titleDlg.close();break;
+    case 'teTab':te.tab=a.dataset.v;tePanel();break;
+    case 'teSearch':teSearch();break;
+    case 'tePick':te.cover=`https://covers.openlibrary.org/b/id/${a.dataset.v}-M.jpg`;te.src='ol';te.bad=false;te.touched=true;tePanel();tePreview();break;
+    case 'teGen':te.cover='';te.url='';te.src='gen';te.bad=false;te.touched=true;tePanel();tePreview();break;
     case 'startNew':drawNew();if(!logDlg.open)logDlg.showModal();setTimeout(()=>document.getElementById('newQ')?.focus(),30);break;
     case 'backLog':{const c=currentSel()||S.books.find(x=>x.status==='paused');if(c)drawLog(c);break}
     case 'manualNew':drawManual();break;
