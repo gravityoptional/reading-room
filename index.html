@@ -1679,6 +1679,44 @@ function olSection(res){
     ${r&&r.status==='want'?`<span class="xs muted">On To Read</span>`:r&&r.status!=='finished'&&r.status!=='dnf'?`<span class="xs muted">${STATUS[r.status]}</span>`:`<button class="btn btn-ghost sm" data-act="adOLWant" data-i="${i}">Add to To Read</button>`}</span></div>`}).join('')}</div>
   <p class="xs muted">Not the book you want? ${manual}</p><p class="xs muted" style="margin:0">Book details and covers from <a href="https://openlibrary.org" target="_blank" rel="noopener">Open Library</a>.</p>`;
 }
+/* Finds covers for books added before Find a Book, or added by hand. Works through them one at a
+   time in the background, saves each cover on the title so it's only looked up once, and tries
+   books with no match again after 30 days. */
+const COVER_RETRY=30*864e5;
+let coverBusy=false,coverDraw;
+async function olCoverFor(t){
+  const base=`https://openlibrary.org/search.json?fields=key,cover_i&limit=5&`;
+  const au=t.author&&t.author!=='Unknown author'?t.author:'';
+  const tries=[`title=${encodeURIComponent(t.title)}${au?`&author=${encodeURIComponent(au)}`:''}`,`q=${encodeURIComponent(t.title+(au?' '+au:''))}`];
+  for(const qs of tries){
+    const r=await fetch(base+qs,{headers:{Accept:'application/json'}});
+    if(!r.ok)throw new Error('Open Library '+r.status);
+    const d=((await r.json()).docs||[]).find(x=>x.cover_i);
+    if(d)return d;
+  }
+  return null;
+}
+function coverRedraw(){
+  clearTimeout(coverDraw);
+  coverDraw=setTimeout(()=>{
+    if(document.activeElement?.closest('input,select,textarea')||document.querySelector('.menu:not([hidden])'))return coverRedraw();
+    const y=window.scrollY;render();window.scrollTo(0,y);if(bookDlg.open)renderBD();if(addDlg.open)renderAdd(true);
+  },2500);
+}
+async function coverFill(){
+  if(coverBusy||navigator.onLine===false)return;coverBusy=true;
+  try{
+    const todo=S.titles.filter(t=>!t.cover&&!(t.coverTried>Date.now()-COVER_RETRY));
+    for(const t of todo){
+      if(t.cover||!S.titles.includes(t))continue;
+      let d;try{d=await olCoverFor(t)}catch(e){break}
+      t.coverTried=Date.now();
+      if(d){t.cover=`https://covers.openlibrary.org/b/id/${d.cover_i}-M.jpg`;if(!t.olKey)t.olKey=d.key;coverRedraw()}
+      save();
+      await new Promise(r=>setTimeout(r,1000));
+    }
+  }finally{coverBusy=false}
+}
 /* Turns an Open Library result into a Reading Room title, reusing the existing one if it's already here. */
 function olTitle(i){
   const x=ad.ol.items[i],ex=olExisting(x);if(ex)return ex;
@@ -1716,7 +1754,7 @@ function addManual(mode){
   S.titles.push(t);
   if(mode==='own'){const sh=!S.settings.solo&&ad.share!==false;S.copies.push({id:'c'+uid(),titleId:t.id,owner:'me',format:v('amFmt'),where:'',loanTo:null,private:!sh||undefined});if(sh)post('library','added a book to the group library:',title);toast(`Added ${title} to My Collection.`)}
   else{S.books.push({id:'r'+uid(),titleId:t.id,title,author:t.author,format:'print',total:t.pages,pos:0,status:'want',c:t.c,wantSince:today()});toast(`Added ${title} to your To Read list.`)}
-  save();addDlg.close();lib.tab='mybooks';lib.mb=mode==='own'?'owned':'want';refreshLib();
+  save();addDlg.close();lib.tab='mybooks';lib.mb=mode==='own'?'owned':'want';refreshLib();setTimeout(coverFill,500);
 }
 document.addEventListener('input',e=>{
   if(e.target.id==='libQ'){lib.q=e.target.value;document.getElementById('libResults').innerHTML=libResults()}
@@ -2671,7 +2709,7 @@ document.addEventListener('click',e=>{
       break}
     case 'dismiss':S.notifs=S.notifs.filter(n=>n.id!==a.dataset.id);save();renderHeader();document.getElementById('bellMenu').hidden=false;break;
     case 'emptyDemo':{const keep=S.settings;S=seed();S.settings={...keep};S.books=[];S.sessions=[];S.challenges=[];S.trophies=[];S.activity=[];S.notifs=[];save();closeMenus();view='dashboard';render();toast('Showing the new-member view.');break}
-    case 'resetDemo':{const th=S.settings.theme;S=seed();S.settings.theme=th;save();closeMenus();view='dashboard';render();toast('Sample data restored.');break}
+    case 'resetDemo':{const th=S.settings.theme;S=seed();S.settings.theme=th;save();closeMenus();view='dashboard';render();setTimeout(coverFill,500);toast('Sample data restored.');break}
     case 'soon':toast(`${a.dataset.what} comes with the Library.`);break;
   }
 });
@@ -2684,6 +2722,7 @@ document.addEventListener('touchstart',e=>{tx=e.target.closest('#detail')?e.touc
 document.addEventListener('touchend',e=>{if(tx==null)return;const dx=e.changedTouches[0].clientX-tx;tx=null;if(Math.abs(dx)>50)stepBook(dx<0?1:-1)});
 paintIcons();
 render();
+setTimeout(coverFill,1000);
 </script>
 </body>
 </html>
