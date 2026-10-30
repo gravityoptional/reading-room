@@ -842,6 +842,10 @@ main section.card .card-h .ico{display:none}
 .sel-bar{position:sticky;bottom:12px;z-index:5;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:10px 14px;margin-top:-64px;background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:0 10px 28px rgba(15,23,42,.16)}
 .sel-acts{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto}
 @media (max-width:720px){.sel-bar{bottom:calc(72px + env(safe-area-inset-bottom,0px))}}
+.req-st{font-size:12px;color:var(--text-2)}.req-st.ok{color:var(--primary);font-weight:600}
+.req-in{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between;margin:-2px 0 8px 44px;padding:10px 12px;border-radius:10px;background:var(--primary-light)}
+.req-btns{display:flex;gap:6px;flex-wrap:wrap}
+.notif{flex-wrap:wrap}.notif-req{flex-basis:100%;margin-top:2px}
 .gs{margin:22px 0 4px}
 .gs-list{list-style:none;margin:6px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}
 .gs-i{display:flex;gap:12px;align-items:center;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
@@ -1125,11 +1129,29 @@ if(!S.actSeeded2){S.actSeeded2=true;const n=Date.now(),H=3600e3,ms=Object.keys(S
   {id:uid(),who:m(0),kind:'session',text:'logged a reading session',book:'Dune',ts:n-4*H,r:{}},
   {id:uid(),who:m(0),kind:'session',text:'logged a reading session',book:'Dune',ts:n-5*H,r:{}})}}
 if(!S.group)S.group={name:'Emberton Family'};
+S.loanReqs=S.loanReqs||[];
 if(!S.upNext){const pk=n=>S.books.find(b=>b.status==='want'&&b.title===n)?.id;S.upNext=['Wool','Project Hail Mary','Shift'].map(pk).filter(Boolean)}
 S.notifs.forEach(n=>{if(!n.link){n.link=({n1:{type:'lib'},n2:{type:'ch',id:'f1'},n3:{type:'battle',id:'bb1'}})[n.id]||null;if(n.id==='n2')n.text='Keng started a group challenge: Family Reading Challenge.'}});
 if(!S.wantSeeded){S.wantSeeded=true;if(!S.books.some(b=>b.status==='want'))S.books.push(...seed().books.filter(b=>b.status==='want'))}
 function save(){try{diffEvents()}catch(e){}try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 /* Prototype tool: pretend other members did a few things, so Group Activity, reactions, and notifications can be tried without other accounts. */
+/* Prototype tools for Request to Borrow, since the other members are sample people. */
+function simBorrowIn(){
+  const mine=S.copies.filter(c=>c.owner==='me'&&c.format==='physical'&&!c.loanTo&&!holdOn(c)&&!c.private);
+  if(!mine.length){closeMenus();toast('You have no shared physical copies that are available to request.');return}
+  const c=mine[Math.floor(Math.random()*mine.length)],ms=Object.keys(S.members),who=ms[Math.floor(Math.random()*ms.length)],t=titleById(c.titleId);
+  const r={id:'q'+uid(),copyId:c.id,titleId:c.titleId,from:who,to:'me',status:'pending',ts:Date.now()};S.loanReqs.push(r);
+  S.notifs.unshift({id:'n'+uid(),text:`${nameOf(who)} asked to borrow ${t.title}.`,ts:Date.now(),link:{type:'title',id:c.titleId},req:r.id});
+  save();closeMenus();render();toast(`${nameOf(who)} asked to borrow ${t.title}. Approve or decline from the bell or the book.`);
+}
+function simBorrowOut(){
+  const r=activeReqs().filter(x=>x.from==='me').sort((a,b)=>a.ts-b.ts)[0];
+  if(!r){closeMenus();toast('You have no open borrow requests. Open a book someone else owns and tap Request to Borrow.');return}
+  const c=S.copies.find(x=>x.id===r.copyId),t=titleById(r.titleId).title,o=nameOf(r.to);
+  if(r.status==='pending'){r.status='approved';r.upd=Date.now();reqNote('me',`${o} approved your request to borrow ${t}. Pick it up from ${o}.`,{type:'title',id:r.titleId});toast(`${o} approved your request.`)}
+  else{lendCopy(c,'me');reqNote('me',`${o} handed over ${t}. It’s on loan to you.`,{type:'title',id:r.titleId});toast(`${o} marked ${t} as loaned to you.`)}
+  save();closeMenus();render();
+}
 function simActivity(){
   const ms=Object.keys(S.members),rnd=a=>a[Math.floor(Math.random()*a.length)],ts=S.titles.map(t=>t.title),now=Date.now();
   const make=[w=>({kind:'finished',text:'finished',book:rnd(ts)}),w=>({kind:'started',text:'started',book:rnd(ts)}),w=>({kind:'goal',text:'met today’s reading goal'}),
@@ -1738,7 +1760,20 @@ const sortKey=x=>x.replace(/^(the|a|an)\s+/i,'').toLowerCase();
 const lastName=a=>(a.trim().split(/\s+/).pop()||'');
 const hashStr=x=>[...x].reduce((a,c)=>(a*31+c.charCodeAt(0))>>>0,7);
 function myReading(tid){const rs=S.books.filter(b=>b.titleId===tid);return rs.find(b=>['reading','paused','want'].includes(b.status))||rs[rs.length-1]||null}
-function avail(tid){const cs=copiesOf(tid),ph=cs.filter(c=>c.format==='physical');if(!cs.length)return null;if(!ph.length)return {t:'Digital copy',cls:''};if(ph.some(c=>!c.loanTo))return {t:'Available',cls:'ok'};return {t:`On loan to ${nameOf(ph[0].loanTo)}`,cls:'loan'}}
+/* Request to Borrow. A request goes pending -> approved (awaiting pickup; the copy is on hold) -> loaned (the owner
+   handed it over, using the existing lending) -> returned. The borrower can cancel while it's pending or awaiting pickup;
+   the owner can decline, or cancel a hold. */
+const activeReqs=()=>(S.loanReqs||[]).filter(r=>r.status==='pending'||r.status==='approved');
+const holdOn=c=>activeReqs().find(r=>r.copyId===c.id&&r.status==='approved');
+const myReqFor=c=>activeReqs().find(r=>r.copyId===c.id&&r.from==='me');
+const reqNote=(to,text,link)=>{S.notifs.unshift({id:'n'+uid(),text,ts:Date.now(),link:link||null,to})};
+function lendCopy(c,who){
+  c.loanTo=who;S.loanCount=(S.loanCount||0)+1;
+  const t=titleById(c.titleId)?.title||'a book';
+  if(c.owner==='me')post('loan',`loaned ${t} to ${nameOf(who)}`);
+  activeReqs().filter(r=>r.copyId===c.id).forEach(r=>{if(r.from===who)r.status='loaned';else{r.status='declined';if(r.from==='me')reqNote('me',`${nameOf(c.owner)} lent ${t} to someone else, so your request was declined.`,{type:'title',id:c.titleId})}});
+}
+function avail(tid){const cs=copiesOf(tid),ph=cs.filter(c=>c.format==='physical');if(!cs.length)return null;if(!ph.length)return {t:'Digital copy',cls:''};if(ph.some(c=>!c.loanTo&&!holdOn(c)))return {t:'Available',cls:'ok'};const h=ph.find(c=>!c.loanTo&&holdOn(c));const who=w=>w==='me'?'you':nameOf(w);if(h)return {t:`On hold for ${who(holdOn(h).from)}`,cls:'loan'};return {t:`On loan to ${who(ph[0].loanTo)}`,cls:'loan'}}
 function avStack(tid){const owners=[...new Set(copiesOf(tid).map(c=>c.owner))];if(!owners.length)return '';
   return `<span class="av-stack" aria-hidden="true">${owners.slice(0,3).map(o=>`<span class="avatar" style="background:${colorOf(o)}">${initOf(o)}</span>`).join('')}</span><span class="xs muted">${owners.length===1?`Owned by ${nameOf(owners[0])}`:`${owners.length} owners`}</span>`}
 const fmtChips=tid=>[...new Set(copiesOf(tid).map(c=>c.format))].map(f=>`<span class="fchip">${FMT[f]}</span>`).join('');
@@ -2023,12 +2058,20 @@ function openTitle(id){bd={id,tab:'copies',rec:false,lend:null,addCopy:false};re
 function copyRow(c){
   const mine=c.owner==='me',ph=c.format==='physical';
   let act='';
-  if(mine&&ph)act=c.loanTo?`<button class="btn btn-ghost sm" data-act="cpReturn" data-id="${c.id}">Mark Returned</button>`
+  const hold=ph&&!c.loanTo?holdOn(c):null,mr=!mine&&ph?myReqFor(c):null;
+  const incoming=mine&&ph&&!c.loanTo&&!hold?activeReqs().filter(r=>r.copyId===c.id&&r.status==='pending'):[];
+  if(mine&&ph&&hold)act=`<button class="btn btn-primary sm" data-act="reqHandOver" data-id="${hold.id}">Mark Loaned</button><button class="link-btn sm" data-act="reqCancelHold" data-id="${hold.id}">Cancel Hold</button>`;
+  else if(!mine&&ph){
+    if(c.loanTo==='me')act='';
+    else if(mr)act=`<span class="req-st ${mr.status==='approved'?'ok':''}">${mr.status==='approved'?`Approved — awaiting pickup from ${esc(nameOf(c.owner))}`:'Request sent'}</span><button class="link-btn sm" data-act="reqCancel" data-id="${mr.id}">Cancel Request</button>`;
+    else if(!c.loanTo&&!hold&&!S.settings.solo)act=`<button class="btn btn-primary sm" data-act="reqBorrow" data-id="${c.id}">Request to Borrow</button>`;
+  }
+  else if(mine&&ph)act=c.loanTo?`<button class="btn btn-ghost sm" data-act="cpReturn" data-id="${c.id}">Mark Returned</button>`
     :bd.lend===c.id?`<span class="lend"><select class="inp sm" id="lendTo" aria-label="Lend to">${Object.entries(S.members).map(([k,m])=>`<option value="${k}">${esc(m.name)}</option>`).join('')}</select><button class="btn btn-primary sm" data-act="cpLendGo" data-id="${c.id}">Lend</button><button class="link-btn sm" data-act="cpLend" data-id="">Cancel</button></span>`
     :`<button class="btn btn-ghost sm" data-act="cpLend" data-id="${c.id}">Mark Loaned</button>`;
   return `<div class="copy"><span class="avatar" style="background:${colorOf(c.owner)}">${initOf(c.owner)}</span><div class="cp-main"><div class="small"><b>${FMT[c.format]}</b>${c.where?` · ${esc(c.where)}`:''}</div><div class="xs muted">Owned by ${nameOf(c.owner)}</div></div>
-  <span class="avail ${ph?(c.loanTo?'loan':'ok'):''}">${ph?(c.loanTo?`On loan to ${nameOf(c.loanTo)}`:'Available'):'Digital'}</span>
-  <span class="cp-act">${act}${mine&&!S.settings.solo?`<button class="link-btn sm cp-share" data-act="cpShare" data-id="${c.id}" aria-pressed="${!c.private}" title="Show this copy in the ${esc(GN())} Library">${c.private?`${ic('lock')}Only Me`:`${ic('users')}Shared`}</button>`:''}${mine?`<button class="link-btn sm" data-act="cpRemove" data-id="${c.id}">Remove</button>`:''}</span></div>`;
+  <span class="avail ${ph?(c.loanTo||hold?'loan':'ok'):''}">${ph?(c.loanTo?(c.loanTo==='me'?'On loan to you':`On loan to ${nameOf(c.loanTo)}`):hold?(hold.from==='me'?'On hold for you':`On hold for ${nameOf(hold.from)} — awaiting pickup`):'Available'):'Digital'}</span>
+  <span class="cp-act">${act}${mine&&!S.settings.solo?`<button class="link-btn sm cp-share" data-act="cpShare" data-id="${c.id}" aria-pressed="${!c.private}" title="Show this copy in the ${esc(GN())} Library">${c.private?`${ic('lock')}Only Me`:`${ic('users')}Shared`}</button>`:''}${mine?`<button class="link-btn sm" data-act="cpRemove" data-id="${c.id}">Remove</button>`:''}</span></div>${incoming.map(r=>`<div class="req-in"><span class="small"><b>${esc(nameOf(r.from))}</b> asked to borrow this ${ago(r.ts)}.</span><span class="req-btns"><button class="btn btn-primary sm" data-act="reqApprove" data-id="${r.id}">Approve</button><button class="btn btn-ghost sm" data-act="reqDecline" data-id="${r.id}">Decline</button></span></div>`).join('')}`;
 }
 function renderBD(){
   const t=titleById(bd.id);if(!t){bookDlg.close();return}
@@ -2844,7 +2887,7 @@ function renderHeader(){
   document.getElementById('meAvatar').style.background=S.me.color;
   document.getElementById('meName').textContent=S.me.name;
   const bc=document.getElementById('bellCount');const unread=S.notifs.filter(n=>!n.read).length;bc.textContent=unread;bc.hidden=!unread;
-  document.getElementById('bellMenu').innerHTML=`<h3>Notifications</h3>${S.notifs.length?S.notifs.map(n=>`<div class="notif ${n.read?'read':''}"><button class="notif-go" ${n.link?`data-act="notifGo" data-id="${n.id}"`:'disabled'}><p>${esc(n.text)}</p><span class="xs muted">${ago(n.ts)}${n.link?' · Open':''}</span></button><button class="icon-btn x" data-act="dismiss" data-id="${n.id}" aria-label="Dismiss">${ic('x')}</button></div>`).join(''):'<p class="muted small" style="padding:4px 10px 10px;margin:0">You’re all caught up.</p>'}`;
+  document.getElementById('bellMenu').innerHTML=`<h3>Notifications</h3>${S.notifs.length?S.notifs.map(n=>`<div class="notif ${n.read?'read':''}"><button class="notif-go" ${n.link?`data-act="notifGo" data-id="${n.id}"`:'disabled'}><p>${esc(n.text)}</p><span class="xs muted">${ago(n.ts)}${n.link?' · Open':''}</span></button><button class="icon-btn x" data-act="dismiss" data-id="${n.id}" aria-label="Dismiss">${ic('x')}</button>${n.req&&(S.loanReqs||[]).find(r=>r.id===n.req)?.status==='pending'?`<div class="notif-req req-btns"><button class="btn btn-primary sm" data-act="reqApprove" data-id="${n.req}">Approve</button><button class="btn btn-ghost sm" data-act="reqDecline" data-id="${n.req}">Decline</button></div>`:''}</div>`).join(''):'<p class="muted small" style="padding:4px 10px 10px;margin:0">You’re all caught up.</p>'}`;
   const th=S.settings.theme;
   document.getElementById('meMenu').innerHTML=`<h3>${esc(S.me.name)}</h3>
     ${S.settings.solo?'':`<div class="row"><span class="small">Share My Activity with My Groups</span><button class="switch" role="switch" aria-checked="${S.settings.share}" data-act="share" aria-label="Share My Activity with My Groups"></button></div>`}
@@ -2858,6 +2901,8 @@ function renderHeader(){
     <hr><div class="xs muted" style="padding:2px 10px">Prototype Tools</div>
     <button class="link" data-act="emptyDemo">Show New-Member (Empty) View</button>
     <button class="link" data-act="simActivity">Add Sample Group Activity</button>
+    <button class="link" data-act="simBorrowIn">Add a Sample Borrow Request</button>
+    <button class="link" data-act="simBorrowOut">Owner Answers My Borrow Request</button>
     <button class="link" data-act="resetDemo">Restore Sample Data</button>`;
   document.documentElement.dataset.theme=th==='system'?'':th;
   if(th==='system')delete document.documentElement.dataset.theme;
@@ -3328,9 +3373,21 @@ document.addEventListener('click',e=>{
       bd.rec=false;save();renderBD();toast(`Recommended ${t.title} to ${names}.`);break}
     case 'bdAddCopy':bd.addCopy=!bd.addCopy;renderBD();break;
     case 'bdAddCopyGo':{const f=document.getElementById('acFmt').value,w=document.getElementById('acWhere').value.trim();const sh=!S.settings.solo&&document.getElementById('acShare')?.checked!==false,had=copiesOf(bd.id).some(c=>!c.private);S.copies.push({id:'c'+uid(),titleId:bd.id,owner:'me',format:f,where:w,loanTo:null,private:!sh||undefined});if(sh)post('library',had?`added a${f==='audio'||f==='ebook'?'n':''} ${FMT[f].toLowerCase()} copy of`:'added a book to the group library:',titleById(bd.id).title);bd.addCopy=false;save();renderBD();toast(`Added your ${FMT[f].toLowerCase()} copy.`);break}
+    case 'reqBorrow':{const c=S.copies.find(x=>x.id===a.dataset.id),t=titleById(c.titleId);if(c.loanTo||holdOn(c)||myReqFor(c))break;
+      const r={id:'q'+uid(),copyId:c.id,titleId:c.titleId,from:'me',to:c.owner,status:'pending',ts:Date.now()};S.loanReqs.push(r);save();renderBD();toast(`Asked ${nameOf(c.owner)} to borrow ${t.title}. You’ll get a notification when they answer.`);break}
+    case 'reqCancel':{const r=S.loanReqs.find(x=>x.id===a.dataset.id);if(!r||!['pending','approved'].includes(r.status))break;r.status='cancelled';save();renderBD();toast(`Canceled your request for ${titleById(r.titleId)?.title}.`);break}
+    case 'reqApprove':{const r=S.loanReqs.find(x=>x.id===a.dataset.id),c=S.copies.find(x=>x.id===r?.copyId);if(!r||r.status!=='pending'||!c||c.loanTo||holdOn(c))break;
+      r.status='approved';r.upd=Date.now();const t=titleById(r.titleId)?.title;
+      activeReqs().filter(x=>x.copyId===c.id&&x.status==='pending').forEach(x=>{x.status='declined'});
+      save();renderHeader();if(!document.getElementById('bellMenu').hidden)document.getElementById('bellMenu').hidden=false;if(bookDlg.open)renderBD();toast(`Approved. ${t} is on hold for ${nameOf(r.from)} until you mark it loaned.`);break}
+    case 'reqDecline':{const r=S.loanReqs.find(x=>x.id===a.dataset.id);if(!r||r.status!=='pending')break;r.status='declined';save();renderHeader();if(bookDlg.open)renderBD();toast(`Declined ${nameOf(r.from)}’s request.`);break}
+    case 'reqHandOver':{const r=S.loanReqs.find(x=>x.id===a.dataset.id),c=S.copies.find(x=>x.id===r?.copyId);if(!r||r.status!=='approved'||!c)break;lendCopy(c,r.from);save();renderBD();toast(`Marked as loaned to ${nameOf(r.from)}.`);break}
+    case 'reqCancelHold':{const r=S.loanReqs.find(x=>x.id===a.dataset.id);if(!r||r.status!=='approved')break;r.status='declined';save();renderBD();toast(`Canceled the hold for ${nameOf(r.from)}. The book is available again.`);break}
+    case 'simBorrowIn':simBorrowIn();break;
+    case 'simBorrowOut':simBorrowOut();break;
     case 'cpLend':bd.lend=a.dataset.id||null;renderBD();break;
-    case 'cpLendGo':{const c=S.copies.find(x=>x.id===a.dataset.id);c.loanTo=document.getElementById('lendTo').value;S.loanCount=(S.loanCount||0)+1;post('loan',`loaned ${titleById(c.titleId)?.title||'a book'} to ${nameOf(c.loanTo)}`);bd.lend=null;save();renderBD();toast(`Marked as loaned to ${nameOf(c.loanTo)}.`);break}
-    case 'cpReturn':{const c=S.copies.find(x=>x.id===a.dataset.id),w=c.loanTo;c.loanTo=null;post('loan',`got ${titleById(c.titleId)?.title||'a book'} back from ${nameOf(w)}`);save();renderBD();toast(`Marked as returned by ${nameOf(w)}.`);break}
+    case 'cpLendGo':{const c=S.copies.find(x=>x.id===a.dataset.id);lendCopy(c,document.getElementById('lendTo').value);bd.lend=null;save();renderBD();toast(`Marked as loaned to ${nameOf(c.loanTo)}.`);break}
+    case 'cpReturn':{const c=S.copies.find(x=>x.id===a.dataset.id),w=c.loanTo;c.loanTo=null;(S.loanReqs||[]).filter(r=>r.copyId===c.id&&r.status==='loaned').forEach(r=>{r.status='returned'});post('loan',`got ${titleById(c.titleId)?.title||'a book'} back from ${nameOf(w)}`);save();renderBD();toast(`Marked as returned by ${nameOf(w)}.`);break}
     case 'cpRemove':{const snap=snapshot();S.copies=S.copies.filter(x=>x.id!==a.dataset.id);save();renderBD();toast('Removed your copy.',restoreTo(snap));break}
     case 'rate':{const r=book(a.dataset.id),v=+a.dataset.v;r.rating=r.rating===v?0:v;save();renderBD();break}
     case 'bdLog':{if(bookDlg.open)bookDlg.close();if(chDlg.open)chDlg.close();openLog(a.dataset.id);break}
@@ -3402,6 +3459,7 @@ document.addEventListener('click',e=>{
     case 'notifGo':{const n=S.notifs.find(x=>x.id===a.dataset.id);n.read=true;save();closeMenus();const L=n.link;
       if(L.type==='ch'){view='challenges';chTab='family';render();window.scrollTo(0,0);openCh(L.id)}
       else if(L.type==='battle'){view='challenges';chTab='battle';render();window.scrollTo(0,0);openBattle(L.id)}
+      else if(L.type==='title'){openTitle(L.id)}
       else{view='library';lib.tab='recs';lib.rv='from';render();window.scrollTo(0,0)}
       break}
     case 'dismiss':S.notifs=S.notifs.filter(n=>n.id!==a.dataset.id);save();renderHeader();document.getElementById('bellMenu').hidden=false;break;
