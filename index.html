@@ -858,6 +858,7 @@ main section.card .card-h .ico{display:none}
 .note-i{border-left:3px solid var(--purple);background:var(--surface-alt);border-radius:0 10px 10px 0;padding:8px 12px}
 .note-i p{margin:4px 0 0;white-space:pre-wrap}
 .clamped{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:var(--lines,4);line-clamp:var(--lines,4);overflow:hidden}
+.char-count.near{color:#B45309;font-weight:600}
 .more-t{padding:2px 0;margin-top:2px}.more-t[hidden]{display:none}
 /* Text people type can be one long unbroken string; let it wrap inside its box instead of widening the page. */
 .note-i,.note-i p,.sess-note,.act-txt,.notif p,.rec,.fr-txt,.aw-t,.chc-t,.lc-t,.pick-t,.selc-t,.tn,.td,.bd-h h2,#chTitle,#chBody p,.b-row .small,.req-in .small,.toast,.st,.joined{overflow-wrap:anywhere;min-width:0}
@@ -1729,11 +1730,16 @@ function openNote(id,date){
   noteForm.innerHTML=`<div class="dlg-h"><h2 id="noteT" style="flex:1">${n?'Edit Note':'Add a Note'}</h2><button type="button" class="icon-btn x" data-act="noteClose" aria-label="Close">${ic('x')}</button></div>
   <div class="form"><p class="small muted" style="margin:0">A note for a day or a stretch of days, like a trip, a reading slump, or a book club night. Only you see it.</p>
     <div class="f2"><label class="f">Date<input class="inp" type="date" name="nStart" value="${d}"></label><label class="f"><span>Through <span class="sub">(optional, for a range)</span></span><input class="inp" type="date" name="nEnd" value="${n&&n.end&&n.end!==n.start?n.end:''}"></label></div>
-    <label class="f">Note<textarea class="inp" name="nText" rows="5" maxlength="1000" placeholder="What happened in your reading life?">${n?esc(n.text):''}</textarea></label>
+    <label class="f">Note<textarea class="inp" name="nText" rows="5" maxlength="1000" aria-describedby="noteCount" placeholder="What happened in your reading life?">${n?esc(n.text):''}</textarea></label>
+    <div class="xs muted char-count ${n&&n.text.length>=900?'near':''}" id="noteCount" style="margin-top:-8px">${(n?n.text.length:0).toLocaleString()} / 1,000 characters</div>
     <div class="err" id="noteErr" role="alert"></div>
     <div class="dlg-f">${n?'<button type="button" class="link-btn" data-act="noteDel" style="margin-right:auto">Delete Note</button>':''}<button type="button" class="btn btn-ghost" data-act="noteClose">Cancel</button><button type="submit" class="btn btn-primary">Save Note</button></div></div>`;
   noteDlg.showModal();setTimeout(()=>noteForm.querySelector('[name=nText]').focus(),30);
 }
+document.addEventListener('input',e=>{
+  if(e.target.name!=='nText'||!e.target.closest('#noteForm'))return;
+  const n=e.target.value.length,c=document.getElementById('noteCount');c.textContent=`${n.toLocaleString()} / 1,000 characters`;c.classList.toggle('near',n>=900);
+});
 document.addEventListener('submit',e=>{
   if(e.target.id!=='noteForm')return;e.preventDefault();
   const f=noteForm,v=k=>f.querySelector(`[name=${k}]`).value.trim(),er=m=>{document.getElementById('noteErr').textContent=m};
