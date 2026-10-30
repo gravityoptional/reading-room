@@ -1407,7 +1407,7 @@ function getStarted(){
   if(S.settings.gsHidden)return '';
   const steps=[['find','Find a Book','Search for something you’re reading or want to read.',S.books.length>0||S.copies.some(c=>c.owner==='me'),'gsFind','search'],
     ['log','Log Your Reading','Record pages or minutes. Start Timer can count the minutes for you.',S.sessions.length>0,'gsLog','book'],
-    ['join','Join a Challenge','Read along with your group in a challenge or Battle of the Books.',S.challenges.some(c=>(c.participants||[]).includes('me'))||S.battles.some(b=>b.readers.me||b.moderator==='me'),'gsJoin','trophy']];
+    S.settings.solo?['join','Start a Challenge','Set a personal goal, like 12 books this year.',S.challenges.some(c=>(c.participants||[]).includes('me')),'gsJoin','trophy']:['join','Join a Challenge','Read along with your group in a challenge or Battle of the Books.',S.challenges.some(c=>(c.participants||[]).includes('me'))||S.battles.some(b=>b.readers.me||b.moderator==='me'),'gsJoin','trophy']];
   const done=steps.filter(x=>x[3]).length;if(done===steps.length)return '';
   return `<section class="card gs" aria-labelledby="gsH"><div class="card-h"><h2 id="gsH">Get Started</h2><span class="count">${done} of ${steps.length} done</span><button class="link-btn sm" data-act="gsHide" style="margin-left:auto">Hide</button></div>
   <ol class="gs-list">${steps.map(([k,t,d,ok,act,icon])=>`<li class="gs-i ${ok?'done':''}"><span class="gs-c" aria-hidden="true">${ok?ic('check'):ic(icon)}</span><span class="gs-t"><b>${t}</b><span class="xs muted">${ok?'Done':d}</span></span>${ok?'':`<button class="btn btn-primary sm" data-act="${act}" aria-label="Start: ${t}">Start</button>`}</li>`).join('')}</ol></section>`;
@@ -1824,7 +1824,8 @@ function libResults(){
 }
 function libraryView(){
   if(S.settings.solo&&lib.tab==='family')lib.tab='mybooks';
-  const tabs=[['family',`${GN()} Library`],['mybooks','My Books'],['recs','Recommendations']].filter(x=>!(S.settings.solo&&x[0]==='family'));
+  if(S.settings.solo&&lib.tab==='recs')lib.tab='mybooks';
+  const tabs=[['family',`${GN()} Library`],['mybooks','My Books'],['recs','Recommendations']].filter(x=>!(S.settings.solo&&(x[0]==='family'||x[0]==='recs')));
   const n=nFilters(),shelf=S.settings.libView==='shelf',toMe=new Set(S.recs.map(r=>r.titleId)).size,fromN=new Set(S.recsSent.map(r=>r.titleId)).size;
   const tools=!(lib.tab==='recs'&&lib.rv==='from');
   return `<div class="lib">
@@ -1872,19 +1873,20 @@ function copyRow(c){
 }
 function renderBD(){
   const t=titleById(bd.id);if(!t){bookDlg.close();return}
-  const r=myReading(t.id),cs=copiesOf(t.id);
+  const r=myReading(t.id),cs=copiesOf(t.id).filter(c=>!S.settings.solo||c.owner==='me');
+  if(S.settings.solo&&bd.tab==='activity')bd.tab='copies';
   let prim='';
   if(r&&(r.status==='reading'||r.status==='paused'))prim=`<button class="btn btn-primary" data-act="bdLog" data-id="${r.id}">${ic('book')}Log Reading</button>`;
   else if(r&&r.status==='want')prim=`<button class="btn btn-primary" data-act="bdLog" data-id="${r.id}">${ic('play')}Start Reading</button><button class="btn btn-ghost on" data-act="toggleWant" data-id="${t.id}">${ic('check')}On To Read</button>${(S.upNext||[]).includes(r.id)?`<button class="btn btn-ghost on" data-act="upRm" data-id="${r.id}" title="Remove from Reading Queue">${ic('check')}In Reading Queue</button>`:`<button class="btn btn-ghost" data-act="upAdd" data-id="${r.id}">${ic('plus')}Add to Reading Queue</button>`}`;
   else if(r&&r.status==='finished')prim=`<button class="btn btn-primary" data-act="startTitle" data-id="${t.id}">${ic('play')}Read Again</button>`;
   else if(r&&r.status==='dnf')prim=`<button class="btn btn-primary" data-act="pickup" data-book="${r.id}">${ic('play')}Pick Up Again</button>`;
   else prim=`<button class="btn btn-primary" data-act="toggleWant" data-id="${t.id}">${ic('plus')}Add to To Read</button>`;
-  prim+=`<button class="btn btn-ghost" data-act="bdRec" aria-expanded="${bd.rec}">${ic('send')}Recommend</button>`;
+  if(!S.settings.solo)prim+=`<button class="btn btn-ghost" data-act="bdRec" aria-expanded="${bd.rec}">${ic('send')}Recommend</button>`;
   if(canEditTitle(t))prim+=`<button class="btn btn-ghost" data-act="teOpen" data-id="${t.id}">${ic('pencil')}Edit Book</button>`;
-  const tabs=[['copies',`Copies (${cs.length})`],['mine','My Reading'],['activity',`${GN()} Activity`],['notes','Notes']];
+  const tabs=[['copies',`Copies (${cs.length})`],['mine','My Reading'],['activity',`${GN()} Activity`],['notes','Notes']].filter(x=>!(S.settings.solo&&x[0]==='activity'));
   let body='';
   if(bd.tab==='copies'){
-    body=(cs.length?cs.map(copyRow).join(''):`<p class="small muted">Nobody in your group owns a copy yet.</p>`)+
+    body=(cs.length?cs.map(copyRow).join(''):`<p class="small muted">${S.settings.solo?'You haven’t added a copy of this book.':'Nobody in your group owns a copy yet.'}</p>`)+
       (bd.addCopy?`<div class="addcopy"><select class="inp sm" id="acFmt" aria-label="Format"><option value="physical">Physical</option><option value="ebook">Ebook</option><option value="audio">Audiobook</option></select><input class="inp sm" id="acWhere" placeholder="Where is it? (optional)" aria-label="Where is it">${S.settings.solo?'':`<label class="chk xs"><input type="checkbox" id="acShare" checked> Show in ${esc(GN())} Library</label>`}<button class="btn btn-primary sm" data-act="bdAddCopyGo">Add My Copy</button><button class="link-btn sm" data-act="bdAddCopy">Cancel</button></div>`
       :`<button class="link-btn" data-act="bdAddCopy">${ic('plus')}I Own a Copy</button>`);
   }else if(bd.tab==='mine'){
@@ -2410,8 +2412,9 @@ function achievements(){
     B('Battle Moderator','Moderate a Battle of the Books','users',bm.length,bm.length?last(bm).event:null,bm.length)
   ];
 }
+const GROUP_ACH=['Reading Partner','Read Together 10','Took a Recommendation','Good Recommender','Lender','Librarian','Cheerleader','Team Player','Challenge Accepted','Battle Reader','Finished the Battle List','Battle Moderator'];
 function trophyWall(){
-  const custom=[...S.trophies,...battleWins()].map(t=>({...t,earned:true,custom:true})),A=achievements(),earned=A.filter(a=>a.earned),locked=A.filter(a=>!a.earned);
+  const custom=[...S.trophies,...battleWins()].map(t=>({...t,earned:true,custom:true})),A=achievements(),earned=A.filter(a=>a.earned),locked=A.filter(a=>!a.earned&&!(S.settings.solo&&GROUP_ACH.includes(a.name)));
   const all=[...custom,...earned,...locked];
   return `<div class="tw-head"><span class="small muted">${custom.length+earned.length} earned · ${locked.length} still to earn</span><button class="btn btn-ghost" data-act="awardNew">${ic('trophy')}Give an Award</button></div>
   <div class="tw-grid">${all.map(t=>`<div class="tw ${t.earned?'':'locked'}">${hexBadge(t)}${t.count>1?`<span class="tw-x" title="Earned ${t.count} times">×${t.count}</span>`:''}<div class="tn">${esc(t.name)}</div><div class="td">${t.custom?'Special Award':TIER[t.tier]}</div>${t.custom&&(!t.desc||t.desc==='Special award')?'':`<div class="td">${esc(t.desc)}</div>`}${t.earned?`<div class="td tw-date">${t.date?`Earned ${fmtDateY(t.date)}`:'Earned'}</div>`:''}</div>`).join('')}</div>${givenAwards()}`;
@@ -2430,8 +2433,8 @@ function challengesView(){
   const mine=sortC(S.challenges.filter(c=>isMine(c)&&vis(c))),fam=sortC(S.challenges.filter(c=>c.mode!=='personal'&&canSeeCh(c)&&vis(c)));
   const hidLink=nHid?`<button class="link-btn sm b-hidden-t" data-act="chShowHidden" style="margin-top:12px">${showHiddenC?'Hide':'Show'} ${nHid} Hidden Challenge${nHid===1?'':'s'}</button>`:'';
   const earned=S.trophies.length+battleWins().length+achievements().filter(a=>a.earned).length;
-  if(S.settings.solo&&chTab==='family')chTab='mine';
-  const tabs=[['mine','My Challenges',mine.length],['family','Group Challenges',fam.length],['battle','Battle of the Books',S.battles.filter(b=>!hiddenB().includes(b.id)).length],['trophies','Trophy Wall',earned]].filter(x=>!(S.settings.solo&&x[0]==='family'));
+  if(S.settings.solo&&(chTab==='family'||chTab==='battle'))chTab='mine';
+  const tabs=[['mine','My Challenges',mine.length],['family','Group Challenges',fam.length],['battle','Battle of the Books',S.battles.filter(b=>!hiddenB().includes(b.id)).length],['trophies','Trophy Wall',earned]].filter(x=>!(S.settings.solo&&(x[0]==='family'||x[0]==='battle')));
   let body='';
   if(chTab==='mine')body=mine.length?`<div class="ch-grid">${mine.map(chCard).join('')}</div>${hidLink}`:hidLink+`<div class="empty">${ic('target')}<h3>No Challenges Yet</h3><p>Create a personal challenge or join one your group started.</p><button class="btn btn-primary" data-act="chNew">${ic('plus')}Create Challenge</button></div>`;
   else if(chTab==='family')body=fam.length?`<div class="ch-grid">${fam.map(chCard).join('')}</div>${hidLink}`:hidLink+`<div class="empty">${ic('users')}<h3>No Group Challenges Yet</h3><p>Start one and invite your group to join.</p><button class="btn btn-primary" data-act="chNew" data-mode="coop">${ic('plus')}Create Challenge</button></div>`;
@@ -2623,7 +2626,7 @@ function openBForm(b){chMode='bform';const ed=!!b;chBody.innerHTML=`<div class="
   if(!chDlg.open)chDlg.showModal();setTimeout(()=>document.getElementById('bfName')?.focus(),30)}
 function openAwardForm(){chMode='award';chBody.innerHTML=`<div class="dlg-h"><h2 id="chTitle" style="flex:1">Give an Award</h2><button type="button" class="icon-btn x" data-act="closeCh" aria-label="Close">${ic('x')}</button></div>
   <div class="form"><p class="small muted" style="margin:0">For accomplishments outside the app, like a school reading competition or a Battle of the Books win.</p><div class="chips aw-pre">${['Most Improved','Great Reading Partner','Kept Going','Battle Champion','Reader of the Month','Read-Aloud Star','Big Book Finisher','Great Recommendation','Library Helper'].map(n=>`<button type="button" class="tab sm" data-act="awPreset" data-v="${n}">${n}</button>`).join('')}</div><label class="f">Award Name<input class="inp" id="awName" maxlength="80" autocomplete="off"></label>
-  <label class="f">For<select class="inp" id="awTo"><option value="me">Me</option>${Object.entries(S.members).map(([k,m])=>`<option value="${k}">${esc(m.name)}</option>`).join('')}</select></label>
+  <label class="f">For<select class="inp" id="awTo"><option value="me">Me</option>${(S.settings.solo?[]:Object.entries(S.members)).map(([k,m])=>`<option value="${k}">${esc(m.name)}</option>`).join('')}</select></label>
   <label class="f"><span>Note <span class="sub">(optional)</span></span><input class="inp" id="awNote" maxlength="120" autocomplete="off"></label>
   <div class="err" id="awErr" role="alert"></div><div class="dlg-f"><button class="btn btn-ghost" data-act="closeCh">Cancel</button><button class="btn btn-primary" data-act="awSave">Give Award</button></div></div>`;
   if(!chDlg.open)chDlg.showModal();setTimeout(()=>document.getElementById('awName')?.focus(),30)}
@@ -2684,7 +2687,7 @@ function renderHeader(){
   document.getElementById('bellMenu').innerHTML=`<h3>Notifications</h3>${S.notifs.length?S.notifs.map(n=>`<div class="notif ${n.read?'read':''}"><button class="notif-go" ${n.link?`data-act="notifGo" data-id="${n.id}"`:'disabled'}><p>${esc(n.text)}</p><span class="xs muted">${ago(n.ts)}${n.link?' · Open':''}</span></button><button class="icon-btn x" data-act="dismiss" data-id="${n.id}" aria-label="Dismiss">${ic('x')}</button></div>`).join(''):'<p class="muted small" style="padding:4px 10px 10px;margin:0">You’re all caught up.</p>'}`;
   const th=S.settings.theme;
   document.getElementById('meMenu').innerHTML=`<h3>${esc(S.me.name)}</h3>
-    <div class="row"><span class="small">Share My Activity with My Groups</span><button class="switch" role="switch" aria-checked="${S.settings.share}" data-act="share" aria-label="Share My Activity with My Groups"></button></div>
+    ${S.settings.solo?'':`<div class="row"><span class="small">Share My Activity with My Groups</span><button class="switch" role="switch" aria-checked="${S.settings.share}" data-act="share" aria-label="Share My Activity with My Groups"></button></div>`}
     <div class="row"><span class="small">Appearance</span><span class="seg">${['system','light','dark'].map(x=>`<button aria-pressed="${th===x}" data-act="theme" data-v="${x}">${x[0].toUpperCase()+x.slice(1)}</button>`).join('')}</span></div>
     <div class="row"><label class="small" for="palSel">Color Palette</label><select class="inp sm" id="palSel" data-pref="palette">${PALETTES.map(([k,l])=>`<option value="${k}" ${(S.settings.palette||'sage')===k?'selected':''}>${l}</option>`).join('')}</select></div>
     <div class="row"><label class="small" for="hfSel">Heading Font</label><select class="inp sm" id="hfSel" data-pref="hfont">${HFONTS.map(([k,l])=>`<option value="${k}" ${(S.settings.hfont||'source')===k?'selected':''}>${l}</option>`).join('')}</select></div>
@@ -2753,6 +2756,7 @@ function drawLog(b,focus,preMin){
     <div class="dlg-f"><button type="button" class="btn btn-ghost" data-act="closeLog">Cancel</button><button type="submit" class="btn btn-primary">Save Reading</button></div>
   </div>`;
   logForm.dataset.book=b.id;logForm.dataset.mode='log';
+  if(S.settings.solo)logForm.querySelector('[name=with]')?.closest('.f')?.remove();
   setLogOpt();calcLog();
 }
 function drawNew(){
@@ -2793,12 +2797,13 @@ function renderNewResults(q){
   const mine=new Set(S.books.filter(x=>x.status==='reading'||x.status==='paused').map(x=>x.title.toLowerCase()));
   const az=(a,b)=>sortKey(a.title).localeCompare(sortKey(b.title)),recSet=new Set(S.recs.map(r=>r.titleId));
   const want=S.books.filter(x=>x.status==='want'&&hit(x)).sort(az);
-  const lib=S.titles.filter(x=>copiesOf(x.id).length&&hit(x)&&!S.books.some(y=>y.titleId===x.id&&['reading','paused','want'].includes(y.status))).map(x=>({...x,total:x.pages})).sort((a,b)=>Number(recSet.has(b.id))-Number(recSet.has(a.id))||az(a,b));
+  const lib=S.settings.solo?[]:S.titles.filter(x=>copiesOf(x.id).length&&hit(x)&&!S.books.some(y=>y.titleId===x.id&&['reading','paused','want'].includes(y.status))).map(x=>({...x,total:x.pages})).sort((a,b)=>Number(recSet.has(b.id))-Number(recSet.has(a.id))||az(a,b));
   const row=(x,src,sub)=>`<button type="button" class="pick" data-act="pickNew" data-src="${src}" data-id="${x.id}">${cover({...x,format:x.format||'print'})}<span><span class="pick-t">${esc(x.title)}</span><span class="xs muted">${esc(x.author)} · ${sub}</span></span></button>`;
   const len=x=>x.format==='audio'?`audiobook, ${fmtPos(x.total)}`:`${x.total} pages`;
   document.getElementById('newResults').innerHTML=
     `${upList().filter(hit).length?`<div class="pick-h">Reading Queue</div><div class="pick-list">${upList().filter(hit).map(x=>row(x,'want',len(x))).join('')}</div>`:''}<div class="pick-h">From Your To Read List</div><div class="pick-list">${want.filter(x=>!upList().includes(x)).length?want.filter(x=>!upList().includes(x)).map(x=>row(x,'want',len(x))).join(''):`<div class="xs muted">${q?'No matches.':'Your To Read list is empty.'}</div>`}</div>
      <div class="pick-h">From the ${esc(GN())} Library</div><div class="pick-list">${lib.length?lib.map(x=>row(x,'lib',`${recSet.has(x.id)?'⭐ Recommended for you · ':''}${x.total} pages · owned by ${ownerNames(x.id)}`)).join(''):`<div class="xs muted">${q?'No matches.':'Nothing else in the group library yet.'}</div>`}</div>`;
+  if(S.settings.solo){const h=[...document.querySelectorAll('#newResults .pick-h')].find(x=>/Library$/.test(x.textContent));if(h){h.nextElementSibling?.remove();h.remove()}}
   document.getElementById('newResults').insertAdjacentHTML('beforeend',newOL(new Set([...S.books.filter(x=>['reading','paused','want'].includes(x.status)).map(x=>x.titleId),...lib.map(x=>x.id)])));
 }
 function drawManual(){
