@@ -1456,7 +1456,7 @@ function calCard(){
   <p class="xs muted" style="margin:10px 0 0">${yearFinished()} book${yearFinished()===1?'':'s'} finished so far this year. <button class="link-btn sm" data-go="history">See History</button></p></section>`;
 }
 const MONF=['January','February','March','April','May','June','July','August','September','October','November','December'];
-let hist={m:today().slice(0,7),sel:null,books:false,mode:'month'};
+let hist={m:today().slice(0,7),sel:null,panel:null,recYear:false,mode:'month'};
 function monthAdd(m,n){const [y,mo]=m.split('-').map(Number);const d=new Date(y,mo-1+n,1);return `${d.getFullYear()}-${pad(d.getMonth()+1)}`}
 function longestStreak(){return longestStreakRange().n}
 /* Longest streak with its first and last reading day; rest days inside a run don't break it. */
@@ -1479,6 +1479,7 @@ function records(){
   const dp={};S.sessions.forEach(x=>dp[x.date]=(dp[x.date]||0)+(x.pages||0));const bd=Object.entries(dp).sort((a,b)=>b[1]-a[1])[0];
   const yr={};fin.forEach(b=>{if(b.finished){const y=b.finished.slice(0,4);yr[y]=(yr[y]||0)+1}});const by=Object.entries(yr).sort((a,b)=>b[1]-a[1]||b[0].localeCompare(a[0]))[0];
   const ttl=x=>book(x.bookId)?.title||'';
+  hist.recYearKey=by?by[0]:null;
   return [['book','Longest Book',longest?`${longest.total.toLocaleString()} pages`:'—',longest?longest.title:'Finish a book to set this',longest?.titleId],
     ['flame','Fastest Finish',fast?`${fast.d} day${fast.d===1?'':'s'}`:'—',fast?fast.b.title:'Needs a start and finish date',fast?.b.titleId],
     ['chart','Best Reading Pace',pace?`${Math.round(pace.p)} pages/hr`:'—',pace?`${ttl(pace.x)} · ${fmtDateY(pace.x.date)}`:'Log pages and minutes together',pace?book(pace.x.bookId)?.titleId:null],
@@ -1486,7 +1487,7 @@ function records(){
     ['cal','Most Pages in a Day',bd&&bd[1]?`${bd[1].toLocaleString()} pages`:'—',bd&&bd[1]?fmtDateY(bd[0]):'Log pages to set this',null,
       bd&&bd[1]?`<div class="xs muted">${fmtDateY(bd[0])}</div><div class="rec-books">${[...new Set(S.sessions.filter(x=>x.date===bd[0]&&x.pages).map(x=>book(x.bookId)?.titleId).filter(Boolean))].map(id=>`<button class="sess-b rec-s" data-act="openTitle" data-id="${id}">${esc(titleById(id)?.title||'')}</button>`).join('')}</div>`:null],
     ['library','Most Books in a Year',by?`${by[1]} books`:'—',by?by[0]:'Finish a book to set this',null,
-      by?`<div class="xs muted">${by[0]}</div><button class="sess-b rec-s" data-act="goFinished" data-y="${by[0]}">See the ${by[1]} books</button>`:null],
+      by?`<div class="xs muted">${by[0]}</div><button class="sess-b rec-s" data-act="recYear" aria-expanded="${hist.recYear}">${hist.recYear?'Hide the books':`Show the ${by[1]} books`}</button>`:null],
     (()=>{const L=longestStreakRange();return ['trophy','Longest Streak',`${L.n} day${L.n===1?'':'s'}`,'Rest days don’t break it',null,
       L.start?`<div class="xs muted">${fmtRange(L.start,L.end)}</div><div class="xs muted">Rest days don’t break it</div>`:null]})()];
 }
@@ -1499,14 +1500,19 @@ function yearCal(Y,ratio){
     out+=`<button class="yc-m" data-act="histOpenM" data-v="${m}" ${m>t.slice(0,7)?'disabled':''} aria-label="${MONF[mo-1]} ${Y}: ${n} day${n===1?'':'s'} read"><span class="yc-t">${MONF[mo-1].slice(0,3)}</span><span class="yc-g">${c}</span><span class="xs muted">${n} day${n===1?'':'s'}</span></button>`}
   return `<div class="ycal">${out}</div>`;
 }
+/* A list of books shown under a number that was tapped (This Year and Records). */
+function bookPanel(head,items){
+  return `<div class="yr-books"><div class="small muted">${head}</div>${items.length?`<div class="yr-grid">${items.map(([id,sub])=>{const t=titleById(id);return t?`<button class="yr-b" data-act="openTitle" data-id="${id}">${libCover(t,48)}<span><span class="small"><b>${esc(t.title)}</b></span><span class="xs muted">${sub}</span></span></button>`:''}).join('')}</div>`:'<p class="small muted" style="margin:0">None yet.</p>'}</div>`;
+}
+const finishedIn=y=>S.books.filter(b=>b.status==='finished'&&b.finished&&b.finished.slice(0,4)===String(y)&&b.titleId).sort((a,b)=>b.finished.localeCompare(a.finished)).map(b=>[b.titleId,`Finished ${fmtDateY(b.finished)}`]);
 function historyView(){
   const y=today().slice(0,4),ys=S.sessions.filter(x=>x.date.slice(0,4)===y);
   const rec=ys.reduce((a,x)=>a+(x.minutes||0),0),est=ys.reduce((a,x)=>a+(!x.minutes&&x.est?x.est:0),0),pages=ys.reduce((a,x)=>a+(x.pages||0),0);
   const uniq=new Set(ys.map(x=>book(x.bookId)?.titleId)).size;
   const upTo=today().slice(5),ly=String(+y-1),cur=yearTotals(y,upTo),prev=yearTotals(ly,upTo),LS=longestStreakRange();
   const cmp=(a,b,f)=>prev.any?`<div class="cmp xs ${a>b?'up':a<b?'down':''}">${a===b?'Same as':a>b?`${f(a-b)} more than`:`${f(b-a)} fewer than`} this time last year</div>`:'';
-  const stats=[['book',`<button class="stat-link" data-act="goFinished" data-y="${y}" aria-label="${yearFinished()} books finished. See them on the shelf">${yearFinished()}</button>`,'books finished',cmp(cur.fin,prev.fin,n=>n)],
-    ['library',`<button class="stat-link" data-act="histBooks" aria-expanded="${!!hist.books}" aria-label="${uniq} different books read. Show them">${uniq}</button>`,'different books read',cmp(cur.uniq,prev.uniq,n=>n)],
+  const stats=[['book',`<button class="stat-link" data-act="histPanel" data-v="fin" aria-expanded="${hist.panel==='fin'}" aria-label="${yearFinished()} books finished. Show them">${yearFinished()}</button>`,'books finished',cmp(cur.fin,prev.fin,n=>n)],
+    ['library',`<button class="stat-link" data-act="histPanel" data-v="read" aria-expanded="${hist.panel==='read'}" aria-label="${uniq} different books read. Show them">${uniq}</button>`,'different books read',cmp(cur.uniq,prev.uniq,n=>n)],
     ['clock',fmtMin(rec),est?`reading time (+~${fmtMin(est)} estimated)`:'reading time',cmp(cur.min,prev.min,fmtMin)],
     ['chart',pages.toLocaleString(),'pages read',cmp(cur.pages,prev.pages,n=>n.toLocaleString())],
     ['flame',streak(),'day streak now',''],
@@ -1540,15 +1546,15 @@ function historyView(){
   const rereads=rr.length?rr.map(([tid,v])=>{const tt=titleById(tid);return `<div class="rr"><button class="sess-b" data-act="openTitle" data-id="${tid}">${esc(tt.title)}</button>${[...v].sort((a,b)=>{const k=x=>x.started||x.finished||(['reading','paused','want'].includes(x.status)?'9999':'0000');return k(a).localeCompare(k(b))}).map((b,i)=>`<div class="small muted rr-row">Read-through ${i+1}: ${b.started?`started ${fmtDateY(b.started)}`:'start date unknown'}${b.finished?`, finished ${fmtDateY(b.finished)}`:''} <span class="st st-${b.status}">${STATUS[b.status]}</span></div>`).join('')}</div>`}).join('')
     :`<p class="small muted" style="margin:0">When you read a book again, each read-through appears here with its own dates.</p>`;
   return `<div class="hist"><div><h1 class="page-h">History</h1><p class="muted" style="margin:2px 0 0">Your reading over time. Only you can see this page.</p></div>
-  <section class="card"><div class="card-h"><span class="ico">${ic('chart')}</span><h2>This Year</h2></div><div class="stats hstats">${stats.map(([i,n,l,c])=>`<div class="stat ${i==='flame'?'o':''}">${ic(i)}<div class="n">${n}</div><div class="l">${l}</div>${c||''}</div>`).join('')}</div>${hist.books?(()=>{const last={};ys.forEach(x=>{const id=book(x.bookId)?.titleId;if(id&&(!last[id]||x.date>last[id]))last[id]=x.date});const ids=Object.keys(last).sort((a,b)=>last[b].localeCompare(last[a]));
-    return `<div class="yr-books"><div class="small muted">Books you logged reading for in ${y}, most recent first</div><div class="yr-grid">${ids.map(id=>{const t=titleById(id);return t?`<button class="yr-b" data-act="openTitle" data-id="${id}">${libCover(t,48)}<span><span class="small"><b>${esc(t.title)}</b></span><span class="xs muted">Last read ${fmtDate(last[id])}</span></span></button>`:''}).join('')}</div></div>`})():''}</section>
+  <section class="card"><div class="card-h"><span class="ico">${ic('chart')}</span><h2>This Year</h2></div><div class="stats hstats">${stats.map(([i,n,l,c])=>`<div class="stat ${i==='flame'?'o':''}">${ic(i)}<div class="n">${n}</div><div class="l">${l}</div>${c||''}</div>`).join('')}</div>${hist.panel==='read'?(()=>{const last={};ys.forEach(x=>{const id=book(x.bookId)?.titleId;if(id&&(!last[id]||x.date>last[id]))last[id]=x.date});const ids=Object.keys(last).sort((a,b)=>last[b].localeCompare(last[a]));
+    return bookPanel(`Books you logged reading for in ${y}, most recent first`,ids.map(id=>[id,`Last read ${fmtDate(last[id])}`]))})():hist.panel==='fin'?bookPanel(`Books you finished in ${y}, most recent first`,finishedIn(y)):''}</section>
   <div class="hgrid"><section class="card"><div class="card-h"><span class="ico">${ic('cal')}</span><h2>${hist.mode==='year'?Y:`${MONF[M-1]} ${Y}`}</h2><span class="vseg cal-mode" role="group" aria-label="Calendar view"><button aria-pressed="${hist.mode!=='year'}" data-act="histMode" data-v="month">Month</button><button aria-pressed="${hist.mode==='year'}" data-act="histMode" data-v="year">Year</button></span><span class="cal-nav"><button class="icon-btn" data-act="histM" data-v="${hist.mode==='year'?-12:-1}" aria-label="Previous ${hist.mode==='year'?'year':'month'}">${ic('chevL')}</button><button class="icon-btn" data-act="histM" data-v="${hist.mode==='year'?12:1}" aria-label="Next ${hist.mode==='year'?'year':'month'}" ${(hist.mode==='year'?String(Y)>=t.slice(0,4):m>=t.slice(0,7))?'disabled':''}>${ic('chevR')}</button></span></div>
     ${hist.mode==='year'?yearCal(Y,ratio):`<div class="cal cal-wk">${cells}</div>`}
     <div class="cal-legend xs muted"><span class="lg-scale">Less <i class="lg lv1"></i><i class="lg lv2"></i><i class="lg lv3"></i><i class="lg lv4"></i> More</span><span><i class="lg-ok" aria-hidden="true">✓</i>Goal met</span>${hist.mode==='year'?'':'<span><i class="mk-s"></i>Started</span><span><i class="mk-f"></i>Finished</span><span><i class="lg rest"></i>Rest day</span>'}</div>
     <div class="xs muted" style="margin-top:6px">${hist.mode==='year'?'Tap a month to open it.':'Tap a day to see what you read.'}</div>
     <div class="small muted" style="margin-top:10px">${hist.mode==='year'?(()=>{const ss=S.sessions.filter(x=>x.date.slice(0,4)===String(Y)),dd=new Set(ss.map(x=>x.date)).size,mm=ss.reduce((a,x)=>a+(x.minutes||0),0),pp=ss.reduce((a,x)=>a+(x.pages||0),0);return `${Y}: ${dd} day${dd===1?'':'s'} read · ${fmtMin(mm)} · ${pp.toLocaleString()} pages`})():`${mDays} day${mDays===1?'':'s'} read · ${fmtMin(mMin)}${mEst?` + ~${fmtMin(mEst)} estimated`:''} · ${mPages.toLocaleString()} pages`}</div></section>
   <section class="card"><div class="card-h"><span class="ico">${ic('book')}</span><h2>Reading Sessions</h2><span class="count">${sel?fmtDate(sel):MONF[M-1]}</span>${sel?`<button class="link-btn sm" data-act="histDay" data-v="">Show All of ${MONF[M-1]}</button>`:''}</div>${list?`<div class="sess-list">${list}</div>`:''}${list?'':`<p class="small muted" style="margin:0">${sel?`No reading logged on ${fmtDate(sel)}.`:'No reading logged this month.'}</p>`}</section></div>
-  <section class="card"><div class="card-h"><span class="ico o">${ic('trophy')}</span><h2>Records</h2></div><div class="rec-grid">${records().map(([i,l,v,sub,tid,html])=>`<div class="rec-t">${ic(i)}<div class="rec-l">${l}</div><div class="rec-v">${v}</div>${html?html:tid?`<button class="sess-b rec-s" data-act="openTitle" data-id="${tid}">${esc(sub)}</button>`:`<div class="xs muted">${esc(sub)}</div>`}</div>`).join('')}</div></section>
+  <section class="card"><div class="card-h"><span class="ico o">${ic('trophy')}</span><h2>Records</h2></div><div class="rec-grid">${records().map(([i,l,v,sub,tid,html])=>`<div class="rec-t">${ic(i)}<div class="rec-l">${l}</div><div class="rec-v">${v}</div>${html?html:tid?`<button class="sess-b rec-s" data-act="openTitle" data-id="${tid}">${esc(sub)}</button>`:`<div class="xs muted">${esc(sub)}</div>`}</div>`).join('')}</div>${hist.recYear&&hist.recYearKey?bookPanel(`Books you finished in ${hist.recYearKey}, your most in a year, most recent first`,finishedIn(hist.recYearKey)):''}</section>
   <section class="card"><div class="card-h"><span class="ico">${ic('library')}</span><h2>Rereads</h2></div>${rereads}</section>
   <p class="xs muted" style="text-align:center"><button class="link-btn sm" data-act="goMyBooks" data-v="finished">Finished</button> and <button class="link-btn sm" data-act="goMyBooks" data-v="dnf">Did Not Finish</button> books are in Library → My Books.</p></div>`;
 }
@@ -3056,8 +3062,6 @@ document.addEventListener('click',e=>{
       S.battles=S.battles.filter(x=>x!==b);S.notifs=S.notifs.filter(n=>!(n.link&&n.link.type==='battle'&&n.link.id===b.id));save();chDlg.close();render();toast(`Deleted ${b.name}.`,restoreTo(snap));break}
     case 'bHide':{const b=S.battles.find(x=>x.id===bv.id),h=hiddenB();if(a.dataset.v==='1'){if(!h.includes(b.id))h.push(b.id)}else S.settings.hiddenBattles=h.filter(x=>x!==b.id);save();renderBattle();render();toast(a.dataset.v==='1'?`Hid ${b.name} from your list. Its trophies stay on the Trophy Wall.`:`${b.name} is back in your list.`);break}
     case 'goMyBooks':view='library';lib.tab='mybooks';lib.mb=a.dataset.v;render();window.scrollTo(0,0);break;
-    case 'goFinished':{const y=a.dataset.y;view='library';lib.tab='mybooks';lib.mb='finished';lib.q='';S.settings.libView='shelf';lib.group='year';save();render();window.scrollTo(0,0);
-      requestAnimationFrame(()=>document.querySelector(`.plate[aria-label^="${y}"]`)?.scrollIntoView({block:'start'}));break}
     case 'simActivity':simActivity();break;
     case 'bShowHidden':showHiddenB=!showHiddenB;render();break;
     case 'bSave':{const b=S.battles.find(x=>x.id===bv.id);if(!b||bCreator(b)!=='me')break;const v=id=>document.getElementById(id).value.trim(),er=m=>document.getElementById('bfErr').textContent=m;
@@ -3081,7 +3085,8 @@ document.addEventListener('click',e=>{
     case 'histMode':hist.mode=a.dataset.v;hist.sel=null;render();break;
     case 'histOpenM':hist.m=a.dataset.v;hist.mode='month';hist.sel=null;render();break;
     case 'histDay':{hist.sel=a.dataset.v&&hist.sel!==a.dataset.v?a.dataset.v:null;const y=window.scrollY;render();window.scrollTo(0,y);break}
-    case 'histBooks':{hist.books=!hist.books;const y=window.scrollY;render();window.scrollTo(0,y);break}
+    case 'histPanel':{hist.panel=hist.panel===a.dataset.v?null:a.dataset.v;const y=window.scrollY;render();window.scrollTo(0,y);break}
+    case 'recYear':{hist.recYear=!hist.recYear;const y=window.scrollY;render();window.scrollTo(0,y);break}
     case 'actMore':{actLimit=a.dataset.v==='1'?actLimit+10:6;const y=window.scrollY;render();window.scrollTo(0,y);break}
     case 'startTitle':{const t=titleById(a.dataset.id);pendingNew={id:'n'+uid(),titleId:t.id,title:t.title,author:t.author,format:'print',total:t.pages||300,pos:0,status:'new',c:t.c};if(bookDlg.open)bookDlg.close();if(chDlg.open)chDlg.close();drawLog(pendingNew);logDlg.showModal();setTimeout(()=>logForm.querySelector('[name=end]')?.focus(),30);break}
     case 'libFilters':lib.open=!lib.open;refreshLib();break;
