@@ -705,6 +705,11 @@ main section.card .card-h .ico{display:none}
 .brand{white-space:nowrap}
 @media (max-width:720px){.brand{font-size:19px}.top-in{gap:10px}.grp-btn svg:last-child{display:none}.grp-btn #grpName{max-width:96px}.hero2-goal{flex-wrap:nowrap;gap:14px}.streak2{padding-left:14px}.streak2 .streak-n{font-size:28px}}
 @media (max-width:400px){.brand svg.i{display:none}}
+/* Narrow phones: the group name gives up space first so the bell and account button stay on screen. */
+.top-in>*{flex-shrink:0}.top-in>.top-right{flex-shrink:1;min-width:0}.top-right>*{flex-shrink:0}.top-right>.grp-btn{flex-shrink:1;min-width:0}.grp-btn #grpName{min-width:0}
+@media (max-width:900px){.me-btn .nm{display:none}.grp-btn svg:last-child{display:none}}
+@media (max-width:359px),(min-width:721px) and (max-width:900px){.grp-btn #grpName{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}}
+@media (max-width:359px){.hero2-goal{flex-wrap:wrap}}
 @media (max-width:720px){.me-btn svg.i{display:none}}
 #meMenu{width:340px}#meMenu .row label,#meMenu .row>.small{white-space:nowrap}#meMenu .row select{max-width:180px}.card-h .more svg.i{width:15px;height:15px;vertical-align:-3px;margin-right:4px}
 /* tabs: no stray scrollbar */
