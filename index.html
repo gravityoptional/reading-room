@@ -858,7 +858,8 @@ main section.card .card-h .ico{display:none}
 .note-i{border-left:3px solid var(--purple);background:var(--surface-alt);border-radius:0 10px 10px 0;padding:8px 12px}
 .note-i p{margin:4px 0 0;white-space:pre-wrap}
 .clamped{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:var(--lines,4);line-clamp:var(--lines,4);overflow:hidden}
-.char-count{margin-top:4px}.char-count.near{color:#B45309;font-weight:600}
+.char-count{margin-top:4px}
+.draft-note{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;justify-content:space-between;margin:0 0 12px;padding:8px 12px;border-radius:10px;background:var(--primary-light);color:var(--text)}.char-count.near{color:#B45309;font-weight:600}
 .more-t{padding:2px 0;margin-top:2px}.more-t[hidden]{display:none}
 /* Text people type can be one long unbroken string; let it wrap inside its box instead of widening the page. */
 .note-i,.note-i p,.sess-note,.act-txt,.notif p,.rec,.fr-txt,.aw-t,.chc-t,.lc-t,.pick-t,.selc-t,.tn,.td,.bd-h h2,#chTitle,#chBody p,.b-row .small,.req-in .small,.toast,.st,.joined{overflow-wrap:anywhere;min-width:0}
@@ -1732,7 +1733,8 @@ function openNote(id,date){
     <div class="f2"><label class="f">Date<input class="inp" type="date" name="nStart" value="${d}"></label><label class="f"><span>Through <span class="sub">(optional, for a range)</span></span><input class="inp" type="date" name="nEnd" value="${n&&n.end&&n.end!==n.start?n.end:''}"></label></div>
     <label class="f">Note<textarea class="inp" name="nText" rows="5" maxlength="1000" data-count="1000" aria-describedby="noteCount" placeholder="What happened in your reading life?">${n?esc(n.text):''}</textarea>${charCount('noteCount',n?n.text.length:0,1000)}</label>
     <div class="err" id="noteErr" role="alert"></div>
-    <div class="dlg-f">${n?'<button type="button" class="link-btn" data-act="noteDel" style="margin-right:auto">Delete Note</button>':''}<button type="button" class="btn btn-ghost" data-act="noteClose">Cancel</button><button type="submit" class="btn btn-primary">Save Note</button></div></div>`;
+    <div class="dlg-f">${n?'<button type="button" class="link-btn" data-act="noteDel" style="margin-right:auto">Delete Note</button>':''}<button type="button" class="btn btn-ghost" data-act="noteCancel">Cancel</button><button type="submit" class="btn btn-primary">Save Note</button></div></div>`;
+  draftAttach(noteForm,'note:'+(n?n.id:'new'),'note');
   noteDlg.showModal();setTimeout(()=>noteForm.querySelector('[name=nText]').focus(),30);
 }
 /* Character counter for note boxes: a textarea with data-count shows "n / max characters" in the element its aria-describedby names, orange in the last 10%. */
@@ -1751,7 +1753,7 @@ document.addEventListener('submit',e=>{
   if(end&&end<start)return er('The end date can’t be before the start date.');
   const id=f.dataset.id;let n=id&&S.journal.find(x=>x.id===id);
   if(n)Object.assign(n,{start,end:end&&end!==start?end:undefined,text});else{n={id:'j'+uid(),start,end:end&&end!==start?end:undefined,text,ts:Date.now()};S.journal.push(n)}
-  save();noteDlg.close();const y=window.scrollY;render();window.scrollTo(0,y);toast(id?'Note saved.':`Added a note for ${noteRange(n)}.`);
+  noteForm.dataset.done='1';draftClear(noteForm.dataset.dkey);save();noteDlg.close();const y=window.scrollY;render();window.scrollTo(0,y);toast(id?'Note saved.':`Added a note for ${noteRange(n)}.`);
 });
 const openNotes=new Set();
 function clampNotes(){
@@ -2464,6 +2466,46 @@ document.addEventListener('input',e=>{if(e.target.id==='rpQ')document.getElement
 
 /* ---------- edit a session ---------- */
 const sessDlg=document.getElementById('sessDlg'),sessForm=document.getElementById('sessForm');
+[['logDlg','logForm'],['sessDlg','sessForm'],['noteDlg','noteForm']].forEach(([d,f])=>document.getElementById(d).addEventListener('close',()=>{clearTimeout(draftTimer);const form=document.getElementById(f);draftSave(form);form.dataset.done='1'}));
+/* Drafts: Log Reading, calendar notes, and Edit Session keep what you're typing in this browser, about a second after
+   you stop and again whenever the form closes without saving (the close button, Esc). Reopening the form fills it back
+   in, with Discard. Save clears the draft; Cancel clears it too, with Undo. Drafts older than a week are dropped. */
+const DRAFT_KEY='rr_drafts_v1',DRAFT_TTL=7*864e5;
+const draftsAll=()=>{try{const d=JSON.parse(localStorage.getItem(DRAFT_KEY))||{},now=Date.now();let gone=false;for(const k in d)if(now-d[k].ts>DRAFT_TTL){delete d[k];gone=true}if(gone)localStorage.setItem(DRAFT_KEY,JSON.stringify(d));return d}catch(e){return {}}};
+const draftsPut=d=>{try{localStorage.setItem(DRAFT_KEY,JSON.stringify(d))}catch(e){}};
+function formFields(form){
+  const out={};form.querySelectorAll('input[name],select[name],textarea[name]').forEach(el=>{
+    if(el.type==='checkbox'){const many=form.querySelectorAll(`input[type=checkbox][name="${el.name}"]`).length>1;if(many){(out[el.name]=out[el.name]||[]);if(el.checked)out[el.name].push(el.value)}else out[el.name]=el.checked}
+    else if(el.type!=='file'&&el.type!=='radio'&&el.name!=='book')out[el.name]=el.value});
+  return out;
+}
+function fillFields(form,f,skip){
+  for(const [k,v] of Object.entries(f)){if(skip&&skip.includes(k))continue;
+    const els=form.querySelectorAll(`[name="${k}"]`);
+    els.forEach(el=>{if(el.type==='checkbox')el.checked=Array.isArray(v)?v.includes(el.value):!!v;else el.value=v});
+    els.forEach(el=>{if(el.tagName==='TEXTAREA'||el.tagName==='INPUT'&&el.type!=='checkbox')el.dispatchEvent(new Event('input',{bubbles:true}))});}
+}
+function draftSave(form){const k=form.dataset.dkey;if(!k||form.dataset.done==='1'||form.dataset.dirty!=='1')return;const d=draftsAll();d[k]={f:formFields(form),ts:Date.now()};draftsPut(d)}
+function draftClear(k){const d=draftsAll();delete d[k];draftsPut(d)}
+/* Call after a form is drawn: tags it with its draft key and fills in a saved draft, if any. */
+function draftAttach(form,key,label,skip){
+  form.dataset.dkey=key;form.dataset.dirty='';form.dataset.done='';
+  const d=draftsAll()[key];if(!d)return false;
+  fillFields(form,d.f,skip);form.dataset.dirty='1';
+  const at=new Date(d.ts),when=at.toDateString()===new Date().toDateString()?at.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):fmtDate(ds(at));
+  const bar=document.createElement('div');bar.className='draft-note';bar.setAttribute('role','status');
+  bar.innerHTML=`<span class="small">Restored your unsaved ${label} from ${when}.</span><button type="button" class="link-btn sm" data-act="draftDiscard">Discard</button>`;
+  const h=form.querySelector('.dlg-h');h?h.after(bar):form.prepend(bar);return true;
+}
+let draftTimer;
+document.addEventListener('input',e=>{const form=e.target.closest?.('form[data-dkey]');if(!form||!e.isTrusted)return;form.dataset.dirty='1';clearTimeout(draftTimer);draftTimer=setTimeout(()=>draftSave(form),900)},true);
+document.addEventListener('change',e=>{const form=e.target.closest?.('form[data-dkey]');if(!form||!e.isTrusted)return;form.dataset.dirty='1';clearTimeout(draftTimer);draftTimer=setTimeout(()=>draftSave(form),900)},true);
+/* Cancel: discard, with Undo that reopens the form as it was. */
+function draftCancel(form,dlg,reopen,label){
+  const k=form.dataset.dkey,f=form.dataset.dirty==='1'?formFields(form):null;
+  form.dataset.done='1';clearTimeout(draftTimer);if(k)draftClear(k);dlg.close();
+  if(f)toast(`Discarded your ${label}.`,()=>{const d=draftsAll();d[k]={f,ts:Date.now()};draftsPut(d);reopen()});
+}
 function openSess(id){
   const x=S.sessions.find(y=>y.id===id);if(!x)return;const b=book(x.bookId),audio=b?.format==='audio',v=n=>n==null?'':audio?fmtPos(n):n;
   sessForm.dataset.id=id;
@@ -2473,7 +2515,8 @@ function openSess(id){
   <label class="f">Date<input class="inp" type="date" name="date" value="${x.date}" max="${today()}"></label>
   <label class="f"><span>Note <span class="sub">(optional, only you see it)</span></span><textarea class="inp" name="note" maxlength="200" data-count="200" aria-describedby="sessNoteCount">${esc(x.note||'')}</textarea>${charCount('sessNoteCount',(x.note||'').length,200)}</label>
   <div class="err" id="seErr" role="alert"></div>
-  <div class="dlg-f" style="justify-content:space-between"><button type="button" class="btn btn-ghost" data-act="sessDel">Delete Session</button><span style="display:flex;gap:10px"><button type="button" class="btn btn-ghost" data-act="closeSess">Cancel</button><button type="submit" class="btn btn-primary">Save Changes</button></span></div></div>`;
+  <div class="dlg-f" style="justify-content:space-between"><button type="button" class="btn btn-ghost" data-act="sessDel">Delete Session</button><span style="display:flex;gap:10px"><button type="button" class="btn btn-ghost" data-act="cancelSess">Cancel</button><button type="submit" class="btn btn-primary">Save Changes</button></span></div></div>`;
+  draftAttach(sessForm,'sess:'+id,'changes');
   sessDlg.showModal();
 }
 function syncPos(b){if(!b||!['reading','paused'].includes(b.status))return;const last=S.sessions.filter(x=>x.bookId===b.id&&x.end!=null).sort((a,c)=>a.date.localeCompare(c.date)).pop();b.pos=last?last.end:0}
@@ -2491,7 +2534,7 @@ sessForm.addEventListener('submit',e=>{
   if(!f.date||f.date>today())return er('Choose a date that isn’t in the future.');
   Object.assign(x,{date:f.date,start:st,end:en,pages,minutes:mn,note:f.note||''});
   x.est=null;if(!audio&&pages&&mn==null&&S.settings.estimate){const pc=pace(x.bookId);if(pc)x.est=Math.round(pages/pc)}else if(audio&&en!=null&&mn==null&&S.settings.estimate)x.est=en-st;
-  syncPos(b);save();sessDlg.close();render();toast('Session updated.',null,'Goals, streaks, challenges, and records recalculate automatically.');
+  sessForm.dataset.done='1';draftClear(sessForm.dataset.dkey);syncPos(b);save();sessDlg.close();render();toast('Session updated.',null,'Goals, streaks, challenges, and records recalculate automatically.');
 });
 
 /* ---------- up next ---------- */
@@ -3018,6 +3061,7 @@ function setLogOpt(){
   logForm.querySelector('[data-opt=min]')?.toggleAttribute('hidden',!(f==='end'||f==='audio'||(!f&&gt==='pages')));
 }
 function drawLog(b,focus,preMin){
+  if(logDlg.open&&logForm.dataset.mode==='log')draftSave(logForm);
   /* Log Pages marks Minutes optional, Log Time marks the ending page optional; otherwise the goal type decides, and Both marks neither. */
   const list0=S.books.filter(x=>x.status==='reading'||x.status==='paused');
   const list=list0.includes(b)?list0:[b,...list0];
@@ -3045,10 +3089,11 @@ function drawLog(b,focus,preMin){
     <label class="f"><span>Add a Note <span class="sub">(optional, only you see it)</span></span><textarea class="inp" name="note" maxlength="200" data-count="200" aria-describedby="logNoteCount" placeholder="What did you read today?"></textarea>${charCount('logNoteCount',0,200)}</label>
     <label class="chk"><input type="checkbox" name="finished"> Mark as finished</label>
     <div class="err" id="logErr" role="alert"></div>
-    <div class="dlg-f"><button type="button" class="btn btn-ghost" data-act="closeLog">Cancel</button><button type="submit" class="btn btn-primary">Save Reading</button></div>
+    <div class="dlg-f"><button type="button" class="btn btn-ghost" data-act="cancelLog">Cancel</button><button type="submit" class="btn btn-primary">Save Reading</button></div>
   </div>`;
   logForm.dataset.book=b.id;logForm.dataset.mode='log';
   if(S.settings.solo)logForm.querySelector('[name=with]')?.closest('.f')?.remove();
+  draftAttach(logForm,'log:'+(b.titleId||b.id),'reading entry',preMin?['minutes']:null);
   setLogOpt();calcLog();
 }
 function drawNew(){
@@ -3197,7 +3242,7 @@ logForm.addEventListener('submit',e=>{
    [7,14,30,60,100,180,365].forEach(n=>{if(skBefore<n&&sk2>=n)post('streak',`reached a ${n}-day reading streak`)})}
   if(finished)S.trophies.push({id:uid(),name:'Finished!',desc:b.title,date:f.date,tier:'badge',icon:'check',hue:'green'});
   if(S.timer&&S.timer.bookId===b.id&&S.timer.stop)S.timer=null;
-  save();logDlg.close();render();
+  logForm.dataset.done='1';draftClear(logForm.dataset.dkey);save();logDlg.close();render();
   const after=goalState(f.date),sk=streak(),g=S.settings,isToday=f.date===today(),logged=range||minutes!=null;
   if(finished)toast(`🎉 You finished ${b.title}!`,null,`That’s ${yearFinished()} book${yearFinished()===1?'':'s'} this year.`,true);
   else if(started){const g=S.settings,left=[];if(g.goalType!=='pages')left.push(`${Math.max(1,Math.ceil(g.goalMinutes-after.mins))} more minutes`);if(g.goalType!=='minutes')left.push(`${Math.max(1,g.goalPages-after.pages)} more pages`);
@@ -3349,9 +3394,14 @@ document.addEventListener('click',e=>{
     case 'goToRead':view='library';lib.tab='mybooks';lib.mb='want';closeMenus();render();window.scrollTo(0,0);break;
     case 'jumpShelf':document.getElementById(a.dataset.v)?.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});break;
     case 'closeLog':logDlg.close();break;
+    case 'cancelLog':{if(logForm.dataset.mode!=='log'){logDlg.close();break}const bid=logForm.dataset.book,b0=findB(bid);draftCancel(logForm,logDlg,()=>{if(book(bid))openLog(bid);else if(b0){pendingNew=b0;drawLog(b0);logDlg.showModal()}},'reading entry');break}
+    case 'draftDiscard':{const form=a.closest('form');draftClear(form.dataset.dkey);form.dataset.done='1';
+      if(form===logForm){const b=findB(logForm.dataset.book);if(b)drawLog(b)}else if(form===noteForm){const id=noteForm.dataset.id;noteDlg.close();openNote(id||null)}else if(form===sessForm){const id=sessForm.dataset.id;sessDlg.close();openSess(id)}
+      toast('Draft discarded.');break}
     case 'sessEdit':openSess(a.dataset.id);break;
     case 'closeSess':sessDlg.close();break;
-    case 'sessDel':{const snap=snapshot(),x=S.sessions.find(y=>y.id===sessForm.dataset.id);S.sessions=S.sessions.filter(y=>y!==x);syncPos(book(x.bookId));save();sessDlg.close();render();toast('Session deleted.',restoreTo(snap),'Your book itself wasn’t changed.');break}
+    case 'cancelSess':{const id=sessForm.dataset.id;draftCancel(sessForm,sessDlg,()=>openSess(id),'changes');break}
+    case 'sessDel':{sessForm.dataset.done='1';draftClear(sessForm.dataset.dkey);const snap=snapshot(),x=S.sessions.find(y=>y.id===sessForm.dataset.id);S.sessions=S.sessions.filter(y=>y!==x);syncPos(book(x.bookId));save();sessDlg.close();render();toast('Session deleted.',restoreTo(snap),'Your book itself wasn’t changed.');break}
     case 'upAdd':{S.upNext=S.upNext||[];if(upList().length>=10){toast('Your Reading Queue holds 10 books. Remove one first.');break}if(!S.upNext.includes(a.dataset.id))S.upNext.push(a.dataset.id);save();refreshLib();toast(`Added ${book(a.dataset.id).title} to your Reading Queue.`);break}
     case 'upRm':{S.upNext=(S.upNext||[]).filter(x=>x!==a.dataset.id);save();refreshLib();break}
     case 'upMove':{const L=upList().map(b=>b.id),i=L.indexOf(a.dataset.id),j=i+(+a.dataset.v);if(j<0||j>=L.length)break;[L[i],L[j]]=[L[j],L[i]];S.upNext=L;save();refreshLib();break}
@@ -3432,7 +3482,8 @@ document.addEventListener('click',e=>{
     case 'noteNew':openNote(null,a.dataset.v||null);break;
     case 'noteEdit':openNote(a.dataset.id);break;
     case 'noteClose':noteDlg.close();break;
-    case 'noteDel':{const id=noteForm.dataset.id,snap=snapshot(),n=S.journal.find(x=>x.id===id);S.journal=S.journal.filter(x=>x.id!==id);save();noteDlg.close();const y=window.scrollY;render();window.scrollTo(0,y);toast(`Deleted the note for ${noteRange(n)}.`,restoreTo(snap));break}
+    case 'noteCancel':{const id=noteForm.dataset.id,d=noteForm.querySelector('[name=nStart]').value;draftCancel(noteForm,noteDlg,()=>openNote(id||null,d),'note');break}
+    case 'noteDel':{noteForm.dataset.done='1';draftClear(noteForm.dataset.dkey);const id=noteForm.dataset.id,snap=snapshot(),n=S.journal.find(x=>x.id===id);S.journal=S.journal.filter(x=>x.id!==id);save();noteDlg.close();const y=window.scrollY;render();window.scrollTo(0,y);toast(`Deleted the note for ${noteRange(n)}.`,restoreTo(snap));break}
     case 'histM':hist.m=monthAdd(hist.m,+a.dataset.v);if(hist.m>today().slice(0,7))hist.m=today().slice(0,7);hist.sel=null;render();break;
     case 'histMode':hist.mode=a.dataset.v;hist.sel=null;render();break;
     case 'histOpenM':hist.m=a.dataset.v;hist.mode='month';hist.sel=null;render();break;
