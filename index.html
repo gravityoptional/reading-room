@@ -775,6 +775,10 @@ main section.card .card-h .ico{display:none}
 .inv-t{color:var(--primary);font-weight:600}
 .aw-pre{display:flex;flex-wrap:wrap;gap:6px}
 .rec-box{margin-top:14px;padding:12px 14px;border-radius:12px;background:var(--primary-light);display:grid;gap:4px}
+.b-confirm{margin-top:14px;padding:12px 14px;border:1px solid color-mix(in srgb,var(--red) 35%,var(--border));border-radius:12px;background:color-mix(in srgb,var(--red) 6%,var(--surface));display:grid;gap:10px}
+.b-confirm .acts{display:flex;flex-wrap:wrap;gap:8px}
+.btn-del{background:#B42318;color:#fff}.btn-del:hover{background:#912018}
+.b-hidden-t{justify-self:start}
 .inv-box{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:12px 14px;border-radius:12px;background:var(--primary-light)}
 :root[data-palette="ocean"]{--primary:#2563A8;--primary-hover:#1E4F87;--primary-light:#E6EEF8;--green:#2563A8;--bg:#F6F8F9;--on-primary:#FFFFFF}
 @media (prefers-color-scheme:dark){:root[data-palette="ocean"]:not([data-theme="light"]){--primary:#60A5FA;--primary-hover:#3B82F6;--primary-light:#172554;--green:#60A5FA;--bg:#0F172A;--on-primary:#0F172A}}
@@ -2168,8 +2172,9 @@ const bList=b=>Object.entries(b.readers).flatMap(([w,ids])=>ids.map(id=>({w,id})
 function readerDone(b,w){const ids=bList(b).map(x=>x.id);if(w==='me')return ids.filter(id=>S.books.some(x=>x.titleId===id&&x.status==='finished')).length;return (b.progress?.[w]||[]).filter(id=>ids.includes(id)).length}
 function battleCard(b){
   const st=bStatus(b),list=bList(b),role=b.moderator==='me'?'Moderator':b.readers.me?'Reader':'',nr=Object.keys(b.readers).length;
-  return `<div class="card bcard"><button class="chc-open" data-act="openBattle" data-id="${b.id}"><span class="chc-ic">${ic('library')}</span><span><span class="chc-t">${esc(b.name)}</span><span class="xs muted">Reading from ${fmtDateY(b.readStart)} · Battle on ${fmtDateY(b.event)}</span></span></button>
-  <div class="b-meta"><span class="st ${st==='active'?'st-reading':st==='completed'?'st-finished':''}">${BST[st]}</span><span class="small muted">${list.length} book${list.length===1?'':'s'} · ${nr} reader${nr===1?'':'s'} · Moderator: ${b.moderator?esc(nameOf(b.moderator)):'none yet'}</span>${role?`<span class="joined">${ic('check')}${role}</span>`:''}${b.winner?`<span class="joined">🏆 Winner: ${esc(nameOf(b.winner))}</span>`:''}</div>
+  const hid=hiddenB().includes(b.id);
+  return `<div class="card bcard"${hid?' style="opacity:.7"':''}><button class="chc-open" data-act="openBattle" data-id="${b.id}"><span class="chc-ic">${ic('library')}</span><span><span class="chc-t">${esc(b.name)}</span><span class="xs muted">Reading from ${fmtDateY(b.readStart)} · Battle on ${fmtDateY(b.event)}</span></span></button>
+  <div class="b-meta"><span class="st ${st==='active'?'st-reading':st==='completed'?'st-finished':''}">${BST[st]}</span><span class="small muted">${list.length} book${list.length===1?'':'s'} · ${nr} reader${nr===1?'':'s'} · Moderator: ${b.moderator?esc(nameOf(b.moderator)):'none yet'}</span>${role?`<span class="joined">${ic('check')}${role}</span>`:''}${b.winner?`<span class="joined">🏆 Winner: ${esc(nameOf(b.winner))}</span>`:''}${hid?'<span class="small muted">Hidden from your list</span>':''}</div>
   ${list.length?`<div class="b-covers">${list.slice(0,8).map(x=>libCover(titleById(x.id))).join('')}${list.length>8?`<span class="more-n">+${list.length-8}</span>`:''}</div>`:''}</div>`;
 }
 function chDoneDate(c){
@@ -2283,12 +2288,12 @@ function challengesView(){
   const mine=sortC(S.challenges.filter(isMine)),fam=sortC(S.challenges.filter(c=>c.mode!=='personal'&&canSeeCh(c)));
   const earned=S.trophies.length+battleWins().length+achievements().filter(a=>a.earned).length;
   if(S.settings.solo&&chTab==='family')chTab='mine';
-  const tabs=[['mine','My Challenges',mine.length],['family','Group Challenges',fam.length],['battle','Battle of the Books',S.battles.length],['trophies','Trophy Wall',earned]].filter(x=>!(S.settings.solo&&x[0]==='family'));
+  const tabs=[['mine','My Challenges',mine.length],['family','Group Challenges',fam.length],['battle','Battle of the Books',S.battles.filter(b=>!hiddenB().includes(b.id)).length],['trophies','Trophy Wall',earned]].filter(x=>!(S.settings.solo&&x[0]==='family'));
   let body='';
   if(chTab==='mine')body=mine.length?`<div class="ch-grid">${mine.map(chCard).join('')}</div>`:`<div class="empty">${ic('target')}<h3>No Challenges Yet</h3><p>Create a personal challenge or join one your group started.</p><button class="btn btn-primary" data-act="chNew">${ic('plus')}Create Challenge</button></div>`;
   else if(chTab==='family')body=fam.length?`<div class="ch-grid">${fam.map(chCard).join('')}</div>`:`<div class="empty">${ic('users')}<h3>No Group Challenges Yet</h3><p>Start one and invite your group to join.</p><button class="btn btn-primary" data-act="chNew" data-mode="coop">${ic('plus')}Create Challenge</button></div>`;
-  else if(chTab==='battle'){const order={active:0,upcoming:1,completed:2};const bs=[...S.battles].sort((a,b)=>order[bStatus(a)]-order[bStatus(b)]||b.event.localeCompare(a.event));
-    body=`<div class="tw-head"><span class="small muted">The battle happens in person. Reading Room keeps the shared list and everyone’s progress.</span><button class="btn btn-ghost" data-act="bNew">${ic('plus')}Start a Battle</button></div>${bs.length?`<div class="b-list">${bs.map(battleCard).join('')}</div>`:`<div class="empty">${ic('library')}<h3>No Battles Yet</h3><p>Start one to build a shared reading list.</p></div>`}`}
+  else if(chTab==='battle'){const order={active:0,upcoming:1,completed:2};const all=[...S.battles].sort((a,b)=>order[bStatus(a)]-order[bStatus(b)]||b.event.localeCompare(a.event)),nh=all.filter(b=>hiddenB().includes(b.id)).length,bs=showHiddenB?all:all.filter(b=>!hiddenB().includes(b.id));
+    body=`<div class="tw-head"><span class="small muted">The battle happens in person. Reading Room keeps the shared list and everyone’s progress.</span><button class="btn btn-ghost" data-act="bNew">${ic('plus')}Start a Battle</button></div>${bs.length?`<div class="b-list">${bs.map(battleCard).join('')}</div>`:`<div class="empty">${ic('library')}<h3>No Battles Yet</h3><p>Start one to build a shared reading list.</p></div>`}${nh?`<button class="link-btn sm b-hidden-t" data-act="bShowHidden" style="margin-top:12px">${showHiddenB?'Hide':'Show'} ${nh} Hidden Battle${nh===1?'':'s'}</button>`:''}`}
   else body=trophyWall();
   return `<div class="lib"><div class="lib-h"><div><h1 class="page-h">Challenges</h1><p class="muted" style="margin:2px 0 0">Personal and group reading challenges to keep you motivated.</p></div><button class="btn btn-primary" data-act="chNew">${ic('plus')}Create Challenge</button></div>
   <div class="tabs" role="tablist" aria-label="Challenge sections">${tabs.map(([k,l,n])=>`<button class="tab" role="tab" aria-selected="${chTab===k}" data-act="chTab" data-v="${k}">${l} <span class="cnt">${n}</span></button>`).join('')}</div>
@@ -2423,8 +2428,10 @@ function saveCf(){
 }
 /* battles */
 /* Battles record who started them. The sample battles were started by other members; any other battle without a creator was started by you before this was recorded. */
+const hiddenB=()=>S.settings.hiddenBattles||(S.settings.hiddenBattles=[]);
+let showHiddenB=false;
 const bCreator=b=>b.creator||({bb0:'keng',bb1:'corbin'})[b.id]||'me';
-function openBattle(id){chMode='battle';bv={id,tab:'books',adding:false,q:'',win:false};renderBattle();if(!chDlg.open)chDlg.showModal()}
+function openBattle(id){chMode='battle';bv={id,tab:'books',adding:false,q:'',win:false,del:false};renderBattle();if(!chDlg.open)chDlg.showModal()}
 function renderBattle(){
   const b=S.battles.find(x=>x.id===bv.id);if(!b){chDlg.close();return}
   const st=bStatus(b),list=bList(b),open=st!=='completed',me=!!b.readers.me,mod=b.moderator==='me';
@@ -2440,6 +2447,10 @@ function renderBattle(){
     else acts=`<button class="btn btn-primary" data-act="bJoin">${ic('plus')}Join as Reader</button>${b.moderator?'':`<button class="btn btn-ghost" data-act="bMod">Moderate</button>`}`;
   }
   if(bCreator(b)==='me')acts+=`<button class="btn btn-ghost" data-act="bEdit">${ic('pencil')}Edit</button>`;
+  if(bCreator(b)==='me'&&st!=='completed')acts+=`<button class="link-btn" data-act="bDel" aria-expanded="${!!bv.del}">Delete</button>`;
+  if(st==='completed')acts+=hiddenB().includes(b.id)?`<button class="link-btn" data-act="bHide" data-v="0">Show in My List</button>`:`<button class="link-btn" data-act="bHide" data-v="1">Hide from My List</button>`;
+  const others=[...new Set([...Object.keys(b.readers),b.moderator].filter(w=>w&&w!=='me'))].map(nameOf);
+  const confirmBox=bv.del?`<div class="b-confirm" role="alert"><div class="small"><b>Delete ${esc(b.name)}?</b> ${others.length?`${esc(others.length>1?others.slice(0,-1).join(', ')+' and '+others.at(-1):others[0])} ${others.length>1?'have':'has'} joined. Everyone’s picks and the shared book list will be lost.`:'No one else has joined yet. The book list will be lost.'} Reading already logged on these books stays in everyone’s History.</div><div class="acts"><button class="btn btn-del" data-act="bDelGo">Delete Battle</button><button class="btn btn-ghost" data-act="bDel">Keep It</button></div></div>`:'';
   const adder=bv.adding?`<div class="recf"><div class="small" style="font-weight:600">Add a Book to the Shared List</div><label class="search">${ic('search')}<input id="bQ" type="search" placeholder="Search by title or author" value="${esc(bv.q)}" autocomplete="off" aria-label="Search for a book"></label><div id="bRes" class="pick-list">${bResults(b)}</div><div class="xs muted">Each book can be picked only once. Books already on the list don’t appear.</div></div>`:'';
   const tabs=[['books',`Book List (${list.length})`],['readers',`Readers (${Object.keys(b.readers).length})`],['details','Details']];
   let body='';
@@ -2449,7 +2460,7 @@ function renderBattle(){
       `<div class="contrib"><span class="avatar" style="background:${b.moderator?colorOf(b.moderator):'var(--secondary)'}">${b.moderator?initOf(b.moderator):'?'}</span><span class="small"><b>${b.moderator?esc(nameOf(b.moderator)):'No moderator yet'}</b> <span class="xs muted">· Moderator</span></span><span></span></div>`}
   else body=`<p class="small" style="margin-top:0">${esc(b.desc||'')}</p><div class="small muted">Reading starts ${fmtDateY(b.readStart)} · Battle on ${fmtDateY(b.event)}</div><ul class="small muted" style="padding-left:18px"><li>Each reader adds one or more books; no book can be picked twice.</li><li>Everyone reads every book on the list.</li><li>The moderator runs the in-person battle and doesn’t pick books.</li><li>Reading progress comes from your normal reading logs.</li></ul>`;
   chBody.innerHTML=`<div class="dlg-h"><span class="chc-ic">${ic('library')}</span><div style="flex:1;min-width:0"><h2 id="chTitle">${esc(b.name)}</h2><div class="xs muted">Reading from ${fmtDateY(b.readStart)} · Battle on ${fmtDateY(b.event)}</div><div style="margin-top:6px"><span class="st ${st==='active'?'st-reading':st==='completed'?'st-finished':''}">${BST[st]}</span> <span class="xs muted">Started by ${esc(bCreator(b)==='me'?'You':nameOf(bCreator(b)))} · Moderator: ${b.moderator?esc(nameOf(b.moderator)):'none yet'}</span></div></div><button type="button" class="icon-btn x" data-act="closeCh" aria-label="Close">${ic('x')}</button></div>
-  ${acts?`<div class="bd-acts">${acts}</div>`:''}${adder}
+  ${acts?`<div class="bd-acts">${acts}</div>`:''}${confirmBox}${adder}
   <div class="bd-tabs" role="tablist">${tabs.map(([k,l])=>`<button class="bd-tab" role="tab" aria-selected="${bv.tab===k}" data-act="bTab" data-v="${k}">${l}</button>`).join('')}</div><div class="bd-body">${body}</div>`;
 }
 function bResults(b){const q=bv.q.trim().toLowerCase();if(!q)return '<span class="xs muted">Type a title or author.</span>';const taken=new Set(bList(b).map(x=>x.id));
@@ -2908,6 +2919,11 @@ document.addEventListener('click',e=>{
     case 'bNew':openBForm();break;
     case 'bEdit':{const b=S.battles.find(x=>x.id===bv.id);if(b&&bCreator(b)==='me')openBForm(b);break}
     case 'bEditCancel':openBattle(bv.id);break;
+    case 'bDel':bv.del=!bv.del;renderBattle();break;
+    case 'bDelGo':{const b=S.battles.find(x=>x.id===bv.id);if(!b||bCreator(b)!=='me'||bStatus(b)==='completed')break;const snap=snapshot();
+      S.battles=S.battles.filter(x=>x!==b);S.notifs=S.notifs.filter(n=>!(n.link&&n.link.type==='battle'&&n.link.id===b.id));save();chDlg.close();render();toast(`Deleted ${b.name}.`,restoreTo(snap));break}
+    case 'bHide':{const b=S.battles.find(x=>x.id===bv.id),h=hiddenB();if(a.dataset.v==='1'){if(!h.includes(b.id))h.push(b.id)}else S.settings.hiddenBattles=h.filter(x=>x!==b.id);save();renderBattle();render();toast(a.dataset.v==='1'?`Hid ${b.name} from your list. Its trophies stay on the Trophy Wall.`:`${b.name} is back in your list.`);break}
+    case 'bShowHidden':showHiddenB=!showHiddenB;render();break;
     case 'bSave':{const b=S.battles.find(x=>x.id===bv.id);if(!b||bCreator(b)!=='me')break;const v=id=>document.getElementById(id).value.trim(),er=m=>document.getElementById('bfErr').textContent=m;
       if(!v('bfName'))return er('Give the battle a name.');if(!v('bfStart')||!v('bfEvent'))return er('Choose when reading starts and the battle date.');if(v('bfEvent')<v('bfStart'))return er('The battle date must be after reading starts.');
       Object.assign(b,{name:v('bfName'),desc:v('bfDesc'),readStart:v('bfStart'),event:v('bfEvent')});save();openBattle(b.id);toast(`Saved changes to ${b.name}.`);break}
