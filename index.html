@@ -847,6 +847,17 @@ main section.card .card-h .ico{display:none}
 .req-in{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between;margin:-2px 0 8px 44px;padding:10px 12px;border-radius:10px;background:var(--primary-light)}
 .req-btns{display:flex;gap:6px;flex-wrap:wrap}
 .notif{flex-wrap:wrap}.notif-req{flex-basis:100%;margin-top:2px}
+.has-acts{position:relative}.card-acts{position:absolute;top:10px;right:10px;display:flex;gap:2px;z-index:1}
+.card-acts .link-btn{color:var(--text-2)}.card-acts .link-btn:hover{color:var(--primary)}
+.has-acts .chc-open{padding-right:64px}
+.mk-n{position:absolute;top:4px;left:4px;width:7px;height:7px;border-radius:2px;background:var(--purple);box-shadow:0 0 0 1.5px var(--card)}
+.cal-legend .mk-n.lg-n{position:static;display:inline-block;margin-right:5px;box-shadow:none}
+.note-add{margin-left:auto}
+.hgrid .card-h{flex-wrap:wrap;row-gap:6px}
+.notes-list{display:grid;gap:8px;margin-bottom:12px}
+.note-i{border-left:3px solid var(--purple);background:var(--surface-alt);border-radius:0 10px 10px 0;padding:8px 12px}
+.note-i p{margin:4px 0 0;white-space:pre-wrap}
+.note-h{display:flex;align-items:center;justify-content:space-between;gap:8px}.note-h svg.i{width:12px;height:12px;margin-right:4px;vertical-align:-1px}
 .gs{margin:22px 0 4px}
 .gs-list{list-style:none;margin:6px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}
 .gs-i{display:flex;gap:12px;align-items:center;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
@@ -995,6 +1006,7 @@ main section.card .card-h .ico{display:none}
 <dialog id="editDlg" aria-labelledby="editTitle"><form class="dlg" id="editForm" method="dialog" novalidate></form></dialog>
 <dialog id="bookDlg" aria-labelledby="bdTitle"><div class="dlg" id="bookBody"></div></dialog>
 <dialog id="titleDlg" aria-labelledby="teTitle"><form class="dlg" id="titleForm" method="dialog" novalidate></form></dialog>
+<dialog id="noteDlg" aria-labelledby="noteT"><form class="dlg" id="noteForm" method="dialog" novalidate></form></dialog>
 <dialog id="addDlg" aria-labelledby="adTitle"><div class="dlg" id="addBody"></div></dialog>
 <dialog id="chDlg" aria-labelledby="chTitle"><div class="dlg" id="chBody"></div></dialog>
 <dialog id="recDlg" aria-labelledby="rpTitle"><div class="dlg" id="recBody"></div></dialog>
@@ -1133,6 +1145,7 @@ if(!S.actSeeded2){S.actSeeded2=true;const n=Date.now(),H=3600e3,ms=Object.keys(S
   {id:uid(),who:m(0),kind:'session',text:'logged a reading session',book:'Dune',ts:n-5*H,r:{}})}}
 if(!S.group)S.group={name:'Emberton Family'};
 S.loanReqs=S.loanReqs||[];
+S.journal=S.journal||[];
 if(!S.upNext){const pk=n=>S.books.find(b=>b.status==='want'&&b.title===n)?.id;S.upNext=['Wool','Project Hail Mary','Shift'].map(pk).filter(Boolean)}
 S.notifs.forEach(n=>{if(!n.link){n.link=({n1:{type:'lib'},n2:{type:'ch',id:'f1'},n3:{type:'battle',id:'bb1'}})[n.id]||null;if(n.id==='n2')n.text='Keng started a group challenge: Family Reading Challenge.'}});
 if(!S.wantSeeded){S.wantSeeded=true;if(!S.books.some(b=>b.status==='want'))S.books.push(...seed().books.filter(b=>b.status==='want'))}
@@ -1698,6 +1711,33 @@ function bookPanel(head,items){
   return `<div class="yr-books"><div class="small muted">${head}</div>${items.length?`<div class="yr-grid">${items.map(([id,sub])=>{const t=titleById(id);return t?`<button class="yr-b" data-act="openTitle" data-id="${id}">${libCover(t,48)}<span><span class="small"><b>${esc(t.title)}</b></span><span class="xs muted">${sub}</span></span></button>`:''}).join('')}</div>`:'<p class="small muted" style="margin:0">None yet.</p>'}</div>`;
 }
 const finishedIn=y=>S.books.filter(b=>b.status==='finished'&&b.finished&&b.finished.slice(0,4)===String(y)&&b.titleId).sort((a,b)=>b.finished.localeCompare(a.finished)).map(b=>[b.titleId,`Finished ${fmtDateY(b.finished)}`]);
+/* Calendar notes: a journal entry for a day or a date range, not tied to a book or session. Only you see them. */
+const notesOn=d=>(S.journal||[]).filter(n=>n.start<=d&&(n.end||n.start)>=d);
+const noteRange=n=>n.end&&n.end!==n.start?fmtRange(n.start,n.end):fmtDateY(n.start);
+let noteDlg,noteForm;
+function openNote(id,date){
+  noteDlg=noteDlg||document.getElementById('noteDlg');noteForm=noteForm||document.getElementById('noteForm');
+  const n=id?S.journal.find(x=>x.id===id):null,d=n?n.start:(date||today());
+  noteForm.dataset.id=n?n.id:'';
+  noteForm.innerHTML=`<div class="dlg-h"><h2 id="noteT" style="flex:1">${n?'Edit Note':'Add a Note'}</h2><button type="button" class="icon-btn x" data-act="noteClose" aria-label="Close">${ic('x')}</button></div>
+  <div class="form"><p class="small muted" style="margin:0">A note for a day or a stretch of days, like a trip, a reading slump, or a book club night. Only you see it.</p>
+    <div class="f2"><label class="f">Date<input class="inp" type="date" name="nStart" value="${d}"></label><label class="f"><span>Through <span class="sub">(optional, for a range)</span></span><input class="inp" type="date" name="nEnd" value="${n&&n.end&&n.end!==n.start?n.end:''}"></label></div>
+    <label class="f">Note<textarea class="inp" name="nText" rows="5" maxlength="1000" placeholder="What happened in your reading life?">${n?esc(n.text):''}</textarea></label>
+    <div class="err" id="noteErr" role="alert"></div>
+    <div class="dlg-f">${n?'<button type="button" class="link-btn" data-act="noteDel" style="margin-right:auto">Delete Note</button>':''}<button type="button" class="btn btn-ghost" data-act="noteClose">Cancel</button><button type="submit" class="btn btn-primary">Save Note</button></div></div>`;
+  noteDlg.showModal();setTimeout(()=>noteForm.querySelector('[name=nText]').focus(),30);
+}
+document.addEventListener('submit',e=>{
+  if(e.target.id!=='noteForm')return;e.preventDefault();
+  const f=noteForm,v=k=>f.querySelector(`[name=${k}]`).value.trim(),er=m=>{document.getElementById('noteErr').textContent=m};
+  const start=v('nStart'),end=v('nEnd'),text=v('nText');
+  if(!text)return er('Write something for the note.');
+  if(!start)return er('Choose the date.');
+  if(end&&end<start)return er('The end date can’t be before the start date.');
+  const id=f.dataset.id;let n=id&&S.journal.find(x=>x.id===id);
+  if(n)Object.assign(n,{start,end:end&&end!==start?end:undefined,text});else{n={id:'j'+uid(),start,end:end&&end!==start?end:undefined,text,ts:Date.now()};S.journal.push(n)}
+  save();noteDlg.close();const y=window.scrollY;render();window.scrollTo(0,y);toast(id?'Note saved.':`Added a note for ${noteRange(n)}.`);
+});
 function historyView(){
   const y=today().slice(0,4),ys=S.sessions.filter(x=>x.date.slice(0,4)===y);
   const rec=ys.reduce((a,x)=>a+(x.minutes||0),0),est=ys.reduce((a,x)=>a+(!x.minutes&&x.est?x.est:0),0),pages=ys.reduce((a,x)=>a+(x.pages||0),0);
@@ -1722,8 +1762,9 @@ function historyView(){
     if(ds>t){cells+=`<span class="cal-d future">${d}</span>`;endRow();continue}
     const q=g.active?ratio(g):0,lv=g.active?(q<.5?1:q<1?2:q<1.5?3:4):0;
     const fin=S.books.filter(b=>b.finished===ds),st=S.books.filter(b=>b.started===ds);
-    const desc=[fmtDateY(ds),g.active?`${Math.round(g.mins)} min${g.pages?`, ${g.pages} pages`:''}`:'no reading',g.met?'goal met':'',r?'rest day':'',...st.map(b=>`started ${b.title}`),...fin.map(b=>`finished ${b.title}`)].filter(Boolean).join(', ');
-    cells+=`<button class="cal-d ${lv?'lv'+lv:''} ${g.met?'met':''} ${r?'rest':''} ${ds===t?'today':''} ${hist.sel===ds?'sel':''}" data-act="histDay" data-v="${ds}" aria-pressed="${hist.sel===ds}" aria-label="${esc(desc)}" title="${esc(desc)}">${d}${st.length||fin.length?`<span class="cal-mk" aria-hidden="true">${st.length?'<i class="mk-s"></i>':''}${fin.length?'<i class="mk-f"></i>':''}</span>`:''}</button>`;endRow()}
+    const nts=notesOn(ds);
+    const desc=[fmtDateY(ds),g.active?`${Math.round(g.mins)} min${g.pages?`, ${g.pages} pages`:''}`:'no reading',g.met?'goal met':'',r?'rest day':'',...st.map(b=>`started ${b.title}`),...fin.map(b=>`finished ${b.title}`),nts.length?`note: ${nts[0].text.slice(0,60)}`:''].filter(Boolean).join(', ');
+    cells+=`<button class="cal-d ${lv?'lv'+lv:''} ${g.met?'met':''} ${r?'rest':''} ${ds===t?'today':''} ${hist.sel===ds?'sel':''}" data-act="histDay" data-v="${ds}" aria-pressed="${hist.sel===ds}" aria-label="${esc(desc)}" title="${esc(desc)}">${nts.length?'<i class="mk-n" aria-hidden="true"></i>':''}${d}${st.length||fin.length?`<span class="cal-mk" aria-hidden="true">${st.length?'<i class="mk-s"></i>':''}${fin.length?'<i class="mk-f"></i>':''}</span>`:''}</button>`;endRow()}
   const ms=S.sessions.filter(x=>x.date.slice(0,7)===m);
   const mDays=new Set(ms.map(x=>x.date)).size,mMin=ms.reduce((a,x)=>a+(x.minutes||0),0),mEst=ms.reduce((a,x)=>a+(!x.minutes&&x.est?x.est:0),0),mPages=ms.reduce((a,x)=>a+(x.pages||0),0);
   const byDay={};ms.forEach(x=>{(byDay[x.date]=byDay[x.date]||[]).push(x)});
@@ -1743,10 +1784,13 @@ function historyView(){
     return bookPanel(`Books you logged reading for in ${y}, most recent first`,ids.map(id=>[id,`Last read ${fmtDate(last[id])}`]))})():hist.panel==='fin'?bookPanel(`Books you finished in ${y}, most recent first`,finishedIn(y)):''}</section>
   <div class="hgrid"><section class="card" data-tour="calendar"><div class="card-h"><span class="ico">${ic('cal')}</span><h2>${hist.mode==='year'?Y:`${MONF[M-1]} ${Y}`}</h2><span class="vseg cal-mode" role="group" aria-label="Calendar view"><button aria-pressed="${hist.mode!=='year'}" data-act="histMode" data-v="month">Month</button><button aria-pressed="${hist.mode==='year'}" data-act="histMode" data-v="year">Year</button></span><span class="cal-nav"><button class="icon-btn" data-act="histM" data-v="${hist.mode==='year'?-12:-1}" aria-label="Previous ${hist.mode==='year'?'year':'month'}">${ic('chevL')}</button><button class="icon-btn" data-act="histM" data-v="${hist.mode==='year'?12:1}" aria-label="Next ${hist.mode==='year'?'year':'month'}" ${(hist.mode==='year'?String(Y)>=t.slice(0,4):m>=t.slice(0,7))?'disabled':''}>${ic('chevR')}</button></span></div>
     ${hist.mode==='year'?yearCal(Y,ratio):`<div class="cal cal-wk">${cells}</div>`}
-    <div class="cal-legend xs muted"><span class="lg-scale">Less <i class="lg lv1"></i><i class="lg lv2"></i><i class="lg lv3"></i><i class="lg lv4"></i> More</span><span><i class="lg-ok" aria-hidden="true">✓</i>Goal met</span>${hist.mode==='year'?'':'<span><i class="mk-s"></i>Started</span><span><i class="mk-f"></i>Finished</span><span><i class="lg rest"></i>Rest day</span>'}</div>
+    <div class="cal-legend xs muted"><span class="lg-scale">Less <i class="lg lv1"></i><i class="lg lv2"></i><i class="lg lv3"></i><i class="lg lv4"></i> More</span><span><i class="lg-ok" aria-hidden="true">✓</i>Goal met</span>${hist.mode==='year'?'':'<span><i class="mk-s"></i>Started</span><span><i class="mk-f"></i>Finished</span><span><i class="mk-n lg-n"></i>Note</span><span><i class="lg rest"></i>Rest day</span>'}</div>
     <div class="xs muted" style="margin-top:6px">${hist.mode==='year'?'Tap a month to open it.':'Tap a day to see what you read.'}</div>
     <div class="small muted" style="margin-top:10px">${hist.mode==='year'?(()=>{const ss=S.sessions.filter(x=>x.date.slice(0,4)===String(Y)),dd=new Set(ss.map(x=>x.date)).size,mm=ss.reduce((a,x)=>a+(x.minutes||0),0),pp=ss.reduce((a,x)=>a+(x.pages||0),0);return `${Y}: ${dd} day${dd===1?'':'s'} read · ${fmtMin(mm)} · ${pp.toLocaleString()} pages`})():`${mDays} day${mDays===1?'':'s'} read · ${fmtMin(mMin)}${mEst?` + ~${fmtMin(mEst)} estimated`:''} · ${mPages.toLocaleString()} pages`}</div></section>
-  <section class="card"><div class="card-h"><span class="ico">${ic('book')}</span><h2>Reading Sessions</h2><span class="count">${sel?fmtDate(sel):MONF[M-1]}</span>${sel?`<button class="link-btn sm" data-act="histDay" data-v="">Show All of ${MONF[M-1]}</button>`:''}</div>${list?`<div class="sess-list">${list}</div>`:''}${list?'':`<p class="small muted" style="margin:0">${sel?`No reading logged on ${fmtDate(sel)}.`:'No reading logged this month.'}</p>`}</section></div>
+  <section class="card"><div class="card-h"><span class="ico">${ic('book')}</span><h2>Reading Sessions</h2><span class="count">${sel?fmtDate(sel):MONF[M-1]}</span>${sel?`<button class="link-btn sm" data-act="histDay" data-v="">Show All of ${MONF[M-1]}</button>`:''}<button class="btn btn-ghost sm note-add" data-act="noteNew" data-v="${sel||''}" aria-label="${sel?`Add a note for ${fmtDate(sel)}`:'Add a note'}">${ic('plus')}Add Note</button></div>
+    ${(()=>{const mStart=`${m}-01`,mEnd=`${m}-${pad(days)}`,ns=(sel?notesOn(sel):(S.journal||[]).filter(n=>n.start<=mEnd&&(n.end||n.start)>=mStart)).sort((a,b)=>b.start.localeCompare(a.start));
+      return ns.length?`<div class="notes-list">${ns.map(n=>`<div class="note-i"><div class="note-h"><span class="xs muted">${ic('pencil')}Note · ${noteRange(n)}</span><button class="link-btn sm" data-act="noteEdit" data-id="${n.id}" aria-label="Edit note for ${noteRange(n)}">Edit</button></div><p class="small">${esc(n.text)}</p></div>`).join('')}</div>`:''})()}
+    ${list?`<div class="sess-list">${list}</div>`:''}${list?'':`<p class="small muted" style="margin:0">${sel?`No reading logged on ${fmtDate(sel)}.`:'No reading logged this month.'}</p>`}</section></div>
   <section class="card"><div class="card-h"><span class="ico o">${ic('trophy')}</span><h2>Records</h2></div><div class="rec-grid">${records().map(([i,l,v,sub,tid,html])=>`<div class="rec-t">${ic(i)}<div class="rec-l">${l}</div><div class="rec-v">${v}</div>${html?html:tid?`<button class="sess-b rec-s" data-act="openTitle" data-id="${tid}">${esc(sub)}</button>`:`<div class="xs muted">${esc(sub)}</div>`}</div>`).join('')}</div>${hist.recYear&&hist.recYearKey?bookPanel(`Books you finished in ${hist.recYearKey}, your most in a year, most recent first`,finishedIn(hist.recYearKey)):''}</section>
   <section class="card"><div class="card-h"><span class="ico">${ic('library')}</span><h2>Rereads</h2></div>${rereads}</section>
   <p class="xs muted" style="text-align:center"><button class="link-btn sm" data-act="goMyBooks" data-v="finished">Finished</button> and <button class="link-btn sm" data-act="goMyBooks" data-v="dnf">Did Not Finish</button> books are in Library → My Books.</p></div>`;
@@ -2503,12 +2547,18 @@ function chStatus(c,p){
 const dateRange=c=>c.start&&c.end?`${fmtDateY(c.start)} – ${fmtDateY(c.end)}`:c.end?`By ${fmtDateY(c.end)}`:c.start?`From ${fmtDateY(c.start)}`:'No end date';
 const avRow=ws=>`<span class="av-stack" aria-hidden="true">${ws.slice(0,6).map(w=>`<span class="avatar" style="background:${colorOf(w)}">${initOf(w)}</span>`).join('')}</span>`;
 const famSize=()=>Object.keys(S.members).length+1;
+/* Small Delete or Hide link in a card's corner. Delete opens the item with its warning showing; Hide works like Hide from My List(s). */
+function cardActs(kind,id,name,del,hide,hidden){
+  if(!del&&!hide)return '';
+  return `<span class="card-acts">${del?`<button class="link-btn sm" data-act="${kind}CardDel" data-id="${id}" aria-label="Delete ${esc(name)}">Delete</button>`:''}${hide?`<button class="link-btn sm" data-act="${kind}CardHide" data-id="${id}" data-v="${hidden?0:1}" aria-label="${hidden?'Show':'Hide'} ${esc(name)}">${hidden?'Show':'Hide'}</button>`:''}</span>`;
+}
 function chCard(c){
   const p=chProg(c),st=chStatus(c,p),fam=c.mode!=='personal',joined=(c.participants||[]).includes('me');
   const pc=p.t?Math.min(100,Math.round(p.v/p.t*100)):0;
   const inv=c.inviteOnly&&(c.invited||[]).includes('me')&&!joined&&!(c.declined||[]).includes('me');
   const act=fam&&st.k!=='ended'?(joined?`<span class="joined">${ic('check')}Joined</span>`:inv?`<span class="inv-acts"><button class="link-btn sm" data-act="chDecline" data-id="${c.id}">Decline</button><button class="btn btn-primary sm" data-act="chJoin" data-id="${c.id}">${ic('check')}Accept</button></span>`:`<button class="btn btn-ghost sm" data-act="chJoin" data-id="${c.id}">${ic('plus')}Join</button>`):'';
-  return `<div class="chcard"><button class="chc-open" data-act="openCh" data-id="${c.id}"><span class="chc-ic">${ic(CT[c.type].ic)}</span><span><span class="chc-t">${esc(c.name)}</span><span class="xs muted">${dateRange(c)} · ${MODE_L[c.mode]}</span>${fam?`<span class="xs ${inv?'inv-t':'muted'}" style="display:block">${inv?`${esc(nameOf(c.creator))} invited you`:c.inviteOnly?`Invite only, started by ${esc(nameOf(c.creator))}`:`Started by ${esc(nameOf(c.creator))}`}</span>`:''}</span></button>
+  const fin=st.k==='done'||st.k==='ended',hid=hiddenC().includes(c.id),ca=cardActs('ch',c.id,c.name,c.creator==='me'&&(!fam||!fin),fam&&fin,hid);
+  return `<div class="chcard ${ca?'has-acts':''}">${ca}<button class="chc-open" data-act="openCh" data-id="${c.id}"><span class="chc-ic">${ic(CT[c.type].ic)}</span><span><span class="chc-t">${esc(c.name)}</span><span class="xs muted">${dateRange(c)} · ${MODE_L[c.mode]}</span>${fam?`<span class="xs ${inv?'inv-t':'muted'}" style="display:block">${inv?`${esc(nameOf(c.creator))} invited you`:c.inviteOnly?`Invite only, started by ${esc(nameOf(c.creator))}`:`Started by ${esc(nameOf(c.creator))}`}</span>`:''}</span></button>
   <div class="bar"><span style="width:${pc}%"></span></div><div class="chc-row"><span class="small">${p.label}</span>${c.mode==='comp'?'':`<span class="small muted">${pc}%</span>`}</div>
   ${fam?`<div class="lc-own">${avRow(c.participants)}<span class="xs muted">${c.inviteOnly?`${c.participants.length} of ${(c.invited||[]).length+1} invited taking part`:`${c.participants.length} of ${famSize()} participating`}</span></div>`:''}
   <div class="chc-foot"><span class="xs ${st.k==='done'?'own-me':'muted'}">${st.txt}</span>${act}</div></div>`;
@@ -2519,8 +2569,8 @@ const bList=b=>Object.entries(b.readers).flatMap(([w,ids])=>ids.map(id=>({w,id})
 function readerDone(b,w){const ids=bList(b).map(x=>x.id);if(w==='me')return ids.filter(id=>S.books.some(x=>x.titleId===id&&x.status==='finished')).length;return (b.progress?.[w]||[]).filter(id=>ids.includes(id)).length}
 function battleCard(b){
   const st=bStatus(b),list=bList(b),role=b.moderator==='me'?'Moderator':b.readers.me?'Reader':'',nr=Object.keys(b.readers).length;
-  const hid=hiddenB().includes(b.id);
-  return `<div class="card bcard"${hid?' style="opacity:.7"':''}><button class="chc-open" data-act="openBattle" data-id="${b.id}"><span class="chc-ic">${ic('library')}</span><span><span class="chc-t">${esc(b.name)}</span><span class="xs muted">Reading from ${fmtDateY(b.readStart)} · Battle on ${fmtDateY(b.event)}</span></span></button>
+  const hid=hiddenB().includes(b.id),ca=cardActs('b',b.id,b.name,bCreator(b)==='me'&&st!=='completed',st==='completed',hid);
+  return `<div class="card bcard ${ca?'has-acts':''}"${hid?' style="opacity:.7"':''}>${ca}<button class="chc-open" data-act="openBattle" data-id="${b.id}"><span class="chc-ic">${ic('library')}</span><span><span class="chc-t">${esc(b.name)}</span><span class="xs muted">Reading from ${fmtDateY(b.readStart)} · Battle on ${fmtDateY(b.event)}</span></span></button>
   <div class="b-meta"><span class="st ${st==='active'?'st-reading':st==='completed'?'st-finished':''}">${BST[st]}</span><span class="small muted">${list.length} book${list.length===1?'':'s'} · ${nr} reader${nr===1?'':'s'} · Moderator: ${b.moderator?esc(nameOf(b.moderator)):'none yet'}</span>${role?`<span class="joined">${ic('check')}${role}</span>`:''}${b.winner?`<span class="joined">🏆 Winner: ${esc(nameOf(b.winner))}</span>`:''}${hid?'<span class="small muted">Hidden from your list</span>':''}</div>
   ${list.length?`<div class="b-covers">${list.slice(0,8).map(x=>libCover(titleById(x.id))).join('')}${list.length>8?`<span class="more-n">+${list.length-8}</span>`:''}</div>`:''}</div>`;
 }
@@ -2680,10 +2730,11 @@ function renderCh(){
   if(fam&&joined)acts+=`<button class="btn btn-ghost" data-act="chLeave" data-id="${c.id}">Leave Challenge</button>`;
   if(creator&&st.k==='ended'&&c.mode==='personal')acts+=`<button class="btn btn-primary" data-act="chAgain" data-id="${c.id}">Try Again</button>`;
   const finished=st.k==='done'||st.k==='ended';
-  if(creator)acts+=`<button class="btn btn-ghost" data-act="chEdit" data-id="${c.id}">${ic('pencil')}Edit</button>`+(!fam?`<button class="link-btn" data-act="chDel" data-id="${c.id}">Delete</button>`:!finished?`<button class="link-btn" data-act="chDelAsk" aria-expanded="${!!cv.del}">Delete</button>`:'');
+  if(creator)acts+=`<button class="btn btn-ghost" data-act="chEdit" data-id="${c.id}">${ic('pencil')}Edit</button>`+(!fam||!finished?`<button class="link-btn" data-act="chDelAsk" aria-expanded="${!!cv.del}">Delete</button>`:'');
   if(fam&&finished)acts+=hiddenC().includes(c.id)?`<button class="link-btn" data-act="chHide" data-v="0">Show in My Lists</button>`:`<button class="link-btn" data-act="chHide" data-v="1">Hide from My Lists</button>`;
   const others=(c.participants||[]).filter(w=>w!=='me').map(nameOf);
-  const confirmBox=cv.del&&fam&&!finished?`<div class="b-confirm" role="alert"><div class="small"><b>Delete ${esc(c.name)}?</b> ${others.length?`${esc(others.length>1?others.slice(0,-1).join(', ')+' and '+others.at(-1):others[0])} ${others.length>1?'have':'has'} joined, and the challenge will disappear for everyone.`:'No one else has joined yet.'} Reading already logged stays in everyone’s History.</div><div class="acts"><button class="btn btn-del" data-act="chDel" data-id="${c.id}">Delete Challenge</button><button class="btn btn-ghost" data-act="chDelAsk">Keep It</button></div></div>`:'';
+  const confirmBox=cv.del&&!fam?`<div class="b-confirm" role="alert"><div class="small"><b>Delete ${esc(c.name)}?</b> Its progress and any medal from it will be gone. Reading already logged stays in your History.</div><div class="acts"><button class="btn btn-del" data-act="chDel" data-id="${c.id}">Delete Challenge</button><button class="btn btn-ghost" data-act="chDelAsk">Keep It</button></div></div>`
+    :cv.del&&fam&&!finished?`<div class="b-confirm" role="alert"><div class="small"><b>Delete ${esc(c.name)}?</b> ${others.length?`${esc(others.length>1?others.slice(0,-1).join(', ')+' and '+others.at(-1):others[0])} ${others.length>1?'have':'has'} joined, and the challenge will disappear for everyone.`:'No one else has joined yet.'} Reading already logged stays in everyone’s History.</div><div class="acts"><button class="btn btn-del" data-act="chDel" data-id="${c.id}">Delete Challenge</button><button class="btn btn-ghost" data-act="chDelAsk">Keep It</button></div></div>`:'';
   chBody.innerHTML=`<div class="dlg-h"><span class="chc-ic">${ic(CT[c.type].ic)}</span><div style="flex:1;min-width:0"><h2 id="chTitle">${esc(c.name)}</h2><div class="xs muted">${MODE_L[c.mode]} · ${CT[c.type].l}${fam?` · Started by ${esc(nameOf(c.creator))}`:''}</div><div class="xs muted">${dateRange(c)} · ${st.txt}</div></div><button type="button" class="icon-btn x" data-act="closeCh" aria-label="Close">${ic('x')}</button></div>
   ${c.desc?`<p class="small" style="margin:0 0 10px">${esc(c.desc)}</p>`:''}
   <div class="bar" style="height:10px"><span style="width:${pc}%"></span></div><div class="chc-row"><span class="small">${p.label}</span>${c.mode==='comp'?'':`<span class="small muted">${pc}%</span>`}</div>
@@ -3329,6 +3380,10 @@ document.addEventListener('click',e=>{
     case 'bHide':{const b=S.battles.find(x=>x.id===bv.id),h=hiddenB();if(a.dataset.v==='1'){if(!h.includes(b.id))h.push(b.id)}else S.settings.hiddenBattles=h.filter(x=>x!==b.id);save();renderBattle();render();toast(a.dataset.v==='1'?`Hid ${b.name} from your list. Its trophies stay on the Trophy Wall.`:`${b.name} is back in your list.`);break}
     case 'goMyBooks':view='library';lib.tab='mybooks';lib.mb=a.dataset.v;render();window.scrollTo(0,0);break;
     case 'simActivity':simActivity();break;
+    case 'bCardDel':openBattle(a.dataset.id);bv.del=true;renderBattle();setTimeout(()=>document.querySelector('#chDlg [data-act=bDelGo]')?.focus(),30);break;
+    case 'bCardHide':{const b=S.battles.find(x=>x.id===a.dataset.id),h=hiddenB();if(a.dataset.v==='1'){if(!h.includes(b.id))h.push(b.id)}else S.settings.hiddenBattles=h.filter(x=>x!==b.id);save();render();toast(a.dataset.v==='1'?`Hid ${b.name} from your list. Its trophies stay on the Trophy Wall.`:`${b.name} is back in your list.`);break}
+    case 'chCardDel':openCh(a.dataset.id);cv.del=true;renderCh();setTimeout(()=>document.querySelector('#chDlg .b-confirm [data-act=chDel]')?.focus(),30);break;
+    case 'chCardHide':{const c=S.challenges.find(x=>x.id===a.dataset.id),h=hiddenC();if(a.dataset.v==='1'){if(!h.includes(c.id))h.push(c.id)}else S.settings.hiddenCh=h.filter(x=>x!==c.id);save();render();toast(a.dataset.v==='1'?`Hid ${c.name} from your lists. Its trophies stay on the Trophy Wall.`:`${c.name} is back in your lists.`);break}
     case 'bShowHidden':showHiddenB=!showHiddenB;render();break;
     case 'bSave':{const b=S.battles.find(x=>x.id===bv.id);if(!b||bCreator(b)!=='me')break;const v=id=>document.getElementById(id).value.trim(),er=m=>document.getElementById('bfErr').textContent=m;
       if(!v('bfName'))return er('Give the battle a name.');if(!v('bfStart')||!v('bfEvent'))return er('Choose when reading starts and the battle date.');if(v('bfEvent')<v('bfStart'))return er('The battle date must be after reading starts.');
@@ -3347,6 +3402,10 @@ document.addEventListener('click',e=>{
     case 'libTab':lib.tab=a.dataset.v;if(lib.tab!=='mybooks'){if(lib.sort==='finished')lib.sort='title';if(['year','month','week'].includes(lib.group))lib.group='alpha'}if(lib.tab==='mybooks'&&lib.group==='alpha')lib.group='status';if(lib.tab!=='mybooks'&&lib.group==='status')lib.group='alpha';render();break;
     case 'mbChip':lib.mb=a.dataset.v;if(lib.mb==='finished'){if(lib.sort==='title')lib.sort='finished';if(lib.group==='status')lib.group='year'}else{if(lib.sort==='finished')lib.sort='title';if(['year','month','week'].includes(lib.group))lib.group='status'}refreshLib();break;
     case 'recView':lib.rv=a.dataset.v;render();break;
+    case 'noteNew':openNote(null,a.dataset.v||null);break;
+    case 'noteEdit':openNote(a.dataset.id);break;
+    case 'noteClose':noteDlg.close();break;
+    case 'noteDel':{const id=noteForm.dataset.id,snap=snapshot(),n=S.journal.find(x=>x.id===id);S.journal=S.journal.filter(x=>x.id!==id);save();noteDlg.close();const y=window.scrollY;render();window.scrollTo(0,y);toast(`Deleted the note for ${noteRange(n)}.`,restoreTo(snap));break}
     case 'histM':hist.m=monthAdd(hist.m,+a.dataset.v);if(hist.m>today().slice(0,7))hist.m=today().slice(0,7);hist.sel=null;render();break;
     case 'histMode':hist.mode=a.dataset.v;hist.sel=null;render();break;
     case 'histOpenM':hist.m=a.dataset.v;hist.mode='month';hist.sel=null;render();break;
