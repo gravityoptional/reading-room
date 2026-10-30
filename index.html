@@ -2907,12 +2907,12 @@ function renderHeader(){
     <div class="row"><span class="small">Dashboard Photo</span><span><button class="link-btn sm" data-act="heroPhoto">${heroPhoto()?'Change':'Add'}</button>${heroPhoto()?` <button class="link-btn sm" data-act="heroRemove">Remove</button>`:''}</span></div>
     <button class="link" data-act="tourStart">Take the Tour</button>${S.settings.solo?'':'<button class="link" data-act="tourGroup">Take the Group Tour</button>'}
     ${S.settings.gsHidden?'<button class="link" data-act="gsShow">Show Get Started</button>':''}
-    <hr><div class="xs muted" style="padding:2px 10px">Prototype Tools</div>
+    <hr><div class="xs muted" style="padding:2px 10px">Prototype Tools</div><div class="small proto-view" style="padding:2px 10px 6px">Viewing: <b>${S.settings.protoView==='new'?'New member':`Sample family, as ${esc(S.me.name)}`}${S.settings.solo?' · Just Me':''}</b></div>
     <button class="link" data-act="emptyDemo">Show New-Member (Empty) View</button>
     <button class="link" data-act="simActivity">Add Sample Group Activity</button>
     <button class="link" data-act="simBorrowIn">Add a Sample Borrow Request</button>
     <button class="link" data-act="simBorrowOut">Owner Answers My Borrow Request</button>
-    <button class="link" data-act="resetDemo">Restore Sample Data</button>`;
+    <button class="link" data-act="resetDemo">${S.settings.protoView==='new'?'Return to Sample Data':'Restore Sample Data'}<span class="xs muted" style="display:block;font-weight:400">${S.settings.protoView==='new'?'Leaves the new-member view and brings back the sample family.':'Puts back the sample family and clears your changes.'}</span></button>`;
   document.documentElement.dataset.theme=th==='system'?'':th;
   if(th==='system')delete document.documentElement.dataset.theme;
   applyPrefs();
@@ -3472,8 +3472,8 @@ document.addEventListener('click',e=>{
       else{view='library';lib.tab='recs';lib.rv='from';render();window.scrollTo(0,0)}
       break}
     case 'dismiss':S.notifs=S.notifs.filter(n=>n.id!==a.dataset.id);save();renderHeader();document.getElementById('bellMenu').hidden=false;break;
-    case 'emptyDemo':{const keep=S.settings;S=seed();prepState();S.settings={...keep,gsHidden:false};S.copies=S.copies.filter(c=>c.owner!=='me');S.battles.forEach(b=>{delete b.readers.me;if(b.moderator==='me')b.moderator=null;if(b.winner==='me')delete b.winner});S.recsSent=[];S.upNext=[];S.books=[];S.sessions=[];S.challenges=[];S.trophies=[];S.activity=[];S.notifs=[];save();closeMenus();view='dashboard';render();toast('Showing the new-member view.');break}
-    case 'resetDemo':{const th=S.settings.theme;S=seed();prepState();S.settings.theme=th;save();closeMenus();view='dashboard';render();setTimeout(coverFill,500);toast('Sample data restored.');break}
+    case 'emptyDemo':{const keep=S.settings;S=seed();prepState();S.settings={...keep,gsHidden:false,protoView:'new'};S.copies=S.copies.filter(c=>c.owner!=='me');S.battles.forEach(b=>{delete b.readers.me;if(b.moderator==='me')b.moderator=null;if(b.winner==='me')delete b.winner});S.recsSent=[];S.upNext=[];S.books=[];S.sessions=[];S.challenges=[];S.trophies=[];S.activity=[];S.notifs=[];save();closeMenus();view='dashboard';render();toast('Showing the new-member view.');break}
+    case 'resetDemo':{const th=S.settings.theme;S=seed();prepState();S.settings.theme=th;S.settings.protoView='sample';save();closeMenus();view='dashboard';render();setTimeout(coverFill,500);toast('Sample data restored.');break}
     case 'soon':toast(`${a.dataset.what} comes with the Library.`);break;
   }
 });
