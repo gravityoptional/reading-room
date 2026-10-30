@@ -857,6 +857,11 @@ main section.card .card-h .ico{display:none}
 .notes-list{display:grid;gap:8px;margin-bottom:12px}
 .note-i{border-left:3px solid var(--purple);background:var(--surface-alt);border-radius:0 10px 10px 0;padding:8px 12px}
 .note-i p{margin:4px 0 0;white-space:pre-wrap}
+/* Text people type can be one long unbroken string; let it wrap inside its box instead of widening the page. */
+.note-i,.note-i p,.sess-note,.act-txt,.notif p,.rec,.fr-txt,.aw-t,.chc-t,.lc-t,.pick-t,.selc-t,.tn,.td,.bd-h h2,#chTitle,#chBody p,.b-row .small,.req-in .small,.toast,.st,.joined{overflow-wrap:anywhere;min-width:0}
+.hgrid>*,.dgrid>*,.ch-grid>*,.b-list>*,.sess,.sess-day{min-width:0}
+.up-pick,.up-pick .small,.up-pick b,.un-t,.un-a,.d-title,.mini-t,.bk-a,.pb-t,.paused *,.hero2 h1{overflow-wrap:anywhere;min-width:0}
+.cr-foot>.up-pick{max-width:240px}@media (max-width:720px){.cr-foot>.up-pick{max-width:none}}
 .note-h{display:flex;align-items:center;justify-content:space-between;gap:8px}.note-h svg.i{width:12px;height:12px;margin-right:4px;vertical-align:-1px}
 .gs{margin:22px 0 4px}
 .gs-list{list-style:none;margin:6px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}
