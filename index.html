@@ -775,6 +775,11 @@ main section.card .card-h .ico{display:none}
 .inv-t{color:var(--primary);font-weight:600}
 .aw-pre{display:flex;flex-wrap:wrap;gap:6px}
 .rec-box{margin-top:14px;padding:12px 14px;border-radius:12px;background:var(--primary-light);display:grid;gap:4px}
+.cmp{margin-top:4px;color:var(--text-2);display:flex;align-items:center;gap:3px}.cmp.up{color:var(--primary)}.cmp svg.i{width:12px;height:12px}
+.stat-link{border:0;background:none;padding:0;font:inherit;color:inherit;text-decoration:underline;text-decoration-color:color-mix(in srgb,currentColor 35%,transparent);text-underline-offset:4px;cursor:pointer}
+.stat-link:hover{color:var(--primary)}
+.rec-books{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+.rv-acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .b-confirm{margin-top:14px;padding:12px 14px;border:1px solid color-mix(in srgb,var(--red) 35%,var(--border));border-radius:12px;background:color-mix(in srgb,var(--red) 6%,var(--surface));display:grid;gap:10px}
 .b-confirm .acts{display:flex;flex-wrap:wrap;gap:8px}
 .btn-del{background:#B42318;color:#fff}.btn-del:hover{background:#912018}
@@ -1053,6 +1058,18 @@ if(!S.upNext){const pk=n=>S.books.find(b=>b.status==='want'&&b.title===n)?.id;S.
 S.notifs.forEach(n=>{if(!n.link){n.link=({n1:{type:'lib'},n2:{type:'ch',id:'f1'},n3:{type:'battle',id:'bb1'}})[n.id]||null;if(n.id==='n2')n.text='Keng started a group challenge: Family Reading Challenge.'}});
 if(!S.wantSeeded){S.wantSeeded=true;if(!S.books.some(b=>b.status==='want'))S.books.push(...seed().books.filter(b=>b.status==='want'))}
 function save(){try{diffEvents()}catch(e){}try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+/* Prototype tool: pretend other members did a few things, so Group Activity, reactions, and notifications can be tried without other accounts. */
+function simActivity(){
+  const ms=Object.keys(S.members),rnd=a=>a[Math.floor(Math.random()*a.length)],ts=S.titles.map(t=>t.title),now=Date.now();
+  const make=[w=>({kind:'finished',text:'finished',book:rnd(ts)}),w=>({kind:'started',text:'started',book:rnd(ts)}),w=>({kind:'goal',text:'met today’s reading goal'}),
+    w=>({kind:'streak',text:`reached a ${rnd([7,14,30])}-day reading streak`}),w=>({kind:'earned',text:'earned the badge',book:rnd(['On a Roll','Quick Read','First Goal Met','Comeback'])}),
+    w=>({kind:'library',text:'added a book to the group library:',book:rnd(ts)}),w=>({kind:'halfway',text:'reached the halfway point of',book:rnd(ts)})];
+  const n=3+Math.floor(Math.random()*3);
+  for(let i=0;i<n;i++){const who=rnd(ms),it=rnd(make)(who);S.activity.push({id:uid(),who,...it,ts:now-i*7*60000-Math.floor(Math.random()*60000),r:{}})}
+  const mine=S.activity.filter(a=>a.who==='me').sort((a,b)=>b.ts-a.ts)[0];let note='';
+  if(mine){const who=rnd(ms),[k,e]=rnd(REACTS);mine.r[who]=k;S.notifs.unshift({id:'n'+uid(),text:`${nameOf(who)} reacted ${e} to your update: ${mine.text}${mine.book?' '+mine.book:''}.`,ts:now,link:null});note=' A reaction to your update is in the bell.'}else note=S.settings.share?' Log some reading to get reactions to your own updates.':' Turn on Share My Activity in your account menu to get reactions to your own updates too.'
+  save();closeMenus();view='dashboard';render();toast(`Added ${n} sample activity items from your group.${note}`);
+}
 function post(kind,text,bk,extra,ch){if(!S.settings.share)return;S.activity.push({id:uid(),who:'me',kind,text,book:bk||undefined,extra:extra||undefined,ch:ch||undefined,ts:Date.now(),r:{}})}
 function evSnap(){
   const ach=achievements().filter(a=>a.earned).map(a=>a.name);
@@ -1402,7 +1419,18 @@ function calCard(){
 const MONF=['January','February','March','April','May','June','July','August','September','October','November','December'];
 let hist={m:today().slice(0,7)};
 function monthAdd(m,n){const [y,mo]=m.split('-').map(Number);const d=new Date(y,mo-1+n,1);return `${d.getFullYear()}-${pad(d.getMonth()+1)}`}
-function longestStreak(){const ds=S.sessions.map(x=>x.date).sort();if(!ds.length)return 0;const allow=S.settings.restDays??1,used={},end=today();let d=ds[0],best=0,run=0;while(d<=end){if(day(d).active){run++;best=Math.max(best,run)}else if(run>0&&(used[weekOf(d)]||0)<allow){used[weekOf(d)]=(used[weekOf(d)]||0)+1}else run=0;d=addDays(d,1)}return Math.max(best,streak())}
+function longestStreak(){return longestStreakRange().n}
+/* Longest streak with its first and last reading day; rest days inside a run don't break it. */
+function longestStreakRange(){const ds=S.sessions.map(x=>x.date).sort();if(!ds.length)return {n:0};const allow=S.settings.restDays??1,used={},end=today();let d=ds[0],best=0,run=0,st=null,last=null,bs=null,be=null;
+  while(d<=end){if(day(d).active){if(!run)st=d;run++;last=d;if(run>best){best=run;bs=st;be=last}}else if(run>0&&(used[weekOf(d)]||0)<allow){used[weekOf(d)]=(used[weekOf(d)]||0)+1}else run=0;d=addDays(d,1)}
+  return {n:Math.max(best,streak()),start:bs,end:be}}
+const fmtRange=(a,b)=>!a?'':a===b?fmtDateY(a):a.slice(0,4)===b.slice(0,4)?`${fmtDate(a)} – ${fmtDateY(b)}`:`${fmtDateY(a)} – ${fmtDateY(b)}`;
+/* This year's totals up to today's date, or the same stretch of last year, for comparison. */
+function yearTotals(y,upTo){
+  const inY=d=>d&&d.slice(0,4)===y&&d.slice(5)<=upTo,ss=S.sessions.filter(x=>inY(x.date));
+  return {fin:S.books.filter(b=>b.status==='finished'&&inY(b.finished)).length,uniq:new Set(ss.map(x=>book(x.bookId)?.titleId).filter(Boolean)).size,
+    min:ss.reduce((a,x)=>a+(x.minutes||0),0),pages:ss.reduce((a,x)=>a+(x.pages||0),0),any:ss.length>0||S.books.some(b=>b.finished&&b.finished.slice(0,4)===y)};
+}
 function records(){
   const fin=S.books.filter(b=>b.status==='finished');
   const longest=fin.filter(b=>b.total&&b.format!=='audio').sort((a,b)=>b.total-a.total)[0];
@@ -1416,15 +1444,25 @@ function records(){
     ['flame','Fastest Finish',fast?`${fast.d} day${fast.d===1?'':'s'}`:'—',fast?fast.b.title:'Needs a start and finish date',fast?.b.titleId],
     ['chart','Best Reading Pace',pace?`${Math.round(pace.p)} pages/hr`:'—',pace?`${ttl(pace.x)} · ${fmtDateY(pace.x.date)}`:'Log pages and minutes together',pace?book(pace.x.bookId)?.titleId:null],
     ['clock','Longest Session',ls?fmtMin(ls.minutes):'—',ls?`${ttl(ls)} · ${fmtDateY(ls.date)}`:'Log minutes to set this',ls?book(ls.bookId)?.titleId:null],
-    ['cal','Most Pages in a Day',bd&&bd[1]?`${bd[1].toLocaleString()} pages`:'—',bd&&bd[1]?fmtDateY(bd[0]):'Log pages to set this',null],
-    ['library','Most Books in a Year',by?`${by[1]} books`:'—',by?by[0]:'Finish a book to set this',null],
-    ['trophy','Longest Streak',`${longestStreak()} day${longestStreak()===1?'':'s'}`,'Rest days don’t break it',null]];
+    ['cal','Most Pages in a Day',bd&&bd[1]?`${bd[1].toLocaleString()} pages`:'—',bd&&bd[1]?fmtDateY(bd[0]):'Log pages to set this',null,
+      bd&&bd[1]?`<div class="xs muted">${fmtDateY(bd[0])}</div><div class="rec-books">${[...new Set(S.sessions.filter(x=>x.date===bd[0]&&x.pages).map(x=>book(x.bookId)?.titleId).filter(Boolean))].map(id=>`<button class="sess-b rec-s" data-act="openTitle" data-id="${id}">${esc(titleById(id)?.title||'')}</button>`).join('')}</div>`:null],
+    ['library','Most Books in a Year',by?`${by[1]} books`:'—',by?by[0]:'Finish a book to set this',null,
+      by?`<div class="xs muted">${by[0]}</div><button class="sess-b rec-s" data-act="goFinished" data-y="${by[0]}">See the ${by[1]} books</button>`:null],
+    (()=>{const L=longestStreakRange();return ['trophy','Longest Streak',`${L.n} day${L.n===1?'':'s'}`,'Rest days don’t break it',null,
+      L.start?`<div class="xs muted">${fmtRange(L.start,L.end)}</div><div class="xs muted">Rest days don’t break it</div>`:null]})()];
 }
 function historyView(){
   const y=today().slice(0,4),ys=S.sessions.filter(x=>x.date.slice(0,4)===y);
   const rec=ys.reduce((a,x)=>a+(x.minutes||0),0),est=ys.reduce((a,x)=>a+(!x.minutes&&x.est?x.est:0),0),pages=ys.reduce((a,x)=>a+(x.pages||0),0);
   const uniq=new Set(ys.map(x=>book(x.bookId)?.titleId)).size;
-  const stats=[['book',yearFinished(),'books finished'],['library',uniq,'different books read'],['clock',fmtMin(rec),est?`reading time (+~${fmtMin(est)} estimated)`:'reading time'],['chart',pages.toLocaleString(),'pages read'],['flame',streak(),'day streak now'],['trophy',longestStreak(),'longest streak (days)']];
+  const upTo=today().slice(5),ly=String(+y-1),cur=yearTotals(y,upTo),prev=yearTotals(ly,upTo),LS=longestStreakRange();
+  const cmp=(a,b,f)=>prev.any?`<div class="cmp xs ${a>b?'up':a<b?'down':''}">${a===b?'Same as':a>b?`${f(a-b)} more than`:`${f(b-a)} fewer than`} this time last year</div>`:'';
+  const stats=[['book',`<button class="stat-link" data-act="goFinished" data-y="${y}" aria-label="${yearFinished()} books finished. See them on the shelf">${yearFinished()}</button>`,'books finished',cmp(cur.fin,prev.fin,n=>n)],
+    ['library',uniq,'different books read',cmp(cur.uniq,prev.uniq,n=>n)],
+    ['clock',fmtMin(rec),est?`reading time (+~${fmtMin(est)} estimated)`:'reading time',cmp(cur.min,prev.min,fmtMin)],
+    ['chart',pages.toLocaleString(),'pages read',cmp(cur.pages,prev.pages,n=>n.toLocaleString())],
+    ['flame',streak(),'day streak now',''],
+    ['trophy',LS.n,'longest streak (days)',LS.start?`<div class="cmp xs">${fmtRange(LS.start,LS.end)}</div>`:'']];
   const m=hist.m,[Y,M]=m.split('-').map(Number),days=new Date(Y,M,0).getDate(),lead=(new Date(Y,M-1,1).getDay()+6)%7,t=today(),{rest}=streakInfo();
   let cells='<span class="cal-h">M</span><span class="cal-h">T</span><span class="cal-h">W</span><span class="cal-h">T</span><span class="cal-h">F</span><span class="cal-h">S</span><span class="cal-h">S</span>';
   for(let i=0;i<lead;i++)cells+='<span class="cal-d blank"></span>';
@@ -1444,15 +1482,15 @@ function historyView(){
   const rereads=rr.length?rr.map(([tid,v])=>{const tt=titleById(tid);return `<div class="rr"><button class="sess-b" data-act="openTitle" data-id="${tid}">${esc(tt.title)}</button>${[...v].sort((a,b)=>{const k=x=>x.started||x.finished||(['reading','paused','want'].includes(x.status)?'9999':'0000');return k(a).localeCompare(k(b))}).map((b,i)=>`<div class="small muted rr-row">Read-through ${i+1}: ${b.started?`started ${fmtDateY(b.started)}`:'start date unknown'}${b.finished?`, finished ${fmtDateY(b.finished)}`:''} <span class="st st-${b.status}">${STATUS[b.status]}</span></div>`).join('')}</div>`}).join('')
     :`<p class="small muted" style="margin:0">When you read a book again, each read-through appears here with its own dates.</p>`;
   return `<div class="hist"><div><h1 class="page-h">History</h1><p class="muted" style="margin:2px 0 0">Your reading over time. Only you can see this page.</p></div>
-  <section class="card"><div class="card-h"><span class="ico">${ic('chart')}</span><h2>This Year</h2></div><div class="stats hstats">${stats.map(([i,n,l])=>`<div class="stat ${i==='flame'?'o':''}">${ic(i)}<div class="n">${n}</div><div class="l">${l}</div></div>`).join('')}</div></section>
+  <section class="card"><div class="card-h"><span class="ico">${ic('chart')}</span><h2>This Year</h2></div><div class="stats hstats">${stats.map(([i,n,l,c])=>`<div class="stat ${i==='flame'?'o':''}">${ic(i)}<div class="n">${n}</div><div class="l">${l}</div>${c||''}</div>`).join('')}</div></section>
   <div class="hgrid"><section class="card"><div class="card-h"><span class="ico">${ic('cal')}</span><h2>${MONF[M-1]} ${Y}</h2><span class="cal-nav"><button class="icon-btn" data-act="histM" data-v="-1" aria-label="Previous month">${ic('chevL')}</button><button class="icon-btn" data-act="histM" data-v="1" aria-label="Next month" ${m>=t.slice(0,7)?'disabled':''}>${ic('chevR')}</button></span></div>
     <div class="cal">${cells}</div>
     <div class="cal-legend xs muted"><span><i class="lg met"></i>Goal met</span><span><i class="lg active"></i>Read</span><span><i class="lg rest"></i>Rest day</span></div>
     <div class="small muted" style="margin-top:10px">${mDays} day${mDays===1?'':'s'} read · ${fmtMin(mMin)}${mEst?` + ~${fmtMin(mEst)} estimated`:''} · ${mPages.toLocaleString()} pages</div></section>
   <section class="card"><div class="card-h"><span class="ico">${ic('book')}</span><h2>Reading Sessions</h2><span class="count">${MONF[M-1]}</span></div>${list?`<div class="sess-list">${list}</div>`:''}${list?'':`<p class="small muted" style="margin:0">No reading logged this month.</p>`}</section></div>
-  <section class="card"><div class="card-h"><span class="ico o">${ic('trophy')}</span><h2>Records</h2></div><div class="rec-grid">${records().map(([i,l,v,sub,tid])=>`<div class="rec-t">${ic(i)}<div class="rec-l">${l}</div><div class="rec-v">${v}</div>${tid?`<button class="sess-b rec-s" data-act="openTitle" data-id="${tid}">${esc(sub)}</button>`:`<div class="xs muted">${esc(sub)}</div>`}</div>`).join('')}</div></section>
+  <section class="card"><div class="card-h"><span class="ico o">${ic('trophy')}</span><h2>Records</h2></div><div class="rec-grid">${records().map(([i,l,v,sub,tid,html])=>`<div class="rec-t">${ic(i)}<div class="rec-l">${l}</div><div class="rec-v">${v}</div>${html?html:tid?`<button class="sess-b rec-s" data-act="openTitle" data-id="${tid}">${esc(sub)}</button>`:`<div class="xs muted">${esc(sub)}</div>`}</div>`).join('')}</div></section>
   <section class="card"><div class="card-h"><span class="ico">${ic('library')}</span><h2>Rereads</h2></div>${rereads}</section>
-  <p class="xs muted" style="text-align:center">Finished and Did Not Finish books are in Library → My Books.</p></div>`;
+  <p class="xs muted" style="text-align:center"><button class="link-btn sm" data-act="goMyBooks" data-v="finished">Finished</button> and <button class="link-btn sm" data-act="goMyBooks" data-v="dnf">Did Not Finish</button> books are in Library → My Books.</p></div>`;
 }
 
 /* ---------- library ---------- */
@@ -1544,6 +1582,11 @@ function fromMe(){
   const byT={};S.recsSent.forEach(r=>{(byT[r.titleId]=byT[r.titleId]||[]).push(r)});
   const ids=Object.keys(byT).sort((a,b)=>Math.max(...byT[b].map(x=>x.ts))-Math.max(...byT[a].map(x=>x.ts)));
   if(!ids.length)return `<div class="empty">${ic('send')}<h3>You Haven’t Recommended Any Books Yet</h3><p>Open any book and tap Recommend to suggest it to someone in your group.</p></div>`;
+  if(S.settings.libView==='shelf'){
+    const who={};S.recsSent.forEach(r=>{if(titleById(r.titleId))(who[r.to]=who[r.to]||new Set()).add(r.titleId)});
+    const sets=Object.keys(who).sort((a,b)=>nameOf(a).localeCompare(nameOf(b))).map(w=>[nameOf(w),[...who[w]].map(titleById)]);
+    return `<div class="lib-count"><span class="small muted">${ids.length} book${ids.length===1?'':'s'} recommended · grouped by who you recommended them to</span></div>`+shelfView([],sets);
+  }
   return `<div class="lib-count"><span class="small muted">${ids.length} book${ids.length===1?'':'s'} recommended</span></div><div class="from-list">${ids.map(id=>{const t=titleById(id);if(!t)return '';
     return `<div class="from card"><button class="lc-open from-b" data-act="openTitle" data-id="${id}">${libCover(t,56)}<span><span class="lc-t" style="display:block">${esc(t.title)}</span><span class="bk-a">${esc(t.author)}</span></span></button>
     <div class="from-rows">${byT[id].map(r=>{const vis=S.members[r.to]?.share!==false,st=vis?(r.status||'sent'):'sent';
@@ -1613,7 +1656,7 @@ function leanSpines(){
   const board=document.querySelector('.board');if(!board)return;
   const kids=[...board.children];
   kids.forEach(el=>{if(el.classList.contains('spine')){el.style.rotate='';el.style.translate='';el.style.transformOrigin=''}});
-  const bs=getComputedStyle(board),B=board.getBoundingClientRect(),wall=B.right-parseFloat(bs.borderRightWidth)-parseFloat(bs.paddingRight);
+  const bs=getComputedStyle(board),B=board.getBoundingClientRect(),wall=B.right-parseFloat(bs.borderRightWidth);
   const rows=[];let prevLeft=Infinity;
   kids.forEach(el=>{const r=el.getBoundingClientRect();if(!r.width)return;if(r.left<prevLeft-1)rows.push([]);rows[rows.length-1].push({el,r});prevLeft=r.left});
   const deg=Math.PI/180,isSpine=x=>x&&x.el.classList.contains('spine');
@@ -1665,13 +1708,14 @@ function shelfItems(ts){
   return out;
 }
 const plate=(id,label,n)=>`<span class="plate" id="${id}" role="heading" aria-level="3" aria-label="${esc(label)}, ${n} book${n===1?'':'s'}"><span class="bookend${/^.–.$/.test(label)||label.length<=4?'':' long'}" aria-hidden="true"><span class="be-l">${esc(label).replace('–','<i>–</i>')}</span><span class="be-orn"></span><span class="be-n">${n}</span></span></span>`;
-function shelfView(list){
+function shelfView(list,given){
   loadFont('Oswald:wght@500;600');
   if(!document.getElementById('gf-spine-italic')){const l=document.createElement('link');l.id='gf-spine-italic';l.rel='stylesheet';l.href='https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@1,8..60,600&display=swap';document.head.appendChild(l)}
   requestAnimationFrame(fitSpines);
   const g=lib.group,groups={};
   let sets;
-  if(PER[g])sets=periodGroups(list,g).map(([k,ts])=>[perLabel(g,k),ts]);
+  if(given)sets=given;
+  else if(PER[g])sets=periodGroups(list,g).map(([k,ts])=>[perLabel(g,k),ts]);
   else{
     const rng=k=>{const c=(k[0]||'#').toUpperCase();return c<='C'?'A–C':c<='F'?'D–F':c<='I'?'G–I':c<='L'?'J–L':c<='O'?'M–O':c<='R'?'P–R':c<='U'?'S–U':'V–Z'};
     list.forEach(t=>{const k=g==='status'?mbStatus(t):g==='genre'?(t.genre||'Other'):g==='author'?rng(lastName(t.author)):rng(sortKey(t.title));(groups[k]=groups[k]||[]).push(t)});
@@ -1702,7 +1746,7 @@ function libraryView(){
   <div class="lib-h"><div><h1 class="page-h">${lib.tab==='family'?`${esc(GN())} Library`:lib.tab==='mybooks'?'My Books':'Recommendations'}</h1><p class="muted" style="margin:4px 0 0">${lib.tab==='family'?`Books everyone in ${esc(GN())} can borrow and read.`:lib.tab==='mybooks'?'Every book connected to you, from To Read to Finished.':'Books suggested to you, and the ones you’ve passed along.'}</p></div><button class="btn btn-primary" data-act="addBook">${ic('plus')}Add a Book</button></div>
   <div class="tabs" role="tablist" aria-label="Library sections">${tabs.map(([k,l])=>`<button class="tab" role="tab" aria-selected="${lib.tab===k}" data-act="libTab" data-v="${k}">${l}${k==='recs'&&toMe?` <span class="tab-n">${toMe}</span>`:''}</button>`).join('')}</div>
   ${lib.tab==='mybooks'?mbChips():''}
-  ${lib.tab==='recs'?`<div class="rv-row"><div class="vseg" role="group" aria-label="Recommendations"><button aria-pressed="${lib.rv==='to'}" data-act="recView" data-v="to">To Me (${toMe})</button><button aria-pressed="${lib.rv==='from'}" data-act="recView" data-v="from">From Me (${fromN})</button></div><button class="btn btn-ghost" data-act="recPick">${ic('send')}Recommend a Book</button></div>`:''}
+  ${lib.tab==='recs'?`<div class="rv-row"><div class="vseg" role="group" aria-label="Recommendations"><button aria-pressed="${lib.rv==='to'}" data-act="recView" data-v="to">To Me (${toMe})</button><button aria-pressed="${lib.rv==='from'}" data-act="recView" data-v="from">From Me (${fromN})</button></div><span class="rv-acts">${lib.rv==='from'&&fromN?`<span class="vseg" role="group" aria-label="View"><button aria-pressed="${!shelf}" data-act="libView" data-v="grid">${ic('grid')}Grid</button><button aria-pressed="${shelf}" data-act="libView" data-v="shelf">${ic('shelf')}Shelf</button></span>`:''}<button class="btn btn-ghost" data-act="recPick">${ic('send')}Recommend a Book</button></span></div>`:''}
   ${tools?`<div class="lib-tools">
     <label class="search">${ic('search')}<input id="libQ" type="search" placeholder="Search by title or author" value="${esc(lib.q)}" aria-label="Search the library" autocomplete="off"></label>
     <button class="btn btn-ghost" data-act="libFilters" aria-expanded="${lib.open}" aria-controls="libFilters">${ic('filter')}Filters${n?` (${n})`:''}</button>
@@ -2285,13 +2329,15 @@ function trophyWall(){
 function challengesView(){
   const ORDK={active:0,up:1,done:2,ended:3};
   const sortC=list=>list.map(c=>({c,k:chStatus(c,chProg(c)).k})).sort((a,b)=>ORDK[a.k]-ORDK[b.k]).map(x=>x.c);
-  const mine=sortC(S.challenges.filter(isMine)),fam=sortC(S.challenges.filter(c=>c.mode!=='personal'&&canSeeCh(c)));
+  const vis=c=>showHiddenC||!hiddenC().includes(c.id),nHid=S.challenges.filter(c=>hiddenC().includes(c.id)).length;
+  const mine=sortC(S.challenges.filter(c=>isMine(c)&&vis(c))),fam=sortC(S.challenges.filter(c=>c.mode!=='personal'&&canSeeCh(c)&&vis(c)));
+  const hidLink=nHid?`<button class="link-btn sm b-hidden-t" data-act="chShowHidden" style="margin-top:12px">${showHiddenC?'Hide':'Show'} ${nHid} Hidden Challenge${nHid===1?'':'s'}</button>`:'';
   const earned=S.trophies.length+battleWins().length+achievements().filter(a=>a.earned).length;
   if(S.settings.solo&&chTab==='family')chTab='mine';
   const tabs=[['mine','My Challenges',mine.length],['family','Group Challenges',fam.length],['battle','Battle of the Books',S.battles.filter(b=>!hiddenB().includes(b.id)).length],['trophies','Trophy Wall',earned]].filter(x=>!(S.settings.solo&&x[0]==='family'));
   let body='';
-  if(chTab==='mine')body=mine.length?`<div class="ch-grid">${mine.map(chCard).join('')}</div>`:`<div class="empty">${ic('target')}<h3>No Challenges Yet</h3><p>Create a personal challenge or join one your group started.</p><button class="btn btn-primary" data-act="chNew">${ic('plus')}Create Challenge</button></div>`;
-  else if(chTab==='family')body=fam.length?`<div class="ch-grid">${fam.map(chCard).join('')}</div>`:`<div class="empty">${ic('users')}<h3>No Group Challenges Yet</h3><p>Start one and invite your group to join.</p><button class="btn btn-primary" data-act="chNew" data-mode="coop">${ic('plus')}Create Challenge</button></div>`;
+  if(chTab==='mine')body=mine.length?`<div class="ch-grid">${mine.map(chCard).join('')}</div>${hidLink}`:hidLink+`<div class="empty">${ic('target')}<h3>No Challenges Yet</h3><p>Create a personal challenge or join one your group started.</p><button class="btn btn-primary" data-act="chNew">${ic('plus')}Create Challenge</button></div>`;
+  else if(chTab==='family')body=fam.length?`<div class="ch-grid">${fam.map(chCard).join('')}</div>${hidLink}`:hidLink+`<div class="empty">${ic('users')}<h3>No Group Challenges Yet</h3><p>Start one and invite your group to join.</p><button class="btn btn-primary" data-act="chNew" data-mode="coop">${ic('plus')}Create Challenge</button></div>`;
   else if(chTab==='battle'){const order={active:0,upcoming:1,completed:2};const all=[...S.battles].sort((a,b)=>order[bStatus(a)]-order[bStatus(b)]||b.event.localeCompare(a.event)),nh=all.filter(b=>hiddenB().includes(b.id)).length,bs=showHiddenB?all:all.filter(b=>!hiddenB().includes(b.id));
     body=`<div class="tw-head"><span class="small muted">The battle happens in person. Reading Room keeps the shared list and everyone’s progress.</span><button class="btn btn-ghost" data-act="bNew">${ic('plus')}Start a Battle</button></div>${bs.length?`<div class="b-list">${bs.map(battleCard).join('')}</div>`:`<div class="empty">${ic('library')}<h3>No Battles Yet</h3><p>Start one to build a shared reading list.</p></div>`}${nh?`<button class="link-btn sm b-hidden-t" data-act="bShowHidden" style="margin-top:12px">${showHiddenB?'Hide':'Show'} ${nh} Hidden Battle${nh===1?'':'s'}</button>`:''}`}
   else body=trophyWall();
@@ -2300,7 +2346,10 @@ function challengesView(){
   <div style="margin-top:16px">${body}</div></div>`;
 }
 /* challenge detail */
-function openCh(id){chMode='ch';cv={id,all:false};renderCh();if(!chDlg.open)chDlg.showModal()}
+/* Group challenges work like battles: the starter can delete one only before it's completed or ended, after a confirmation naming who joined; finished ones stay as history and can be hidden from your own lists. */
+const hiddenC=()=>S.settings.hiddenCh||(S.settings.hiddenCh=[]);
+let showHiddenC=false;
+function openCh(id){chMode='ch';cv={id,all:false,del:false};renderCh();if(!chDlg.open)chDlg.showModal()}
 function renderCh(){
   const c=S.challenges.find(x=>x.id===cv.id);if(!c){chDlg.close();return}
   const p=chProg(c),st=chStatus(c,p),fam=c.mode!=='personal',joined=(c.participants||[]).includes('me'),creator=c.creator==='me',pc=p.t?Math.min(100,Math.round(p.v/p.t*100)):0;
@@ -2319,13 +2368,17 @@ function renderCh(){
   if(fam&&!joined&&st.k!=='ended'){const inv=c.inviteOnly&&(c.invited||[]).includes('me')&&!(c.declined||[]).includes('me');acts+=inv?`<div class="inv-box"><span class="small"><b>${esc(nameOf(c.creator))}</b> invited you to this challenge.</span><span class="inv-acts"><button class="btn btn-ghost" data-act="chDecline" data-id="${c.id}">Decline</button><button class="btn btn-primary" data-act="chJoin" data-id="${c.id}">${ic('check')}Accept</button></span></div>`:`<button class="btn btn-primary" data-act="chJoin" data-id="${c.id}">${ic('plus')}Join Challenge</button>`}
   if(fam&&joined)acts+=`<button class="btn btn-ghost" data-act="chLeave" data-id="${c.id}">Leave Challenge</button>`;
   if(creator&&st.k==='ended'&&c.mode==='personal')acts+=`<button class="btn btn-primary" data-act="chAgain" data-id="${c.id}">Try Again</button>`;
-  if(creator)acts+=`<button class="btn btn-ghost" data-act="chEdit" data-id="${c.id}">${ic('pencil')}Edit</button><button class="link-btn" data-act="chDel" data-id="${c.id}">Delete</button>`;
+  const finished=st.k==='done'||st.k==='ended';
+  if(creator)acts+=`<button class="btn btn-ghost" data-act="chEdit" data-id="${c.id}">${ic('pencil')}Edit</button>`+(!fam?`<button class="link-btn" data-act="chDel" data-id="${c.id}">Delete</button>`:!finished?`<button class="link-btn" data-act="chDelAsk" aria-expanded="${!!cv.del}">Delete</button>`:'');
+  if(fam&&finished)acts+=hiddenC().includes(c.id)?`<button class="link-btn" data-act="chHide" data-v="0">Show in My Lists</button>`:`<button class="link-btn" data-act="chHide" data-v="1">Hide from My Lists</button>`;
+  const others=(c.participants||[]).filter(w=>w!=='me').map(nameOf);
+  const confirmBox=cv.del&&fam&&!finished?`<div class="b-confirm" role="alert"><div class="small"><b>Delete ${esc(c.name)}?</b> ${others.length?`${esc(others.length>1?others.slice(0,-1).join(', ')+' and '+others.at(-1):others[0])} ${others.length>1?'have':'has'} joined, and the challenge will disappear for everyone.`:'No one else has joined yet.'} Reading already logged stays in everyone’s History.</div><div class="acts"><button class="btn btn-del" data-act="chDel" data-id="${c.id}">Delete Challenge</button><button class="btn btn-ghost" data-act="chDelAsk">Keep It</button></div></div>`:'';
   chBody.innerHTML=`<div class="dlg-h"><span class="chc-ic">${ic(CT[c.type].ic)}</span><div style="flex:1;min-width:0"><h2 id="chTitle">${esc(c.name)}</h2><div class="xs muted">${MODE_L[c.mode]} · ${CT[c.type].l}${fam?` · Started by ${esc(nameOf(c.creator))}`:''}</div><div class="xs muted">${dateRange(c)} · ${st.txt}</div></div><button type="button" class="icon-btn x" data-act="closeCh" aria-label="Close">${ic('x')}</button></div>
   ${c.desc?`<p class="small" style="margin:0 0 10px">${esc(c.desc)}</p>`:''}
   <div class="bar" style="height:10px"><span style="width:${pc}%"></span></div><div class="chc-row"><span class="small">${p.label}</span>${c.mode==='comp'?'':`<span class="small muted">${pc}%</span>`}</div>
   <div class="stats ch-stats">${stats.map(([n,l])=>`<div class="stat"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('')}</div>
   ${sec?`<div style="margin-top:14px">${sec}</div>`:''}
-  <div class="bd-acts" style="margin-top:16px">${acts}</div>`;
+  <div class="bd-acts" style="margin-top:16px">${acts}</div>${confirmBox}`;
 }
 const KIND_L={books:'books',sessions:'reading sessions',days:'reading days'};
 function ruleText(c){
@@ -2472,7 +2525,7 @@ function openBForm(b){chMode='bform';const ed=!!b;chBody.innerHTML=`<div class="
   <div class="err" id="bfErr" role="alert"></div><div class="dlg-f"><button class="btn btn-ghost" data-act="${ed?'bEditCancel':'closeCh'}">Cancel</button><button class="btn btn-primary" data-act="${ed?'bSave':'bCreate'}">${ed?'Save Changes':'Start Battle'}</button></div></div>`;
   if(!chDlg.open)chDlg.showModal();setTimeout(()=>document.getElementById('bfName')?.focus(),30)}
 function openAwardForm(){chMode='award';chBody.innerHTML=`<div class="dlg-h"><h2 id="chTitle" style="flex:1">Give an Award</h2><button type="button" class="icon-btn x" data-act="closeCh" aria-label="Close">${ic('x')}</button></div>
-  <div class="form"><p class="small muted" style="margin:0">For accomplishments outside the app, like a school reading competition or a Battle of the Books win.</p><div class="chips aw-pre">${['Most Improved','Great Reading Partner','Kept Going','Battle Champion'].map(n=>`<button type="button" class="tab sm" data-act="awPreset" data-v="${n}">${n}</button>`).join('')}</div><label class="f">Award Name<input class="inp" id="awName" maxlength="80" autocomplete="off"></label>
+  <div class="form"><p class="small muted" style="margin:0">For accomplishments outside the app, like a school reading competition or a Battle of the Books win.</p><div class="chips aw-pre">${['Most Improved','Great Reading Partner','Kept Going','Battle Champion','Reader of the Month','Read-Aloud Star','Big Book Finisher','Great Recommendation','Library Helper'].map(n=>`<button type="button" class="tab sm" data-act="awPreset" data-v="${n}">${n}</button>`).join('')}</div><label class="f">Award Name<input class="inp" id="awName" maxlength="80" autocomplete="off"></label>
   <label class="f">For<select class="inp" id="awTo"><option value="me">Me</option>${Object.entries(S.members).map(([k,m])=>`<option value="${k}">${esc(m.name)}</option>`).join('')}</select></label>
   <label class="f"><span>Note <span class="sub">(optional)</span></span><input class="inp" id="awNote" maxlength="120" autocomplete="off"></label>
   <div class="err" id="awErr" role="alert"></div><div class="dlg-f"><button class="btn btn-ghost" data-act="closeCh">Cancel</button><button class="btn btn-primary" data-act="awSave">Give Award</button></div></div>`;
@@ -2542,6 +2595,7 @@ function renderHeader(){
     <div class="row"><span class="small">Dashboard Photo</span><span><button class="link-btn sm" data-act="heroPhoto">${heroPhoto()?'Change':'Add'}</button>${heroPhoto()?` <button class="link-btn sm" data-act="heroRemove">Remove</button>`:''}</span></div>
     <hr><div class="xs muted" style="padding:2px 10px">Prototype Tools</div>
     <button class="link" data-act="emptyDemo">Show New-Member (Empty) View</button>
+    <button class="link" data-act="simActivity">Add Sample Group Activity</button>
     <button class="link" data-act="resetDemo">Restore Sample Data</button>`;
   document.documentElement.dataset.theme=th==='system'?'':th;
   if(th==='system')delete document.documentElement.dataset.theme;
@@ -2556,6 +2610,7 @@ function openLog(bookId,focus,preMin){
   let b=bookId?book(bookId):null;
   if(!b&&focus==='audio'){b=list.find(x=>x.format==='audio');if(!b){toast('You have no audiobooks in progress.');return}}
   if(!b)b=currentSel()||list[0];
+  logForm.dataset.focus=focus||'';
   drawLog(b,focus,preMin);
   logDlg.showModal();
   const f=focus==='minutes'?'minutes':'end';
@@ -2564,6 +2619,9 @@ function openLog(bookId,focus,preMin){
 let pendingNew=null;
 const findB=id=>book(id)||(pendingNew&&pendingNew.id===id?pendingNew:null);
 function drawLog(b,focus,preMin){
+  /* Log Pages marks Minutes optional, Log Time marks the ending page optional; otherwise the goal type decides, and Both marks neither. */
+  focus=focus||logForm.dataset.focus||'';
+  const gt=S.settings.goalType,optEnd=focus==='minutes'||(!focus&&gt==='minutes'),optMin=focus==='end'||focus==='audio'||(!focus&&gt==='pages');
   const list0=S.books.filter(x=>x.status==='reading'||x.status==='paused');
   const list=list0.includes(b)?list0:[b,...list0];
   const isNew=!list0.includes(b);
@@ -2580,8 +2638,8 @@ function drawLog(b,focus,preMin){
     <div class="section-t">${audio?'Listening Progress':'Reading Progress'}</div>
     <div class="f3">
       <label class="f">${audio?'Start Position':'Starting Page'}<input class="inp" name="start" inputmode="${audio?'text':'numeric'}" value="${audio?fmtPos(b.pos):b.pos}" placeholder="${audio?'h:mm':''}"></label>
-      <label class="f">${audio?'End Position':'Ending Page'}<input class="inp" name="end" inputmode="${audio?'text':'numeric'}" placeholder="${audio?'h:mm':'Page'}"></label>
-      <label class="f"><span>Minutes <span class="sub">(optional)</span></span><input class="inp" name="minutes" inputmode="numeric" value="${preMin||''}" placeholder="${audio?'Time spent':'Minutes'}"></label>
+      <label class="f"><span>${audio?'End Position':'Ending Page'}${optEnd?' <span class="sub">(optional)</span>':''}</span><input class="inp" name="end" inputmode="${audio?'text':'numeric'}" placeholder="${audio?'h:mm':'Page'}"></label>
+      <label class="f"><span>Minutes${optMin?' <span class="sub">(optional)</span>':''}</span><input class="inp" name="minutes" inputmode="numeric" value="${preMin||''}" placeholder="${audio?'Time spent':'Minutes'}"></label>
     </div>
     <div class="calc" id="calc"></div>
     <div class="xs muted" style="margin-top:-8px">${audio?`Total length ${fmtPos(b.total)}. Enter positions as h:mm. Add minutes for the time you actually spent listening; otherwise the change in position counts as estimated time.`:(isNew?`New book: the starting page is 0, so reading pages 1–20 counts as 20 pages. Saving starts the book even if you don’t log pages yet.`:`The starting page is where you left off. Enter pages, minutes, or both.`)}</div>
@@ -2899,7 +2957,10 @@ document.addEventListener('click',e=>{
     case 'chLog':{chDlg.close();const c=currentSel();if(c)openLog(c.id);else{drawNew();logDlg.showModal()}break}
     case 'chJoin':{const c=S.challenges.find(x=>x.id===a.dataset.id);if(!c.participants.includes('me'))c.participants.push('me');if(S.settings.share)S.activity.push({id:uid(),who:'me',kind:'challenge',text:(c.inviteOnly&&(c.invited||[]).includes('me'))?'accepted a challenge:':'joined',book:c.name,ch:c.id,ts:Date.now(),r:{}});save();if(chDlg.open&&chMode==='ch')renderCh();else{const y=window.scrollY;render();window.scrollTo(0,y)}toast(`Joined ${c.name}.`);break}
     case 'chLeave':{const snap=snapshot(),c=S.challenges.find(x=>x.id===a.dataset.id);c.participants=c.participants.filter(w=>w!=='me');save();renderCh();toast(`Left ${c.name}.`,restoreTo(snap));break}
-    case 'chDel':{const snap=snapshot(),c=S.challenges.find(x=>x.id===a.dataset.id);S.challenges=S.challenges.filter(x=>x!==c);save();chDlg.close();toast(`Deleted ${c.name}.`,restoreTo(snap));break}
+    case 'chDelAsk':cv.del=!cv.del;renderCh();break;
+    case 'chHide':{const c=S.challenges.find(x=>x.id===cv.id),h=hiddenC();if(a.dataset.v==='1'){if(!h.includes(c.id))h.push(c.id)}else S.settings.hiddenCh=h.filter(x=>x!==c.id);save();renderCh();render();toast(a.dataset.v==='1'?`Hid ${c.name} from your lists. Its trophies stay on the Trophy Wall.`:`${c.name} is back in your lists.`);break}
+    case 'chShowHidden':showHiddenC=!showHiddenC;render();break;
+    case 'chDel':{const snap=snapshot(),c=S.challenges.find(x=>x.id===a.dataset.id);if(c.mode!=='personal'){const k=chStatus(c,chProg(c)).k;if(c.creator!=='me'||k==='done'||k==='ended')break;S.notifs=S.notifs.filter(n=>!(n.link&&n.link.type==='ch'&&n.link.id===c.id))}S.challenges=S.challenges.filter(x=>x!==c);save();chDlg.close();toast(`Deleted ${c.name}.`,restoreTo(snap));break}
     case 'chNew':openChForm(null,a.dataset.mode);break;
     case 'chEdit':openChForm(a.dataset.id);break;
     case 'cfMode':captureCf();cf.mode=a.dataset.v;renderChForm();break;
@@ -2923,6 +2984,10 @@ document.addEventListener('click',e=>{
     case 'bDelGo':{const b=S.battles.find(x=>x.id===bv.id);if(!b||bCreator(b)!=='me'||bStatus(b)==='completed')break;const snap=snapshot();
       S.battles=S.battles.filter(x=>x!==b);S.notifs=S.notifs.filter(n=>!(n.link&&n.link.type==='battle'&&n.link.id===b.id));save();chDlg.close();render();toast(`Deleted ${b.name}.`,restoreTo(snap));break}
     case 'bHide':{const b=S.battles.find(x=>x.id===bv.id),h=hiddenB();if(a.dataset.v==='1'){if(!h.includes(b.id))h.push(b.id)}else S.settings.hiddenBattles=h.filter(x=>x!==b.id);save();renderBattle();render();toast(a.dataset.v==='1'?`Hid ${b.name} from your list. Its trophies stay on the Trophy Wall.`:`${b.name} is back in your list.`);break}
+    case 'goMyBooks':view='library';lib.tab='mybooks';lib.mb=a.dataset.v;render();window.scrollTo(0,0);break;
+    case 'goFinished':{const y=a.dataset.y;view='library';lib.tab='mybooks';lib.mb='finished';lib.q='';S.settings.libView='shelf';lib.group='year';save();render();window.scrollTo(0,0);
+      requestAnimationFrame(()=>document.querySelector(`.plate[aria-label^="${y}"]`)?.scrollIntoView({block:'start'}));break}
+    case 'simActivity':simActivity();break;
     case 'bShowHidden':showHiddenB=!showHiddenB;render();break;
     case 'bSave':{const b=S.battles.find(x=>x.id===bv.id);if(!b||bCreator(b)!=='me')break;const v=id=>document.getElementById(id).value.trim(),er=m=>document.getElementById('bfErr').textContent=m;
       if(!v('bfName'))return er('Give the battle a name.');if(!v('bfStart')||!v('bfEvent'))return er('Choose when reading starts and the battle date.');if(v('bfEvent')<v('bfStart'))return er('The battle date must be after reading starts.');
