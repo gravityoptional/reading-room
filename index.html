@@ -829,8 +829,9 @@ main section.card .card-h .ico{display:none}
 .tour-act{display:grid;gap:10px;border-top:1px solid var(--border);padding-top:10px}
 .tour-act .row{display:flex;gap:12px;align-items:center;justify-content:space-between}
 .tour-books{display:grid;gap:6px}.tour-btns{display:flex;gap:8px;flex-wrap:wrap}
-.tour-offer{position:fixed;right:16px;bottom:16px;z-index:55;display:grid;gap:10px;max-width:320px;padding:14px 16px;box-shadow:0 12px 32px rgba(15,23,42,.18)}
-@media (max-width:720px){.tour-offer{left:12px;right:12px;bottom:calc(76px + env(safe-area-inset-bottom,0px));max-width:none}}
+/* Desktop and tablet: just below the profile controls at the top right. Phones: above the bottom tab bar. */
+.tour-offer{position:fixed;right:max(16px,calc(50% - 620px + 20px));top:calc(env(safe-area-inset-top,0px) + 76px);z-index:55;display:grid;gap:10px;max-width:320px;padding:14px 16px;box-shadow:0 12px 32px rgba(15,23,42,.18)}
+@media (max-width:720px){.tour-offer{left:12px;right:12px;top:auto;bottom:calc(76px + env(safe-area-inset-bottom,0px));max-width:none}}
 @media (prefers-reduced-motion:reduce){.tour-spot,.tour-card{transition:none}}
 .sel-head{margin:4px 0 12px}
 .sel-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px;padding-bottom:80px}
