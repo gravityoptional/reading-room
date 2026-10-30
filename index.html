@@ -1137,9 +1137,9 @@ function save(){try{diffEvents()}catch(e){}try{localStorage.setItem(KEY,JSON.str
 /* Prototype tool: pretend other members did a few things, so Group Activity, reactions, and notifications can be tried without other accounts. */
 /* Prototype tools for Request to Borrow, since the other members are sample people. */
 function simBorrowIn(){
-  const mine=S.copies.filter(c=>c.owner==='me'&&c.format==='physical'&&!c.loanTo&&!holdOn(c)&&!c.private);
+  const mine=S.copies.filter(c=>c.owner==='me'&&c.format==='physical'&&!c.private);
   if(!mine.length){closeMenus();toast('You have no shared physical copies that are available to request.');return}
-  const c=mine[Math.floor(Math.random()*mine.length)],ms=Object.keys(S.members),who=ms[Math.floor(Math.random()*ms.length)],t=titleById(c.titleId);
+  const busy=mine.filter(c=>!copyFree(c)||lineFor(c).length),c=(busy.length&&Math.random()<.5?busy:mine)[Math.floor(Math.random()*(busy.length&&Math.random()<.5?busy.length:mine.length))]||mine[0],ms=Object.keys(S.members).filter(w=>c.loanTo!==w&&!activeReqs().some(r=>r.copyId===c.id&&r.from===w)),who=ms[Math.floor(Math.random()*ms.length)]||Object.keys(S.members)[0],t=titleById(c.titleId);
   const r={id:'q'+uid(),copyId:c.id,titleId:c.titleId,from:who,to:'me',status:'pending',ts:Date.now()};S.loanReqs.push(r);
   S.notifs.unshift({id:'n'+uid(),text:`${nameOf(who)} asked to borrow ${t.title}.`,ts:Date.now(),link:{type:'title',id:c.titleId},req:r.id});
   save();closeMenus();render();toast(`${nameOf(who)} asked to borrow ${t.title}. Approve or decline from the bell or the book.`);
@@ -1463,8 +1463,8 @@ function privacyExtra(){
 function tourSteps(mode){
   const solo=!!S.settings.solo,admin=!!S.me.admin,G=esc(GN());
   const noBooks=()=>!S.books.some(b=>b.status==='reading'||b.status==='paused');
-  const finish={id:'finish',page:'history',sel:'[data-tour=account]',title:'You’re Ready',
-    text:()=>`Find this tour anytime under Take the Tour in your account menu.${solo?' Reading with family or a book club? You can join or start a group anytime.':''}`,
+  const finish={id:'finish',page:'history',sel:'[data-tour=account]',title:'You’re Ready!',
+    text:()=>`Every page counts. A few minutes today is how a reading habit starts, and Reading Room will keep track of the rest. Find this tour anytime under Take the Tour in your account menu.${solo?' Reading with family or a book club? You can join or start a group anytime.':''}`,
     final:()=>S.books.length?{act:'tourLog',label:'Log Your Reading'}:{act:'tourFind',label:'Add Your First Book'}};
   if(mode==='group')return [
     {id:'gwelcome',page:'dashboard',title:`Welcome to ${G}`,text:()=>'You’re reading with a group now. Here’s what’s new, in a few quick stops. Your reading stays yours and counts in every group you join.'},
@@ -1475,13 +1475,13 @@ function tourSteps(mode){
   return [
     {id:'welcome',page:'dashboard',title:solo?'Welcome to Reading Room':`Welcome to ${G}`,text:()=>`A quick look around, about a minute. Leave anytime with Skip or Esc.`},
     {id:'privacy',cond:!solo,page:'dashboard',sel:'[data-tour=account]',title:'First, Your Privacy',text:()=>'You’re joining people who can see each other’s reading. New accounts start private; choose what your group sees. You can change this anytime in your account menu.',extra:privacyExtra},
-    {id:'goal',page:'dashboard',sel:'[data-tour=goal]',title:'Today’s Goal and Streak',text:()=>'The ring fills as you read toward today’s goal. Your streak counts reading days, and rest days keep it going.'},
+    {id:'goal',page:'dashboard',sel:'[data-tour=goal]',title:'Today’s Goal and Streak',text:()=>'The ring fills as you read toward today’s goal. Your streak counts reading days, and rest days keep it going. Use Edit Goal to choose minutes, pages, or both, and how many rest days you get each week.'},
     {id:'log',page:'dashboard',sel:'[data-tour=log]',title:'Log Reading and the Timer',text:()=>'Log Reading records pages or minutes in a few seconds. Start Timer counts the minutes while you read, then logs them for you.'},
     {id:'current',page:'dashboard',sel:'[data-tour=current]',title:'Currently Reading',text:()=>noBooks()?'Books you’re reading will show up here, each with its progress, finish estimate, and its own Log Reading button.':'Each book you’re reading shows its progress, finish estimate, and its own Log Reading button.'},
-    {id:'queue',page:'dashboard',sel:'[data-tour=queue]',title:'Reading Queue',text:()=>upList().length?'Your next few books, in order. The first one also appears in Currently Reading, so you always know what’s next.':'Your next few books will line up here, in order. Add them from your To Read list, and the first one appears in Currently Reading so you always know what’s next.'},
+    {id:'queue',page:'dashboard',sel:'[data-tour=queue]',title:'Reading Queue',text:()=>`${upList().length?'Your next few books, in order.':'Your next few books will line up here, in order.'} Add up to 10 from your To Read list with Add to Reading Queue, and use the arrows there to put them in order. The first one also appears in Currently Reading, so you always know what’s next.`},
     {id:'activity',cond:!solo,page:'dashboard',sel:'[data-tour=activity]',title:'Group Activity',text:()=>'What your group is reading and finishing. Cheer people on with a reaction. Only members who share appear here.'},
-    {id:'library',page:'library',sel:'[data-tour=library]',title:'Your Library',text:()=>`${solo?'My Books holds every book connected to you, from To Read to Finished.':`My Books holds every book connected to you, and the ${G} Library shows what everyone owns.`} Add a Book searches by title, author, or ISBN.${S.books.length?'':' Books you add will show up here.'}`},
-    {id:'challenges',page:'challenges',sel:'[data-tour=challenge-tabs]',title:'Challenges and Trophies',text:()=>solo?'Set personal challenges, like 12 books this year. Trophies you earn collect on the Trophy Wall.':'Join group challenges, organize a Battle of the Books, or set personal goals. Trophies you earn collect on the Trophy Wall.'},
+    {id:'library',page:'library',sel:'[data-tour=library]',title:'Your Library',text:()=>`${solo?'My Books holds every book connected to you, from To Read to Finished.':`My Books holds every book connected to you, and the ${G} Library shows what everyone owns.`} Add a Book searches by title, author, or ISBN.${S.books.length?'':' Books you add will show up here.'} Tap any book, wherever you see it, to open it: from there you can start or log reading, change its status, rate it, add notes, add your copy${solo?', or edit its details':', edit its details, recommend it to someone, or ask to borrow it'}.`},
+    {id:'challenges',page:'challenges',sel:'[data-tour=challenge-tabs]',title:'Challenges and Trophies',text:()=>solo?'Set personal challenges, like 12 books this year. Trophies you earn collect on the Trophy Wall.':'Join group challenges, organize a Battle of the Books, or set personal goals. Trophies you earn collect on the Trophy Wall, where you can also give awards to each other, like Read-Aloud Star or Most Improved.'},
     {id:'admin',cond:!solo&&admin,page:'challenges',sel:'[data-tour=ch-battle]',title:'For Group Admins',text:()=>'As a group admin, you can correct shared book details with Edit Book and record Battle of the Books winners.'},
     {id:'history',page:'history',sel:'[data-tour=calendar]',title:'History',text:()=>S.sessions.length?'Your reading over time. Darker days mean more reading; tap a day to see what you read. Records and yearly totals are below.':'Each day you read will fill in here, darker for more reading. Tap a day to see what you read; records and yearly totals are below.'},
     finish].filter(x=>x.cond!==false);
@@ -1766,12 +1766,15 @@ function myReading(tid){const rs=S.books.filter(b=>b.titleId===tid);return rs.fi
 const activeReqs=()=>(S.loanReqs||[]).filter(r=>r.status==='pending'||r.status==='approved');
 const holdOn=c=>activeReqs().find(r=>r.copyId===c.id&&r.status==='approved');
 const myReqFor=c=>activeReqs().find(r=>r.copyId===c.id&&r.from==='me');
+/* Waiting line: pending requests for a copy, oldest first. A copy is free to hand out when it isn't on loan or on hold. */
+const lineFor=c=>activeReqs().filter(r=>r.copyId===c.id&&r.status==='pending').sort((a,b)=>a.ts-b.ts);
+const copyFree=c=>!c.loanTo&&!holdOn(c);
 const reqNote=(to,text,link)=>{S.notifs.unshift({id:'n'+uid(),text,ts:Date.now(),link:link||null,to})};
 function lendCopy(c,who){
   c.loanTo=who;S.loanCount=(S.loanCount||0)+1;
   const t=titleById(c.titleId)?.title||'a book';
   if(c.owner==='me')post('loan',`loaned ${t} to ${nameOf(who)}`);
-  activeReqs().filter(r=>r.copyId===c.id).forEach(r=>{if(r.from===who)r.status='loaned';else{r.status='declined';if(r.from==='me')reqNote('me',`${nameOf(c.owner)} lent ${t} to someone else, so your request was declined.`,{type:'title',id:c.titleId})}});
+  activeReqs().filter(r=>r.copyId===c.id&&r.from===who).forEach(r=>{r.status='loaned'});
 }
 function avail(tid){const cs=copiesOf(tid),ph=cs.filter(c=>c.format==='physical');if(!cs.length)return null;if(!ph.length)return {t:'Digital copy',cls:''};if(ph.some(c=>!c.loanTo&&!holdOn(c)))return {t:'Available',cls:'ok'};const h=ph.find(c=>!c.loanTo&&holdOn(c));const who=w=>w==='me'?'you':nameOf(w);if(h)return {t:`On hold for ${who(holdOn(h).from)}`,cls:'loan'};return {t:`On loan to ${who(ph[0].loanTo)}`,cls:'loan'}}
 function avStack(tid){const owners=[...new Set(copiesOf(tid).map(c=>c.owner))];if(!owners.length)return '';
@@ -2059,19 +2062,19 @@ function copyRow(c){
   const mine=c.owner==='me',ph=c.format==='physical';
   let act='';
   const hold=ph&&!c.loanTo?holdOn(c):null,mr=!mine&&ph?myReqFor(c):null;
-  const incoming=mine&&ph&&!c.loanTo&&!hold?activeReqs().filter(r=>r.copyId===c.id&&r.status==='pending'):[];
+  const incoming=mine&&ph?lineFor(c):[],free=copyFree(c);
   if(mine&&ph&&hold)act=`<button class="btn btn-primary sm" data-act="reqHandOver" data-id="${hold.id}">Mark Loaned</button><button class="link-btn sm" data-act="reqCancelHold" data-id="${hold.id}">Cancel Hold</button>`;
   else if(!mine&&ph){
     if(c.loanTo==='me')act='';
-    else if(mr)act=`<span class="req-st ${mr.status==='approved'?'ok':''}">${mr.status==='approved'?`Approved — awaiting pickup from ${esc(nameOf(c.owner))}`:'Request sent'}</span><button class="link-btn sm" data-act="reqCancel" data-id="${mr.id}">Cancel Request</button>`;
-    else if(!c.loanTo&&!hold&&!S.settings.solo)act=`<button class="btn btn-primary sm" data-act="reqBorrow" data-id="${c.id}">Request to Borrow</button>`;
+    else if(mr){const pos=lineFor(c).indexOf(mr)+1+(copyFree(c)?0:1);act=`<span class="req-st ${mr.status==='approved'?'ok':''}">${mr.status==='approved'?`Approved — awaiting pickup from ${esc(nameOf(c.owner))}`:pos>1?`Request sent · you’re ${ordinal(pos)} in line`:'Request sent'}</span><button class="link-btn sm" data-act="reqCancel" data-id="${mr.id}">Cancel Request</button>`}
+    else if(!S.settings.solo)act=`<button class="btn ${copyFree(c)?'btn-primary':'btn-ghost'} sm" data-act="reqBorrow" data-id="${c.id}">${copyFree(c)?'Request to Borrow':'Join the Waiting Line'}</button>`;
   }
   else if(mine&&ph)act=c.loanTo?`<button class="btn btn-ghost sm" data-act="cpReturn" data-id="${c.id}">Mark Returned</button>`
     :bd.lend===c.id?`<span class="lend"><select class="inp sm" id="lendTo" aria-label="Lend to">${Object.entries(S.members).map(([k,m])=>`<option value="${k}">${esc(m.name)}</option>`).join('')}</select><button class="btn btn-primary sm" data-act="cpLendGo" data-id="${c.id}">Lend</button><button class="link-btn sm" data-act="cpLend" data-id="">Cancel</button></span>`
     :`<button class="btn btn-ghost sm" data-act="cpLend" data-id="${c.id}">Mark Loaned</button>`;
   return `<div class="copy"><span class="avatar" style="background:${colorOf(c.owner)}">${initOf(c.owner)}</span><div class="cp-main"><div class="small"><b>${FMT[c.format]}</b>${c.where?` · ${esc(c.where)}`:''}</div><div class="xs muted">Owned by ${nameOf(c.owner)}</div></div>
   <span class="avail ${ph?(c.loanTo||hold?'loan':'ok'):''}">${ph?(c.loanTo?(c.loanTo==='me'?'On loan to you':`On loan to ${nameOf(c.loanTo)}`):hold?(hold.from==='me'?'On hold for you':`On hold for ${nameOf(hold.from)} — awaiting pickup`):'Available'):'Digital'}</span>
-  <span class="cp-act">${act}${mine&&!S.settings.solo?`<button class="link-btn sm cp-share" data-act="cpShare" data-id="${c.id}" aria-pressed="${!c.private}" title="Show this copy in the ${esc(GN())} Library">${c.private?`${ic('lock')}Only Me`:`${ic('users')}Shared`}</button>`:''}${mine?`<button class="link-btn sm" data-act="cpRemove" data-id="${c.id}">Remove</button>`:''}</span></div>${incoming.map(r=>`<div class="req-in"><span class="small"><b>${esc(nameOf(r.from))}</b> asked to borrow this ${ago(r.ts)}.</span><span class="req-btns"><button class="btn btn-primary sm" data-act="reqApprove" data-id="${r.id}">Approve</button><button class="btn btn-ghost sm" data-act="reqDecline" data-id="${r.id}">Decline</button></span></div>`).join('')}`;
+  <span class="cp-act">${act}${mine&&!S.settings.solo?`<button class="link-btn sm cp-share" data-act="cpShare" data-id="${c.id}" aria-pressed="${!c.private}" title="Show this copy in the ${esc(GN())} Library">${c.private?`${ic('lock')}Only Me`:`${ic('users')}Shared`}</button>`:''}${mine?`<button class="link-btn sm" data-act="cpRemove" data-id="${c.id}">Remove</button>`:''}</span></div>${incoming.map((r,i)=>`<div class="req-in"><span class="small">${free?'':`<span class="xs muted">${ordinal(i+1)} in line · </span>`}<b>${esc(nameOf(r.from))}</b> asked to borrow this ${ago(r.ts)}.</span><span class="req-btns">${free?`<button class="btn btn-primary sm" data-act="reqApprove" data-id="${r.id}">Approve</button>`:''}<button class="btn btn-ghost sm" data-act="reqDecline" data-id="${r.id}">Decline</button></span></div>`).join('')}`;
 }
 function renderBD(){
   const t=titleById(bd.id);if(!t){bookDlg.close();return}
@@ -2887,7 +2890,8 @@ function renderHeader(){
   document.getElementById('meAvatar').style.background=S.me.color;
   document.getElementById('meName').textContent=S.me.name;
   const bc=document.getElementById('bellCount');const unread=S.notifs.filter(n=>!n.read).length;bc.textContent=unread;bc.hidden=!unread;
-  document.getElementById('bellMenu').innerHTML=`<h3>Notifications</h3>${S.notifs.length?S.notifs.map(n=>`<div class="notif ${n.read?'read':''}"><button class="notif-go" ${n.link?`data-act="notifGo" data-id="${n.id}"`:'disabled'}><p>${esc(n.text)}</p><span class="xs muted">${ago(n.ts)}${n.link?' · Open':''}</span></button><button class="icon-btn x" data-act="dismiss" data-id="${n.id}" aria-label="Dismiss">${ic('x')}</button>${n.req&&(S.loanReqs||[]).find(r=>r.id===n.req)?.status==='pending'?`<div class="notif-req req-btns"><button class="btn btn-primary sm" data-act="reqApprove" data-id="${n.req}">Approve</button><button class="btn btn-ghost sm" data-act="reqDecline" data-id="${n.req}">Decline</button></div>`:''}</div>`).join(''):'<p class="muted small" style="padding:4px 10px 10px;margin:0">You’re all caught up.</p>'}`;
+  document.getElementById('bellMenu').innerHTML=`<h3>Notifications</h3>${S.notifs.length?S.notifs.map(n=>`<div class="notif ${n.read?'read':''}"><button class="notif-go" ${n.link?`data-act="notifGo" data-id="${n.id}"`:'disabled'}><p>${esc(n.text)}</p><span class="xs muted">${ago(n.ts)}${n.link?' · Open':''}</span></button><button class="icon-btn x" data-act="dismiss" data-id="${n.id}" aria-label="Dismiss">${ic('x')}</button>${(()=>{const r=n.req&&(S.loanReqs||[]).find(x=>x.id===n.req);if(!r||r.status!=='pending')return '';const c=S.copies.find(x=>x.id===r.copyId),free=c&&copyFree(c);
+      return `<div class="notif-req req-btns">${free?`<button class="btn btn-primary sm" data-act="reqApprove" data-id="${r.id}">Approve</button>`:`<span class="xs muted" style="align-self:center">Waiting in line until your copy is back.</span>`}<button class="btn btn-ghost sm" data-act="reqDecline" data-id="${r.id}">Decline</button></div>`})()}</div>`).join(''):'<p class="muted small" style="padding:4px 10px 10px;margin:0">You’re all caught up.</p>'}`;
   const th=S.settings.theme;
   document.getElementById('meMenu').innerHTML=`<h3>${esc(S.me.name)}</h3>
     ${S.settings.solo?'':`<div class="row"><span class="small">Share My Activity with My Groups</span><button class="switch" role="switch" aria-checked="${S.settings.share}" data-act="share" aria-label="Share My Activity with My Groups"></button></div>`}
@@ -3373,12 +3377,12 @@ document.addEventListener('click',e=>{
       bd.rec=false;save();renderBD();toast(`Recommended ${t.title} to ${names}.`);break}
     case 'bdAddCopy':bd.addCopy=!bd.addCopy;renderBD();break;
     case 'bdAddCopyGo':{const f=document.getElementById('acFmt').value,w=document.getElementById('acWhere').value.trim();const sh=!S.settings.solo&&document.getElementById('acShare')?.checked!==false,had=copiesOf(bd.id).some(c=>!c.private);S.copies.push({id:'c'+uid(),titleId:bd.id,owner:'me',format:f,where:w,loanTo:null,private:!sh||undefined});if(sh)post('library',had?`added a${f==='audio'||f==='ebook'?'n':''} ${FMT[f].toLowerCase()} copy of`:'added a book to the group library:',titleById(bd.id).title);bd.addCopy=false;save();renderBD();toast(`Added your ${FMT[f].toLowerCase()} copy.`);break}
-    case 'reqBorrow':{const c=S.copies.find(x=>x.id===a.dataset.id),t=titleById(c.titleId);if(c.loanTo||holdOn(c)||myReqFor(c))break;
-      const r={id:'q'+uid(),copyId:c.id,titleId:c.titleId,from:'me',to:c.owner,status:'pending',ts:Date.now()};S.loanReqs.push(r);save();renderBD();toast(`Asked ${nameOf(c.owner)} to borrow ${t.title}. You’ll get a notification when they answer.`);break}
+    case 'reqBorrow':{const c=S.copies.find(x=>x.id===a.dataset.id),t=titleById(c.titleId);if(c.loanTo==='me'||myReqFor(c))break;const free=copyFree(c);
+      const r={id:'q'+uid(),copyId:c.id,titleId:c.titleId,from:'me',to:c.owner,status:'pending',ts:Date.now()};S.loanReqs.push(r);save();renderBD();
+      const pos=lineFor(c).indexOf(r)+1+(free?0:1);toast(free&&pos===1?`Asked ${nameOf(c.owner)} to borrow ${t.title}. You’ll get a notification when they answer.`:`You’re ${ordinal(pos)} in line for ${t.title}. You’ll get a notification when ${nameOf(c.owner)} answers.`);break}
     case 'reqCancel':{const r=S.loanReqs.find(x=>x.id===a.dataset.id);if(!r||!['pending','approved'].includes(r.status))break;r.status='cancelled';save();renderBD();toast(`Canceled your request for ${titleById(r.titleId)?.title}.`);break}
-    case 'reqApprove':{const r=S.loanReqs.find(x=>x.id===a.dataset.id),c=S.copies.find(x=>x.id===r?.copyId);if(!r||r.status!=='pending'||!c||c.loanTo||holdOn(c))break;
+    case 'reqApprove':{const r=S.loanReqs.find(x=>x.id===a.dataset.id),c=S.copies.find(x=>x.id===r?.copyId);if(!r||r.status!=='pending'||!c)break;if(!copyFree(c)){toast('That copy is on loan or on hold. Requests stay in line until it’s back.');break}
       r.status='approved';r.upd=Date.now();const t=titleById(r.titleId)?.title;
-      activeReqs().filter(x=>x.copyId===c.id&&x.status==='pending').forEach(x=>{x.status='declined'});
       save();renderHeader();if(!document.getElementById('bellMenu').hidden)document.getElementById('bellMenu').hidden=false;if(bookDlg.open)renderBD();toast(`Approved. ${t} is on hold for ${nameOf(r.from)} until you mark it loaned.`);break}
     case 'reqDecline':{const r=S.loanReqs.find(x=>x.id===a.dataset.id);if(!r||r.status!=='pending')break;r.status='declined';save();renderHeader();if(bookDlg.open)renderBD();toast(`Declined ${nameOf(r.from)}’s request.`);break}
     case 'reqHandOver':{const r=S.loanReqs.find(x=>x.id===a.dataset.id),c=S.copies.find(x=>x.id===r?.copyId);if(!r||r.status!=='approved'||!c)break;lendCopy(c,r.from);save();renderBD();toast(`Marked as loaned to ${nameOf(r.from)}.`);break}
