@@ -494,9 +494,10 @@ textarea.inp{resize:vertical;min-height:64px}
 .dot.rest{background:color-mix(in srgb,var(--blue) 22%,var(--track));color:var(--blue)}
 .dot.rest svg.i{width:11px;height:11px;stroke-width:2.2}
 .timer-box{border:1px solid color-mix(in srgb,var(--primary) 40%,var(--border));background:var(--primary-light);border-radius:14px;padding:12px 14px;display:grid;gap:10px}
+.timer-box>*{min-width:0}
 .timer-top{display:flex;align-items:center;gap:12px;justify-content:space-between}
 .timer-t{font-family:var(--serif);font-weight:600;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.clock{font-family:var(--serif);font-size:30px;font-weight:600;color:var(--primary);font-variant-numeric:tabular-nums}
+.clock{flex-shrink:0;font-family:var(--serif);font-size:30px;font-weight:600;color:var(--primary);font-variant-numeric:tabular-nums}
 .timer-actions{display:flex;gap:8px}.timer-actions .btn-primary{flex:1}
 .timer-pill{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:8;display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:6px 6px 6px 14px;box-shadow:0 10px 30px rgba(15,23,42,.18);font-variant-numeric:tabular-nums;font-weight:600}
 .timer-pill .tp-t{font-weight:400;color:var(--text-2);max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -632,7 +633,7 @@ main section.card .card-h .ico{display:none}
 .streak2 .streak-n span{font-family:var(--sans);font-size:15px;font-weight:400;color:var(--text-2);margin-left:2px}
 .hero2-acts{display:flex;flex-wrap:wrap;gap:12px;margin-top:26px}
 .hero2-acts .btn-big{min-width:200px}
-.hero2-acts .timer-box{flex:1;max-width:460px}
+.hero2-acts .timer-box{flex:1 1 100%;min-width:0;max-width:460px}
 .hero2-quick{display:flex;flex-wrap:wrap;gap:4px 18px;margin-top:14px}
 .hero2-quick button{border:0;background:none;padding:6px 0;display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--text-2)}
 .hero2-quick button svg.i{width:15px;height:15px;color:var(--primary)}
