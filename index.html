@@ -818,6 +818,15 @@ main section.card .card-h .ico{display:none}
 .stat-link:hover{color:var(--primary)}
 .rec-books{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
 .rv-acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.gs{margin:22px 0 4px}
+.gs-list{list-style:none;margin:6px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}
+.gs-i{display:flex;gap:12px;align-items:center;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
+.gs-c{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--primary-light);color:var(--primary)}
+.gs-c svg.i{width:17px;height:17px}
+.gs-i.done .gs-c{background:var(--primary);color:var(--on-primary)}
+.gs-i.done b{text-decoration:line-through;text-decoration-color:color-mix(in srgb,currentColor 40%,transparent)}
+.gs-t{flex:1;min-width:0;display:grid;gap:2px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .b-confirm{margin-top:14px;padding:12px 14px;border:1px solid color-mix(in srgb,var(--red) 35%,var(--border));border-radius:12px;background:color-mix(in srgb,var(--red) 6%,var(--surface));display:grid;gap:10px}
 .b-confirm .acts{display:flex;flex-wrap:wrap;gap:8px}
 .btn-del{background:#B42318;color:#fff}.btn-del:hover{background:#912018}
@@ -1393,6 +1402,16 @@ function activityCard(){
   return `<section class="card" aria-labelledby="faH"><div class="card-h"><span class="ico">${ic('users')}</span><h2 id="faH">${esc(GN())} Activity</h2><button class="more" data-act="actFilter" aria-expanded="${actOpen}" aria-label="Choose what shows">${ic('filter')}Filter</button></div>${filt}${body}${more}${note}</section>`;
 }
 const QUOTES=[['A room without books is like a body without a soul.','Cicero (attributed)'],['There is more treasure in books than in all the pirate’s loot on Treasure Island.','Walt Disney'],['The man who does not read has no advantage over the man who cannot read.','Attributed to Mark Twain'],['Books are the quietest and most constant of friends.','Charles W. Eliot']];
+/* Phase 1 onboarding: three first steps on the dashboard. Each ticks off when done; the card goes away once all three are done or it's hidden. */
+function getStarted(){
+  if(S.settings.gsHidden)return '';
+  const steps=[['find','Find a Book','Search for something you’re reading or want to read.',S.books.length>0||S.copies.some(c=>c.owner==='me'),'gsFind','search'],
+    ['log','Log Your Reading','Record pages or minutes. Start Timer can count the minutes for you.',S.sessions.length>0,'gsLog','book'],
+    ['join','Join a Challenge','Read along with your group in a challenge or Battle of the Books.',S.challenges.some(c=>(c.participants||[]).includes('me'))||S.battles.some(b=>b.readers.me||b.moderator==='me'),'gsJoin','trophy']];
+  const done=steps.filter(x=>x[3]).length;if(done===steps.length)return '';
+  return `<section class="card gs" aria-labelledby="gsH"><div class="card-h"><h2 id="gsH">Get Started</h2><span class="count">${done} of ${steps.length} done</span><button class="link-btn sm" data-act="gsHide" style="margin-left:auto">Hide</button></div>
+  <ol class="gs-list">${steps.map(([k,t,d,ok,act,icon])=>`<li class="gs-i ${ok?'done':''}"><span class="gs-c" aria-hidden="true">${ok?ic('check'):ic(icon)}</span><span class="gs-t"><b>${t}</b><span class="xs muted">${ok?'Done':d}</span></span>${ok?'':`<button class="btn btn-primary sm" data-act="${act}" aria-label="Start: ${t}">Start</button>`}</li>`).join('')}</ol></section>`;
+}
 function hero(){
   const h=new Date().getHours();const g=h<12?'Good morning':h<18?'Good afternoon':'Good evening';
   const q=QUOTES[new Date().getDate()%QUOTES.length];
@@ -2024,15 +2043,19 @@ function olQueue(){
   if(ad.ol&&ad.ol.q===k&&ad.ol.state!=='error')return;
   ad.ol={q:k,state:'loading',items:[]};olTimer=setTimeout(()=>olFetch(raw),350);
 }
+/* Search Open Library by title, author, or ISBN; used by Add a Book and Start a Book. */
+async function olSearch(raw,signal){
+  const k=olKey(raw),isbn=olIsbn(raw);
+  const r=await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(isbn?'isbn:'+isbn:k)}&fields=${OL_FIELDS}&limit=12`,{signal,headers:{Accept:'application/json'}});
+  if(!r.ok)throw new Error('Open Library '+r.status);
+  const j=await r.json();
+  return (j.docs||[]).filter(d=>d.title).map(d=>({key:d.key,title:d.title,author:(d.author_name||[]).slice(0,2).join(', ')||'Unknown author',year:d.first_publish_year||'',pages:d.number_of_pages_median||0,coverId:d.cover_i||0,isbn}));
+}
 async function olFetch(raw){
   const k=olKey(raw),isbn=olIsbn(raw);
   olCtl?.abort();olCtl=new AbortController();
-  const url=`https://openlibrary.org/search.json?q=${encodeURIComponent(isbn?'isbn:'+isbn:k)}&fields=${OL_FIELDS}&limit=12`;
   try{
-    const r=await fetch(url,{signal:olCtl.signal,headers:{Accept:'application/json'}});
-    if(!r.ok)throw new Error('Open Library '+r.status);
-    const j=await r.json();
-    const items=(j.docs||[]).filter(d=>d.title).map(d=>({key:d.key,title:d.title,author:(d.author_name||[]).slice(0,2).join(', ')||'Unknown author',year:d.first_publish_year||'',pages:d.number_of_pages_median||0,coverId:d.cover_i||0,isbn}));
+    const items=await olSearch(raw,olCtl.signal);
     if(ad.ol?.q===k)ad.ol={q:k,state:'done',items};
   }catch(e){if(e.name==='AbortError')return;if(ad.ol?.q===k)ad.ol={q:k,state:'error',items:[]}}
   const el=document.getElementById('adRes');if(el&&addDlg.open&&ad.tab==='search')el.innerHTML=adResults();
@@ -2093,8 +2116,9 @@ async function coverFill(){
   }finally{coverBusy=false}
 }
 /* Turns an Open Library result into a Reading Room title, reusing the existing one if it's already here. */
-function olTitle(i){
-  const x=ad.ol.items[i],ex=olExisting(x);if(ex)return ex;
+function olTitle(i){return olTitleFrom(ad.ol.items[i])}
+function olTitleFrom(x){
+  const ex=olExisting(x);if(ex)return ex;
   const t={id:'t'+uid(),title:x.title,author:x.author,pages:x.pages||undefined,genre:'',c:hashStr(x.title)%COVERS.length,added:Date.now(),olKey:x.key};
   if(x.coverId)t.cover=`https://covers.openlibrary.org/b/id/${x.coverId}-M.jpg`;
   if(x.isbn)t.isbn=x.isbn;if(x.year)t.year=x.year;
@@ -2632,7 +2656,7 @@ function render(){
   document.querySelectorAll('[data-go]').forEach(b=>{if(b.closest('.nav,.bnav'))b.setAttribute('aria-current',b.dataset.go===view?'page':'false')});
   const m=document.getElementById('main');
   if(view==='dashboard'){
-    m.innerHTML=heroDash()+`<div class="dgrid"><div class="dmain">${readingCard()}<div class="pair">${pausedBlock()}${upNextRow()}</div><div class="pair">${challengesCard()}${trophiesCard()}</div></div><aside class="dside" aria-label="Activity and calendar">${S.settings.solo?'':activityCard()}${calCard()}</aside></div>`;
+    m.innerHTML=heroDash()+getStarted()+`<div class="dgrid"><div class="dmain">${readingCard()}<div class="pair">${pausedBlock()}${upNextRow()}</div><div class="pair">${challengesCard()}${trophiesCard()}</div></div><aside class="dside" aria-label="Activity and calendar">${S.settings.solo?'':activityCard()}${calCard()}</aside></div>`;
   }else if(view==='challenges'){
     m.innerHTML=challengesView();
   }else if(view==='library'){
@@ -2666,6 +2690,7 @@ function renderHeader(){
     <div class="row"><label class="small" for="hfSel">Heading Font</label><select class="inp sm" id="hfSel" data-pref="hfont">${HFONTS.map(([k,l])=>`<option value="${k}" ${(S.settings.hfont||'source')===k?'selected':''}>${l}</option>`).join('')}</select></div>
     <div class="row"><label class="small" for="bfSel">Body Font</label><select class="inp sm" id="bfSel" data-pref="bfont">${BFONTS.map(([k,l])=>`<option value="${k}" ${(S.settings.bfont||'inter')===k?'selected':''}>${l}</option>`).join('')}</select></div>
     <div class="row"><span class="small">Dashboard Photo</span><span><button class="link-btn sm" data-act="heroPhoto">${heroPhoto()?'Change':'Add'}</button>${heroPhoto()?` <button class="link-btn sm" data-act="heroRemove">Remove</button>`:''}</span></div>
+    ${S.settings.gsHidden?'<button class="link" data-act="gsShow">Show Get Started</button>':''}
     <hr><div class="xs muted" style="padding:2px 10px">Prototype Tools</div>
     <button class="link" data-act="emptyDemo">Show New-Member (Empty) View</button>
     <button class="link" data-act="simActivity">Add Sample Group Activity</button>
@@ -2731,16 +2756,36 @@ function drawLog(b,focus,preMin){
   setLogOpt();calcLog();
 }
 function drawNew(){
+  nw={q:'',ol:null};
   const has=S.books.some(x=>x.status==='reading'||x.status==='paused');
   logForm.dataset.mode='new';
   logForm.innerHTML=`<div class="dlg-h"><div style="flex:1"><h2 id="logTitle">Start a New Book</h2><div class="muted small">Pick a book that’s already saved, or add it yourself.</div></div><button type="button" class="icon-btn x" data-act="closeLog" aria-label="Close">${ic('x')}</button></div>
   <div class="form">
-    <input class="inp" type="search" id="newQ" placeholder="Search your To Read list and the group library" aria-label="Search books">
-    <div class="xs muted" style="margin-top:-8px">Online search by title, author, or ISBN, with covers filled in, will work once Reading Room is on its own host.</div>
+    <input class="inp" type="search" id="newQ" placeholder="Search by title, author, or ISBN" aria-label="Search books" autocomplete="off">
+    <div class="xs muted" style="margin-top:-8px">Searches your To Read list, the group library, and Open Library.</div>
     <div id="newResults"></div>
     <div class="dlg-f" style="justify-content:space-between">${has?`<button type="button" class="btn btn-ghost" data-act="backLog">Back</button>`:'<span></span>'}<button type="button" class="btn btn-ghost" data-act="manualNew">${ic('plus')}Not Here? Add It Yourself</button></div>
   </div>`;
   renderNewResults('');
+}
+let nw={q:'',ol:null},nwTimer,nwCtl;
+function nwQueue(raw){
+  clearTimeout(nwTimer);raw=raw.trim();const k=olKey(raw);nw.q=raw;
+  if(raw.length<3){nwCtl?.abort();nw.ol=null;return}
+  if(nw.ol&&nw.ol.q===k&&nw.ol.state!=='error')return;
+  nw.ol={q:k,state:'loading',items:[]};
+  nwTimer=setTimeout(async()=>{nwCtl?.abort();nwCtl=new AbortController();
+    try{const items=await olSearch(raw,nwCtl.signal);if(nw.ol?.q===k)nw.ol={q:k,state:'done',items}}catch(e){if(e.name==='AbortError')return;if(nw.ol?.q===k)nw.ol={q:k,state:'error',items:[]}}
+    if(logDlg.open&&logForm.dataset.mode==='new')renderNewResults(document.getElementById('newQ')?.value||'')},350);
+}
+function newOL(shown){
+  const raw=nw.q,o=nw.ol;if(raw.length<3)return '';
+  const h='<div class="pick-h">From Open Library</div>';
+  if(!o||o.q!==olKey(raw)||o.state==='loading')return h+'<p class="xs muted" role="status">Searching Open Library…</p>';
+  if(o.state==='error')return h+'<p class="xs muted" role="status">Open Library didn’t answer. Check your connection, or add the book yourself.</p>';
+  const items=o.items.map((x,i)=>({x,i})).filter(({x})=>{const t=olExisting(x);return !t||!shown.has(t.id)});
+  if(!items.length)return h+'<p class="xs muted" role="status">No other matches on Open Library.</p>';
+  return h+`<div class="pick-list">${items.map(({x,i})=>`<button type="button" class="pick" data-act="pickOL" data-i="${i}">${libCover({title:x.title,author:x.author,c:hashStr(x.title)%COVERS.length,cover:x.coverId?`https://covers.openlibrary.org/b/id/${x.coverId}-S.jpg`:''})}<span><span class="pick-t">${esc(x.title)}</span><span class="xs muted">${[esc(x.author),x.year,x.pages?`${x.pages} pages`:''].filter(Boolean).join(' · ')}</span></span></button>`).join('')}</div>`;
 }
 function renderNewResults(q){
   q=q.trim().toLowerCase();
@@ -2754,6 +2799,7 @@ function renderNewResults(q){
   document.getElementById('newResults').innerHTML=
     `${upList().filter(hit).length?`<div class="pick-h">Reading Queue</div><div class="pick-list">${upList().filter(hit).map(x=>row(x,'want',len(x))).join('')}</div>`:''}<div class="pick-h">From Your To Read List</div><div class="pick-list">${want.filter(x=>!upList().includes(x)).length?want.filter(x=>!upList().includes(x)).map(x=>row(x,'want',len(x))).join(''):`<div class="xs muted">${q?'No matches.':'Your To Read list is empty.'}</div>`}</div>
      <div class="pick-h">From the ${esc(GN())} Library</div><div class="pick-list">${lib.length?lib.map(x=>row(x,'lib',`${recSet.has(x.id)?'⭐ Recommended for you · ':''}${x.total} pages · owned by ${ownerNames(x.id)}`)).join(''):`<div class="xs muted">${q?'No matches.':'Nothing else in the group library yet.'}</div>`}</div>`;
+  document.getElementById('newResults').insertAdjacentHTML('beforeend',newOL(new Set([...S.books.filter(x=>['reading','paused','want'].includes(x.status)).map(x=>x.titleId),...lib.map(x=>x.id)])));
 }
 function drawManual(){
   logForm.dataset.mode='manual';
@@ -2800,7 +2846,7 @@ function calcLog(){
   el.innerHTML=parts.map(p=>`<span>${p}</span>`).join('');
 }
 logForm.addEventListener('input',e=>{
-  if(logForm.dataset.mode==='new'){if(e.target.id==='newQ')renderNewResults(e.target.value);return}
+  if(logForm.dataset.mode==='new'){if(e.target.id==='newQ'){nwQueue(e.target.value);renderNewResults(e.target.value)}return}
   if(logForm.dataset.mode==='manual'){if(e.target.name==='mFormat'){const a=e.target.value==='audio';document.getElementById('mTotalL').textContent=a?'Length (h:mm)':'Number of Pages';logForm.mTotal.placeholder=a?'h:mm':'Pages';logForm.mTotal.inputMode=a?'text':'numeric'}return}
   if(e.target.name==='book'){if(e.target.value==='__new'){drawNew();setTimeout(()=>document.getElementById('newQ')?.focus(),30)}else drawLog(findB(e.target.value));return}
   if(e.target.name==='end'){const {b,end}=readLog();if(end!=null&&end>=b.total)logForm.finished.checked=true}
@@ -3136,6 +3182,14 @@ document.addEventListener('click',e=>{
     case 'startNew':drawNew();if(!logDlg.open)logDlg.showModal();setTimeout(()=>document.getElementById('newQ')?.focus(),30);break;
     case 'backLog':{const c=currentSel()||S.books.find(x=>x.status==='paused');if(c)drawLog(c);break}
     case 'manualNew':drawManual();break;
+    case 'gsFind':drawNew();if(!logDlg.open)logDlg.showModal();setTimeout(()=>document.getElementById('newQ')?.focus(),30);break;
+    case 'gsLog':openLog();break;
+    case 'gsJoin':view='challenges';chTab=S.settings.solo?'mine':'family';render();window.scrollTo(0,0);break;
+    case 'gsHide':S.settings.gsHidden=true;save();render();toast('Get Started is hidden. You can bring it back from your account menu.');break;
+    case 'gsShow':S.settings.gsHidden=false;save();closeMenus();view='dashboard';render();window.scrollTo(0,0);break;
+    case 'pickOL':{const x=nw.ol?.items[+a.dataset.i];if(!x)break;const t=olTitleFrom(x),r=S.books.find(b=>b.titleId===t.id&&['reading','paused','want'].includes(b.status));
+      if(r)drawLog(r);else{pendingNew={id:'n'+uid(),titleId:t.id,title:t.title,author:t.author,format:'print',total:t.pages||300,pos:0,status:'new',c:t.c};drawLog(pendingNew)}
+      setTimeout(()=>logForm.querySelector('[name=end]')?.focus(),30);break}
     case 'pickNew':{if(a.dataset.src==='want'){drawLog(book(a.dataset.id))}else{const x=titleById(a.dataset.id);pendingNew={id:'n'+uid(),titleId:x.id,title:x.title,author:x.author,format:'print',total:x.pages||300,pos:0,status:'new',c:x.c};drawLog(pendingNew)}setTimeout(()=>logForm.querySelector('[name=end]')?.focus(),30);break}
     case 'manualGo':{const t=logForm.mTitle.value.trim(),au=logForm.mAuthor.value.trim(),fm=logForm.mFormat.value,raw=logForm.mTotal.value.trim();
       const tot=fm==='audio'?parsePos(raw):(/^\d+$/.test(raw)?+raw:NaN);const er=document.getElementById('logErr');
@@ -3169,7 +3223,7 @@ document.addEventListener('click',e=>{
       else{view='library';lib.tab='recs';lib.rv='from';render();window.scrollTo(0,0)}
       break}
     case 'dismiss':S.notifs=S.notifs.filter(n=>n.id!==a.dataset.id);save();renderHeader();document.getElementById('bellMenu').hidden=false;break;
-    case 'emptyDemo':{const keep=S.settings;S=seed();S.settings={...keep};S.books=[];S.sessions=[];S.challenges=[];S.trophies=[];S.activity=[];S.notifs=[];save();closeMenus();view='dashboard';render();toast('Showing the new-member view.');break}
+    case 'emptyDemo':{const keep=S.settings;S=seed();S.settings={...keep,gsHidden:false};S.copies=S.copies.filter(c=>c.owner!=='me');S.battles.forEach(b=>{delete b.readers.me;if(b.moderator==='me')b.moderator=null;if(b.winner==='me')delete b.winner});S.recsSent=[];S.books=[];S.sessions=[];S.challenges=[];S.trophies=[];S.activity=[];S.notifs=[];save();closeMenus();view='dashboard';render();toast('Showing the new-member view.');break}
     case 'resetDemo':{const th=S.settings.theme;S=seed();S.settings.theme=th;save();closeMenus();view='dashboard';render();setTimeout(coverFill,500);toast('Sample data restored.');break}
     case 'soon':toast(`${a.dataset.what} comes with the Library.`);break;
   }
