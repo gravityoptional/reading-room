@@ -704,6 +704,13 @@ main section.card .card-h .ico{display:none}
 .dk-bands{padding:23px 0}
 .dk-bands::before,.dk-bands::after{content:"";position:absolute;left:2px;right:2px;height:7px;border-top:2px solid var(--gold);border-bottom:2px solid var(--gold)}
 .dk-bands::before{top:8px}.dk-bands::after{bottom:8px}
+.dk-silver{padding:23px 0}
+.dk-silver::before,.dk-silver::after{content:"";position:absolute;left:2px;right:2px;height:7px;border-top:2px solid #C9CED6;border-bottom:2px solid #C9CED6}
+.dk-silver::before{top:8px}.dk-silver::after{bottom:8px}
+.dk-thinthick{padding:26px 0}
+.dk-thinthick::before,.dk-thinthick::after{content:"";position:absolute;left:2px;right:2px;height:9px}
+.dk-thinthick::before{top:8px;border-top:1.5px solid var(--gold);background:linear-gradient(180deg,transparent 0 3px,var(--gold) 3px)}
+.dk-thinthick::after{bottom:8px;border-bottom:1.5px solid var(--gold);background:linear-gradient(0deg,transparent 0 3px,var(--gold) 3px)}
 .dk-ribs{padding:30px 0}
 .dk-ribs::before,.dk-ribs::after{content:"";position:absolute;left:0;right:0;height:16px;background:linear-gradient(180deg,rgba(255,255,255,.16) 0 1.5px,rgba(0,0,0,.08) 1.5px 3.5px,rgba(0,0,0,.42) 3.5px 5px,transparent 5px 11px,rgba(255,255,255,.16) 11px 12.5px,rgba(0,0,0,.08) 12.5px 14.5px,rgba(0,0,0,.42) 14.5px 16px,transparent 16px)}
 .dk-ribs::before{top:7px}.dk-ribs::after{bottom:7px}
@@ -1562,7 +1569,7 @@ function hashPick(h,salt,n){let x=(h^Math.imul(salt+1,0x9E3779B9))>>>0;x^=x>>>16
 function bookLook(t){
   const h=titleHash(String(t.title||'')),p=(salt,n)=>hashPick(h,salt,n);
   return {bg:SPINE_COLORS[p(1,SPINE_COLORS.length)],ink:p(2,3)===0?INK_GOLD:INK_CREAM,letter:['serif','smcaps','italic','cond'][p(3,4)],
-    finish:['smooth','cloth','linen','pebbled'][p(4,4)],deco:['bands','ribs','band','diamond','headtail','plain'][p(5,6)],up:p(6,5)===0,w:24+p(7,23),h:150+p(8,56)};
+    finish:['smooth','cloth','linen','pebbled'][p(4,4)],deco:p(11,4)===0?['silver','thinthick'][p(12,2)]:['bands','ribs','band','diamond','headtail','plain'][p(5,6)],up:p(6,5)===0,w:24+p(7,23),h:150+p(8,56)};
 }
 function spine(t){
   const L=bookLook(t);
