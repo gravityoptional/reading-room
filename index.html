@@ -639,6 +639,13 @@ main section.card .card-h .ico{display:none}
 .hero2-quick button{border:0;background:none;padding:6px 0;display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--text-2)}
 .hero2-quick button svg.i{width:15px;height:15px;color:var(--primary)}
 .hero2-quick button:hover{color:var(--text);text-decoration:underline;text-underline-offset:3px}
+/* Phones: the four shortcuts sit in one row of equal buttons, icon above label. */
+@media (max-width:720px){
+  .hero2-quick{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+  .hero2-quick button{flex-direction:column;justify-content:flex-start;gap:5px;padding:9px 2px 8px;border-radius:12px;background:color-mix(in srgb,var(--surface) 70%,transparent);border:1px solid color-mix(in srgb,var(--border) 70%,transparent);font-size:12px;line-height:1.2;text-align:center;color:var(--text)}
+  .hero2-quick button svg.i{width:18px;height:18px}
+  .hero2-quick button:hover{text-decoration:none}
+}
 .hero2-img{min-height:300px}
 /* dashboard grid */
 .dgrid{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:0 44px;margin-top:30px;align-items:start}
