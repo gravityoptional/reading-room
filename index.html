@@ -370,6 +370,18 @@ textarea.inp{resize:vertical;min-height:64px}
 .cal-d.future{background:none;border:1px dashed var(--border);color:var(--text-2)}
 .cal-d.today{box-shadow:0 0 0 2px var(--card),0 0 0 3.5px var(--primary)}
 .cal-nav{margin-left:auto;display:flex}
+.cal.cal-wk{grid-template-columns:repeat(7,1fr) minmax(46px,.95fr)}
+.cal-w{display:grid;place-items:center;align-content:center;gap:1px;font-size:11px;color:var(--text-2);border-left:1px solid var(--border);padding-left:4px;text-align:center;line-height:1.15}
+.cal-w i{font-style:normal;color:var(--orange);font-size:13px}.cal-w.perfect{color:var(--text);font-weight:600}
+.cal-mode{margin-left:auto}.cal-mode button{padding:4px 10px;font-size:12px}
+.ycal{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:14px 12px}
+.yc-m{border:0;background:none;padding:6px;border-radius:10px;display:grid;gap:5px;text-align:left;font:inherit;color:inherit;cursor:pointer}
+.yc-m:hover:not([disabled]){background:var(--surface-alt)}.yc-m[disabled]{opacity:.45;cursor:default}
+.yc-t{font-size:13px;font-weight:600}
+.yc-g{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.yc-d{aspect-ratio:1;border-radius:2px;background:var(--surface-alt)}.yc-d.blank{background:none}.yc-d.future{background:none;outline:1px dashed var(--border);outline-offset:-1px}
+.yc-d.lv1{background:color-mix(in srgb,var(--primary) 22%,var(--track))}.yc-d.lv2{background:color-mix(in srgb,var(--primary) 45%,var(--track))}.yc-d.lv3{background:color-mix(in srgb,var(--primary) 72%,var(--track))}.yc-d.lv4{background:var(--primary)}
+.yc-d.met{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--on-primary) 60%,transparent)}
 .cal-legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;align-items:center}
 button.cal-d{border:0;font:inherit;color:inherit;cursor:pointer;position:relative;padding:0}
 .cal .cal-d.lv1{background:color-mix(in srgb,var(--primary) 22%,var(--track));color:var(--text)}
@@ -1444,7 +1456,7 @@ function calCard(){
   <p class="xs muted" style="margin:10px 0 0">${yearFinished()} book${yearFinished()===1?'':'s'} finished so far this year. <button class="link-btn sm" data-go="history">See History</button></p></section>`;
 }
 const MONF=['January','February','March','April','May','June','July','August','September','October','November','December'];
-let hist={m:today().slice(0,7),sel:null,books:false};
+let hist={m:today().slice(0,7),sel:null,books:false,mode:'month'};
 function monthAdd(m,n){const [y,mo]=m.split('-').map(Number);const d=new Date(y,mo-1+n,1);return `${d.getFullYear()}-${pad(d.getMonth()+1)}`}
 function longestStreak(){return longestStreakRange().n}
 /* Longest streak with its first and last reading day; rest days inside a run don't break it. */
@@ -1478,6 +1490,15 @@ function records(){
     (()=>{const L=longestStreakRange();return ['trophy','Longest Streak',`${L.n} day${L.n===1?'':'s'}`,'Rest days don’t break it',null,
       L.start?`<div class="xs muted">${fmtRange(L.start,L.end)}</div><div class="xs muted">Rest days don’t break it</div>`:null]})()];
 }
+/* Year view: twelve small months shaded like the month view; tap one to open it. */
+function yearCal(Y,ratio){
+  const t=today();let out='';
+  for(let mo=1;mo<=12;mo++){const m=`${Y}-${pad(mo)}`,days=new Date(Y,mo,0).getDate(),lead=(new Date(Y,mo-1,1).getDay()+6)%7;let c='',n=0;
+    for(let i=0;i<lead;i++)c+='<i class="yc-d blank"></i>';
+    for(let d=1;d<=days;d++){const ds=`${m}-${pad(d)}`;if(ds>t){c+='<i class="yc-d future"></i>';continue}const g=goalState(ds),q=g.active?ratio(g):0,lv=g.active?(q<.5?1:q<1?2:q<1.5?3:4):0;if(g.active)n++;c+=`<i class="yc-d ${lv?'lv'+lv:''} ${g.met?'met':''}"></i>`}
+    out+=`<button class="yc-m" data-act="histOpenM" data-v="${m}" ${m>t.slice(0,7)?'disabled':''} aria-label="${MONF[mo-1]} ${Y}: ${n} day${n===1?'':'s'} read"><span class="yc-t">${MONF[mo-1].slice(0,3)}</span><span class="yc-g">${c}</span><span class="xs muted">${n} day${n===1?'':'s'}</span></button>`}
+  return `<div class="ycal">${out}</div>`;
+}
 function historyView(){
   const y=today().slice(0,4),ys=S.sessions.filter(x=>x.date.slice(0,4)===y);
   const rec=ys.reduce((a,x)=>a+(x.minutes||0),0),est=ys.reduce((a,x)=>a+(!x.minutes&&x.est?x.est:0),0),pages=ys.reduce((a,x)=>a+(x.pages||0),0);
@@ -1491,15 +1512,19 @@ function historyView(){
     ['flame',streak(),'day streak now',''],
     ['trophy',LS.n,'longest streak (days)',LS.start?`<div class="cmp xs">${fmtRange(LS.start,LS.end)}</div>`:'']];
   const m=hist.m,[Y,M]=m.split('-').map(Number),days=new Date(Y,M,0).getDate(),lead=(new Date(Y,M-1,1).getDay()+6)%7,t=today(),{rest}=streakInfo();
-  let cells='<span class="cal-h">M</span><span class="cal-h">T</span><span class="cal-h">W</span><span class="cal-h">T</span><span class="cal-h">F</span><span class="cal-h">S</span><span class="cal-h">S</span>';
+  let cells='<span class="cal-h">M</span><span class="cal-h">T</span><span class="cal-h">W</span><span class="cal-h">T</span><span class="cal-h">F</span><span class="cal-h">S</span><span class="cal-h">S</span><span class="cal-h">Week</span>';
+  /* Weekly total down the right side; a star marks a perfect week (read all seven days). */
+  const weekCell=ds=>{const mon=addDays(ds,-((new Date(ds+'T12:00').getDay()+6)%7));let mins=0,act=0,pages=0;for(let i=0;i<7;i++){const d=addDays(mon,i);if(d>t)break;const g=goalState(d);mins+=g.mins;pages+=g.pages;if(g.active)act++}
+    const perfect=act===7;return `<span class="cal-w ${perfect?'perfect':''}" title="Week of ${fmtDate(mon)}: ${act} of 7 days, ${fmtMin(Math.round(mins))}${pages?`, ${pages} pages`:''}${perfect?' — perfect week':''}">${perfect?'<i aria-hidden="true">★</i>':''}${mins?fmtMin(Math.round(mins)):'—'}</span>`};
   for(let i=0;i<lead;i++)cells+='<span class="cal-d blank"></span>';
   const G=S.settings,ratio=g=>G.goalType==='pages'?g.pages/G.goalPages:G.goalType==='minutes'?g.mins/G.goalMinutes:Math.max(g.mins/G.goalMinutes,g.pages/G.goalPages);
   for(let d=1;d<=days;d++){const ds=`${m}-${pad(d)}`,g=goalState(ds),r=!g.active&&rest.has(ds);
-    if(ds>t){cells+=`<span class="cal-d future">${d}</span>`;continue}
+    const col=(lead+d-1)%7,endRow=()=>{if(col===6||d===days){for(let k=col+1;k<7;k++)cells+='<span class="cal-d blank"></span>';cells+=weekCell(ds)}};
+    if(ds>t){cells+=`<span class="cal-d future">${d}</span>`;endRow();continue}
     const q=g.active?ratio(g):0,lv=g.active?(q<.5?1:q<1?2:q<1.5?3:4):0;
     const fin=S.books.filter(b=>b.finished===ds),st=S.books.filter(b=>b.started===ds);
     const desc=[fmtDateY(ds),g.active?`${Math.round(g.mins)} min${g.pages?`, ${g.pages} pages`:''}`:'no reading',g.met?'goal met':'',r?'rest day':'',...st.map(b=>`started ${b.title}`),...fin.map(b=>`finished ${b.title}`)].filter(Boolean).join(', ');
-    cells+=`<button class="cal-d ${lv?'lv'+lv:''} ${g.met?'met':''} ${r?'rest':''} ${ds===t?'today':''} ${hist.sel===ds?'sel':''}" data-act="histDay" data-v="${ds}" aria-pressed="${hist.sel===ds}" aria-label="${esc(desc)}" title="${esc(desc)}">${d}${st.length||fin.length?`<span class="cal-mk" aria-hidden="true">${st.length?'<i class="mk-s"></i>':''}${fin.length?'<i class="mk-f"></i>':''}</span>`:''}</button>`}
+    cells+=`<button class="cal-d ${lv?'lv'+lv:''} ${g.met?'met':''} ${r?'rest':''} ${ds===t?'today':''} ${hist.sel===ds?'sel':''}" data-act="histDay" data-v="${ds}" aria-pressed="${hist.sel===ds}" aria-label="${esc(desc)}" title="${esc(desc)}">${d}${st.length||fin.length?`<span class="cal-mk" aria-hidden="true">${st.length?'<i class="mk-s"></i>':''}${fin.length?'<i class="mk-f"></i>':''}</span>`:''}</button>`;endRow()}
   const ms=S.sessions.filter(x=>x.date.slice(0,7)===m);
   const mDays=new Set(ms.map(x=>x.date)).size,mMin=ms.reduce((a,x)=>a+(x.minutes||0),0),mEst=ms.reduce((a,x)=>a+(!x.minutes&&x.est?x.est:0),0),mPages=ms.reduce((a,x)=>a+(x.pages||0),0);
   const byDay={};ms.forEach(x=>{(byDay[x.date]=byDay[x.date]||[]).push(x)});
@@ -1517,11 +1542,11 @@ function historyView(){
   return `<div class="hist"><div><h1 class="page-h">History</h1><p class="muted" style="margin:2px 0 0">Your reading over time. Only you can see this page.</p></div>
   <section class="card"><div class="card-h"><span class="ico">${ic('chart')}</span><h2>This Year</h2></div><div class="stats hstats">${stats.map(([i,n,l,c])=>`<div class="stat ${i==='flame'?'o':''}">${ic(i)}<div class="n">${n}</div><div class="l">${l}</div>${c||''}</div>`).join('')}</div>${hist.books?(()=>{const last={};ys.forEach(x=>{const id=book(x.bookId)?.titleId;if(id&&(!last[id]||x.date>last[id]))last[id]=x.date});const ids=Object.keys(last).sort((a,b)=>last[b].localeCompare(last[a]));
     return `<div class="yr-books"><div class="small muted">Books you logged reading for in ${y}, most recent first</div><div class="yr-grid">${ids.map(id=>{const t=titleById(id);return t?`<button class="yr-b" data-act="openTitle" data-id="${id}">${libCover(t,48)}<span><span class="small"><b>${esc(t.title)}</b></span><span class="xs muted">Last read ${fmtDate(last[id])}</span></span></button>`:''}).join('')}</div></div>`})():''}</section>
-  <div class="hgrid"><section class="card"><div class="card-h"><span class="ico">${ic('cal')}</span><h2>${MONF[M-1]} ${Y}</h2><span class="cal-nav"><button class="icon-btn" data-act="histM" data-v="-1" aria-label="Previous month">${ic('chevL')}</button><button class="icon-btn" data-act="histM" data-v="1" aria-label="Next month" ${m>=t.slice(0,7)?'disabled':''}>${ic('chevR')}</button></span></div>
-    <div class="cal">${cells}</div>
-    <div class="cal-legend xs muted"><span class="lg-scale">Less <i class="lg lv1"></i><i class="lg lv2"></i><i class="lg lv3"></i><i class="lg lv4"></i> More</span><span><i class="lg-ok" aria-hidden="true">✓</i>Goal met</span><span><i class="mk-s"></i>Started</span><span><i class="mk-f"></i>Finished</span><span><i class="lg rest"></i>Rest day</span></div>
-    <div class="xs muted" style="margin-top:6px">Tap a day to see what you read.</div>
-    <div class="small muted" style="margin-top:10px">${mDays} day${mDays===1?'':'s'} read · ${fmtMin(mMin)}${mEst?` + ~${fmtMin(mEst)} estimated`:''} · ${mPages.toLocaleString()} pages</div></section>
+  <div class="hgrid"><section class="card"><div class="card-h"><span class="ico">${ic('cal')}</span><h2>${hist.mode==='year'?Y:`${MONF[M-1]} ${Y}`}</h2><span class="vseg cal-mode" role="group" aria-label="Calendar view"><button aria-pressed="${hist.mode!=='year'}" data-act="histMode" data-v="month">Month</button><button aria-pressed="${hist.mode==='year'}" data-act="histMode" data-v="year">Year</button></span><span class="cal-nav"><button class="icon-btn" data-act="histM" data-v="${hist.mode==='year'?-12:-1}" aria-label="Previous ${hist.mode==='year'?'year':'month'}">${ic('chevL')}</button><button class="icon-btn" data-act="histM" data-v="${hist.mode==='year'?12:1}" aria-label="Next ${hist.mode==='year'?'year':'month'}" ${(hist.mode==='year'?String(Y)>=t.slice(0,4):m>=t.slice(0,7))?'disabled':''}>${ic('chevR')}</button></span></div>
+    ${hist.mode==='year'?yearCal(Y,ratio):`<div class="cal cal-wk">${cells}</div>`}
+    <div class="cal-legend xs muted"><span class="lg-scale">Less <i class="lg lv1"></i><i class="lg lv2"></i><i class="lg lv3"></i><i class="lg lv4"></i> More</span><span><i class="lg-ok" aria-hidden="true">✓</i>Goal met</span>${hist.mode==='year'?'':'<span><i class="mk-s"></i>Started</span><span><i class="mk-f"></i>Finished</span><span><i class="lg rest"></i>Rest day</span>'}</div>
+    <div class="xs muted" style="margin-top:6px">${hist.mode==='year'?'Tap a month to open it.':'Tap a day to see what you read.'}</div>
+    <div class="small muted" style="margin-top:10px">${hist.mode==='year'?(()=>{const ss=S.sessions.filter(x=>x.date.slice(0,4)===String(Y)),dd=new Set(ss.map(x=>x.date)).size,mm=ss.reduce((a,x)=>a+(x.minutes||0),0),pp=ss.reduce((a,x)=>a+(x.pages||0),0);return `${Y}: ${dd} day${dd===1?'':'s'} read · ${fmtMin(mm)} · ${pp.toLocaleString()} pages`})():`${mDays} day${mDays===1?'':'s'} read · ${fmtMin(mMin)}${mEst?` + ~${fmtMin(mEst)} estimated`:''} · ${mPages.toLocaleString()} pages`}</div></section>
   <section class="card"><div class="card-h"><span class="ico">${ic('book')}</span><h2>Reading Sessions</h2><span class="count">${sel?fmtDate(sel):MONF[M-1]}</span>${sel?`<button class="link-btn sm" data-act="histDay" data-v="">Show All of ${MONF[M-1]}</button>`:''}</div>${list?`<div class="sess-list">${list}</div>`:''}${list?'':`<p class="small muted" style="margin:0">${sel?`No reading logged on ${fmtDate(sel)}.`:'No reading logged this month.'}</p>`}</section></div>
   <section class="card"><div class="card-h"><span class="ico o">${ic('trophy')}</span><h2>Records</h2></div><div class="rec-grid">${records().map(([i,l,v,sub,tid,html])=>`<div class="rec-t">${ic(i)}<div class="rec-l">${l}</div><div class="rec-v">${v}</div>${html?html:tid?`<button class="sess-b rec-s" data-act="openTitle" data-id="${tid}">${esc(sub)}</button>`:`<div class="xs muted">${esc(sub)}</div>`}</div>`).join('')}</div></section>
   <section class="card"><div class="card-h"><span class="ico">${ic('library')}</span><h2>Rereads</h2></div>${rereads}</section>
@@ -3052,7 +3077,9 @@ document.addEventListener('click',e=>{
     case 'libTab':lib.tab=a.dataset.v;if(lib.tab!=='mybooks'){if(lib.sort==='finished')lib.sort='title';if(['year','month','week'].includes(lib.group))lib.group='alpha'}if(lib.tab==='mybooks'&&lib.group==='alpha')lib.group='status';if(lib.tab!=='mybooks'&&lib.group==='status')lib.group='alpha';render();break;
     case 'mbChip':lib.mb=a.dataset.v;if(lib.mb==='finished'){if(lib.sort==='title')lib.sort='finished';if(lib.group==='status')lib.group='year'}else{if(lib.sort==='finished')lib.sort='title';if(['year','month','week'].includes(lib.group))lib.group='status'}refreshLib();break;
     case 'recView':lib.rv=a.dataset.v;render();break;
-    case 'histM':hist.m=monthAdd(hist.m,+a.dataset.v);hist.sel=null;render();break;
+    case 'histM':hist.m=monthAdd(hist.m,+a.dataset.v);if(hist.m>today().slice(0,7))hist.m=today().slice(0,7);hist.sel=null;render();break;
+    case 'histMode':hist.mode=a.dataset.v;hist.sel=null;render();break;
+    case 'histOpenM':hist.m=a.dataset.v;hist.mode='month';hist.sel=null;render();break;
     case 'histDay':{hist.sel=a.dataset.v&&hist.sel!==a.dataset.v?a.dataset.v:null;const y=window.scrollY;render();window.scrollTo(0,y);break}
     case 'histBooks':{hist.books=!hist.books;const y=window.scrollY;render();window.scrollTo(0,y);break}
     case 'actMore':{actLimit=a.dataset.v==='1'?actLimit+10:6;const y=window.scrollY;render();window.scrollTo(0,y);break}
