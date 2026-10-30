@@ -544,7 +544,7 @@ textarea.inp{resize:vertical;min-height:64px}
 .pop[hidden]{display:none}
 .pop button{display:block;width:100%;text-align:left;border:0;background:none;padding:8px 10px;border-radius:8px;font-size:14px}
 .pop button:hover{background:var(--surface-alt)}
-@media (max-width:720px){.arrow{top:22px;transform:none;width:34px;height:34px}.arrow.prev{left:auto;right:42px}.arrow.next{right:-2px}.carousel .detail{padding-top:16px}.d-title{padding-right:70px}}
+@media (max-width:720px){.arrow{top:22px;transform:none;width:34px;height:34px}.arrow.prev{left:auto;right:42px}.arrow.next{right:-2px}.carousel .detail{padding-top:16px}}
 @media (max-width:1060px){
   .shelf{grid-template-columns:repeat(2,minmax(0,1fr))}
   .goal{grid-template-columns:1fr}
@@ -571,7 +571,8 @@ textarea.inp{resize:vertical;min-height:64px}
   .shelf:not(.all) .bk-actions .more-btn{display:none}
   .paused{grid-template-columns:1fr}
   .detail{grid-template-columns:1fr;padding:14px}
-  .detail .d-left{display:none}
+  .detail .d-left .side-acts{display:none}
+  .detail .d-cover .cover{width:120px!important}
   .side-acts-m{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
   .side-acts-m .sa{border-radius:999px;padding:4px 10px}
   .d-stats{grid-template-columns:1fr 1fr}
