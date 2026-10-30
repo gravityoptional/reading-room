@@ -858,7 +858,7 @@ main section.card .card-h .ico{display:none}
 .note-i{border-left:3px solid var(--purple);background:var(--surface-alt);border-radius:0 10px 10px 0;padding:8px 12px}
 .note-i p{margin:4px 0 0;white-space:pre-wrap}
 .clamped{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:var(--lines,4);line-clamp:var(--lines,4);overflow:hidden}
-.char-count.near{color:#B45309;font-weight:600}
+.char-count{margin-top:4px}.char-count.near{color:#B45309;font-weight:600}
 .more-t{padding:2px 0;margin-top:2px}.more-t[hidden]{display:none}
 /* Text people type can be one long unbroken string; let it wrap inside its box instead of widening the page. */
 .note-i,.note-i p,.sess-note,.act-txt,.notif p,.rec,.fr-txt,.aw-t,.chc-t,.lc-t,.pick-t,.selc-t,.tn,.td,.bd-h h2,#chTitle,#chBody p,.b-row .small,.req-in .small,.toast,.st,.joined{overflow-wrap:anywhere;min-width:0}
@@ -1730,15 +1730,17 @@ function openNote(id,date){
   noteForm.innerHTML=`<div class="dlg-h"><h2 id="noteT" style="flex:1">${n?'Edit Note':'Add a Note'}</h2><button type="button" class="icon-btn x" data-act="noteClose" aria-label="Close">${ic('x')}</button></div>
   <div class="form"><p class="small muted" style="margin:0">A note for a day or a stretch of days, like a trip, a reading slump, or a book club night. Only you see it.</p>
     <div class="f2"><label class="f">Date<input class="inp" type="date" name="nStart" value="${d}"></label><label class="f"><span>Through <span class="sub">(optional, for a range)</span></span><input class="inp" type="date" name="nEnd" value="${n&&n.end&&n.end!==n.start?n.end:''}"></label></div>
-    <label class="f">Note<textarea class="inp" name="nText" rows="5" maxlength="1000" aria-describedby="noteCount" placeholder="What happened in your reading life?">${n?esc(n.text):''}</textarea></label>
-    <div class="xs muted char-count ${n&&n.text.length>=900?'near':''}" id="noteCount" style="margin-top:-8px">${(n?n.text.length:0).toLocaleString()} / 1,000 characters</div>
+    <label class="f">Note<textarea class="inp" name="nText" rows="5" maxlength="1000" data-count="1000" aria-describedby="noteCount" placeholder="What happened in your reading life?">${n?esc(n.text):''}</textarea>${charCount('noteCount',n?n.text.length:0,1000)}</label>
     <div class="err" id="noteErr" role="alert"></div>
     <div class="dlg-f">${n?'<button type="button" class="link-btn" data-act="noteDel" style="margin-right:auto">Delete Note</button>':''}<button type="button" class="btn btn-ghost" data-act="noteClose">Cancel</button><button type="submit" class="btn btn-primary">Save Note</button></div></div>`;
   noteDlg.showModal();setTimeout(()=>noteForm.querySelector('[name=nText]').focus(),30);
 }
+/* Character counter for note boxes: a textarea with data-count shows "n / max characters" in the element its aria-describedby names, orange in the last 10%. */
+const charCount=(id,len,max)=>`<div class="xs muted char-count ${len>=max*.9?'near':''}" id="${id}">${len.toLocaleString()} / ${max.toLocaleString()} characters</div>`;
 document.addEventListener('input',e=>{
-  if(e.target.name!=='nText'||!e.target.closest('#noteForm'))return;
-  const n=e.target.value.length,c=document.getElementById('noteCount');c.textContent=`${n.toLocaleString()} / 1,000 characters`;c.classList.toggle('near',n>=900);
+  const max=+e.target.dataset?.count;if(!max)return;
+  const c=document.getElementById(e.target.getAttribute('aria-describedby'));if(!c)return;
+  const n=e.target.value.length;c.textContent=`${n.toLocaleString()} / ${max.toLocaleString()} characters`;c.classList.toggle('near',n>=max*.9);
 });
 document.addEventListener('submit',e=>{
   if(e.target.id!=='noteForm')return;e.preventDefault();
@@ -2181,7 +2183,7 @@ function renderBD(){
     body=items.length?items.map(a=>{const p=person(a.who);return `<div class="act-top" style="padding:8px 0"><span class="avatar" style="background:${p.color}">${p.init}</span><div class="act-txt"><b>${esc(p.name)}</b> ${esc(a.text)}${a.extra?` <span class="muted">(${esc(a.extra)})</span>`:''}</div><span class="act-when">${ago(a.ts)}</span></div>`}).join('')
       :`<p class="small muted">No group activity for this book yet. Only members who share their reading appear here.</p>`;
   }else{
-    body=`<label class="f"><span>Notes <span class="sub">(only you see these)</span></span><textarea class="inp" id="bdNotes" rows="5" placeholder="Thoughts, favorite quotes, where you left off…">${esc(S.notes[t.id]||'')}</textarea></label><div class="xs muted" style="margin-top:6px">Saved as you type.</div>`;
+    body=`<label class="f"><span>Notes <span class="sub">(only you see these)</span></span><textarea class="inp" id="bdNotes" rows="5" maxlength="5000" data-count="5000" aria-describedby="bdNoteCount" placeholder="Thoughts, favorite quotes, where you left off…">${esc(S.notes[t.id]||'')}</textarea>${charCount('bdNoteCount',(S.notes[t.id]||'').length,5000)}</label><div class="xs muted" style="margin-top:6px">Saved as you type.</div>`;
   }
   bookBody.innerHTML=`<div class="dlg-h bd-h">${libCover(t,84)}<div style="flex:1;min-width:0"><h2 id="bdTitle">${esc(t.title)}</h2><div class="muted">${esc(t.author)}</div><div class="xs muted" style="margin-top:4px">${[t.series?`${esc(t.series)} #${t.seriesNo??'?'}`:'',t.genre,t.pages?`${t.pages} pages`:''].filter(Boolean).join(' · ')}</div>
     <div class="bd-acts">${prim}</div></div><button type="button" class="icon-btn x" data-act="closeBD" aria-label="Close">${ic('x')}</button></div>
@@ -2469,7 +2471,7 @@ function openSess(id){
   <div class="form"><div class="f3"><label class="f">${audio?'Start Position':'Starting Page'}<input class="inp" name="start" value="${v(x.start)}" inputmode="${audio?'text':'numeric'}"></label><label class="f">${audio?'End Position':'Ending Page'}<input class="inp" name="end" value="${v(x.end)}" inputmode="${audio?'text':'numeric'}"></label><label class="f">Minutes<input class="inp" name="minutes" value="${x.minutes??''}" inputmode="numeric"></label></div>
   ${x.start==null&&x.pages?`<label class="f">Pages Read<input class="inp" name="pagesOnly" value="${x.pages}" inputmode="numeric"></label>`:''}
   <label class="f">Date<input class="inp" type="date" name="date" value="${x.date}" max="${today()}"></label>
-  <label class="f"><span>Note <span class="sub">(optional, only you see it)</span></span><textarea class="inp" name="note" maxlength="200">${esc(x.note||'')}</textarea></label>
+  <label class="f"><span>Note <span class="sub">(optional, only you see it)</span></span><textarea class="inp" name="note" maxlength="200" data-count="200" aria-describedby="sessNoteCount">${esc(x.note||'')}</textarea>${charCount('sessNoteCount',(x.note||'').length,200)}</label>
   <div class="err" id="seErr" role="alert"></div>
   <div class="dlg-f" style="justify-content:space-between"><button type="button" class="btn btn-ghost" data-act="sessDel">Delete Session</button><span style="display:flex;gap:10px"><button type="button" class="btn btn-ghost" data-act="closeSess">Cancel</button><button type="submit" class="btn btn-primary">Save Changes</button></span></div></div>`;
   sessDlg.showModal();
@@ -3040,7 +3042,7 @@ function drawLog(b,focus,preMin){
     <div class="xs muted" style="margin-top:-8px">${audio?`Total length ${fmtPos(b.total)}. Enter positions as h:mm. Add minutes for the time you actually spent listening; otherwise the change in position counts as estimated time.`:(isNew?`New book: the starting page is 0, so reading pages 1–20 counts as 20 pages. Saving starts the book even if you don’t log pages yet.`:`The starting page is where you left off. Enter pages, minutes, or both.`)}</div>
     <div class="f"><span class="fl" style="margin:0">Read Together <span class="sub">(optional)</span></span><div class="chips">${Object.entries(S.members).map(([k,m])=>`<label class="tog"><input type="checkbox" name="with" value="${k}"><span>${esc(m.name)}</span></label>`).join('')}</div><span class="xs muted">Reading aloud or side by side? Everyone you choose gets credit for this session too.</span></div>
     <label class="f">Date<input class="inp" type="date" name="date" value="${today()}" max="${today()}"></label>
-    <label class="f"><span>Add a Note <span class="sub">(optional, only you see it)</span></span><textarea class="inp" name="note" maxlength="200" placeholder="What did you read today?"></textarea></label>
+    <label class="f"><span>Add a Note <span class="sub">(optional, only you see it)</span></span><textarea class="inp" name="note" maxlength="200" data-count="200" aria-describedby="logNoteCount" placeholder="What did you read today?"></textarea>${charCount('logNoteCount',0,200)}</label>
     <label class="chk"><input type="checkbox" name="finished"> Mark as finished</label>
     <div class="err" id="logErr" role="alert"></div>
     <div class="dlg-f"><button type="button" class="btn btn-ghost" data-act="closeLog">Cancel</button><button type="submit" class="btn btn-primary">Save Reading</button></div>
