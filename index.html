@@ -684,36 +684,43 @@ main section.card .card-h .ico{display:none}
 .board{--row:214px;display:flex;flex-wrap:wrap;align-items:flex-start;gap:16px 3px;overflow:visible;min-height:0;padding:20px 18px 0;border-radius:4px 4px 0 0;
   background-color:var(--wall);background-image:repeating-linear-gradient(to bottom,transparent 0 var(--row),var(--plank-top) var(--row) calc(var(--row) + 3px),var(--plank) calc(var(--row) + 3px) 100%);background-size:100% calc(var(--row) + 16px);background-origin:content-box;
   border:10px solid var(--plank);border-top-width:12px;border-bottom-width:18px;box-shadow:inset 0 10px 18px -10px var(--plank-shadow),0 6px 14px -8px var(--plank-shadow)}
-.spine{width:var(--w);height:var(--h);margin-top:calc(var(--row) - var(--h));position:relative;padding:24px 0;border-radius:2px 2px 0 0;color:var(--ink);text-orientation:sideways;
-  background:linear-gradient(90deg,color-mix(in srgb,var(--sb) 68%,#000) 0,var(--sb) 16%,color-mix(in srgb,var(--sb) 93%,#fff) 48%,var(--sb) 80%,color-mix(in srgb,var(--sb) 66%,#000) 100%)}
-.spine .sp-t{position:relative;z-index:1;font-size:12.5px;max-height:calc(100% - 40px)}
-.spine .sp-a{position:relative;z-index:1;opacity:1;font-size:9.5px}
+/* Spines: decorations live only in the head and tail; each decoration sets the padding so lettering always sits in the clear space between. */
+.spine{width:var(--w);height:var(--h);margin-top:calc(var(--row) - var(--h));position:relative;overflow:hidden;justify-content:flex-start;gap:9px;padding:12px 0;border-radius:2px 2px 0 0;color:var(--ink);text-orientation:sideways;
+  --gold:#C9A75A;--base:linear-gradient(90deg,color-mix(in srgb,var(--sb) 70%,#000) 0,var(--sb) 16%,color-mix(in srgb,var(--sb) 95%,#fff) 48%,var(--sb) 80%,color-mix(in srgb,var(--sb) 68%,#000) 100%);background-color:var(--sb);background-image:var(--base)}
+.spine .sp-t{position:relative;z-index:1;flex:1 1 0;min-height:0;max-height:none;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-start;line-height:1.18;font-size:12.5px}
+.spine .sp-t .l{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.spine .sp-a{position:relative;z-index:1;flex:0 1 auto;min-height:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:1;font-family:var(--sans);font-size:9.5px;letter-spacing:.04em}
 /* Lettering */
-.sp-sans .sp-t{font-family:var(--sans);font-size:11.5px;letter-spacing:.01em}
-.sp-cond .sp-t{font-family:"Oswald","Arial Narrow",sans-serif;font-weight:500;font-size:13.5px;letter-spacing:.02em}
-.sp-caps .sp-t{text-transform:uppercase;letter-spacing:.08em;font-size:10.5px}
-.sp-cond.sp-caps .sp-t{font-size:12px;letter-spacing:.06em}
-/* Layout: reading up, title in the middle, or across a thick spine */
-.sp-up .sp-a,.sp-up:not(.sp-h) .sp-t{transform:rotate(180deg)}
-.sp-mid .sp-t{margin-top:auto;margin-bottom:auto}
-.sp-h .sp-t{writing-mode:horizontal-tb;white-space:normal;text-align:center;max-width:calc(var(--w) - 8px);max-height:none;line-height:1.15;font-size:11.5px;overflow-wrap:anywhere}
-.sp-h.sp-caps .sp-t{font-size:10px}
-/* Decoration */
-.dk-label .sp-t{background:#F6F0DE;color:#2A2118;padding:8px 3px;border:1px solid rgba(42,33,24,.5);border-radius:2px;box-shadow:inset 0 0 0 2px #F6F0DE,inset 0 0 0 3px rgba(42,33,24,.22)}
-.dk-block .sp-t{background:var(--blk);color:var(--blk-ink);padding:9px 4px;border-radius:1px}
-.dk-label.sp-h .sp-t,.dk-block.sp-h .sp-t{padding:5px 3px}
-.dk-bands::before,.dk-bands::after{content:"";position:absolute;left:2px;right:2px;height:5px;border-top:2px solid var(--deco);border-bottom:2px solid var(--deco)}
-.dk-bands::before{top:9px}.dk-bands::after{bottom:9px}
+.lt-serif .sp-t{font-family:var(--serif);font-weight:600}
+.lt-smcaps .sp-t{font-family:var(--serif);font-weight:600;font-variant-caps:small-caps;letter-spacing:.05em;font-size:13px}
+.lt-italic .sp-t{font-family:var(--serif);font-style:italic;font-weight:600;font-size:13px}
+.lt-cond .sp-t{font-family:"Oswald","Arial Narrow",sans-serif;font-weight:500;text-transform:uppercase;letter-spacing:.07em;font-size:11.5px}
+.sp-up .sp-t,.sp-up .sp-a{transform:rotate(180deg)}
+/* Finishes */
+.fn-cloth{background-image:repeating-linear-gradient(0deg,rgba(0,0,0,.10) 0 1px,transparent 1px 3px),repeating-linear-gradient(90deg,rgba(0,0,0,.08) 0 1px,transparent 1px 3px),var(--base)}
+.fn-linen{background-image:repeating-linear-gradient(0deg,rgba(0,0,0,.09) 0 1px,transparent 1px 4px,rgba(255,255,255,.03) 4px 5px,transparent 5px 7px),repeating-linear-gradient(90deg,rgba(0,0,0,.05) 0 1px,transparent 1px 5px),var(--base)}
+.fn-pebbled{background-image:radial-gradient(circle at 1.5px 1.5px,rgba(0,0,0,.2) 0 1px,transparent 1.5px),radial-gradient(circle at 3.5px 3.5px,rgba(255,255,255,.035) 0 .9px,transparent 1.3px),var(--base);background-size:4px 4px,5px 5px,auto}
+/* Decorations, head and tail only */
+.dk-bands{padding:23px 0}
+.dk-bands::before,.dk-bands::after{content:"";position:absolute;left:2px;right:2px;height:7px;border-top:2px solid var(--gold);border-bottom:2px solid var(--gold)}
+.dk-bands::before{top:8px}.dk-bands::after{bottom:8px}
 .dk-ribs{padding:30px 0}
-.dk-ribs::before,.dk-ribs::after{content:"";position:absolute;left:0;right:0;height:18px;background:linear-gradient(180deg,rgba(255,255,255,.28) 0 2px,rgba(0,0,0,.34) 2px 4px,transparent 4px 10px,rgba(255,255,255,.28) 10px 12px,rgba(0,0,0,.34) 12px 14px,transparent 14px)}
-.dk-ribs::before{top:6px}.dk-ribs::after{bottom:4px}
-.dk-mark{padding-bottom:30px}
-.dk-mark::after{content:"";position:absolute;left:50%;bottom:9px;width:10px;height:10px;margin-left:-5px;border:1.5px solid var(--deco);border-radius:50%;background:radial-gradient(circle,var(--deco) 0 2px,transparent 2.5px)}
+.dk-ribs::before,.dk-ribs::after{content:"";position:absolute;left:0;right:0;height:16px;background:linear-gradient(180deg,rgba(255,255,255,.16) 0 1.5px,rgba(0,0,0,.08) 1.5px 3.5px,rgba(0,0,0,.42) 3.5px 5px,transparent 5px 11px,rgba(255,255,255,.16) 11px 12.5px,rgba(0,0,0,.08) 12.5px 14.5px,rgba(0,0,0,.42) 14.5px 16px,transparent 16px)}
+.dk-ribs::before{top:7px}.dk-ribs::after{bottom:7px}
+.dk-band{padding:24px 0}
+.dk-band::before,.dk-band::after{content:"";position:absolute;left:0;right:0;height:8px;background:rgba(0,0,0,.38);box-shadow:0 -1px 0 rgba(255,255,255,.07),0 1px 0 rgba(255,255,255,.07)}
+.dk-band::before{top:9px}.dk-band::after{bottom:9px}
+.dk-diamond{padding-top:28px}
+.dk-diamond::before{content:"";position:absolute;left:50%;top:11px;width:7px;height:7px;margin-left:-3.5px;background:var(--gold);transform:rotate(45deg)}
+.dk-headtail{padding:19px 0}
+.dk-headtail::before,.dk-headtail::after{content:"";position:absolute;left:0;right:0;height:10px;background:rgba(0,0,0,.45)}
+.dk-headtail::before{top:0;box-shadow:0 1px 0 rgba(201,167,90,.35)}.dk-headtail::after{bottom:0;box-shadow:0 -1px 0 rgba(201,167,90,.35)}
 .stack{height:var(--row);display:flex;flex-direction:column;justify-content:flex-end;padding:0 8px}
 .flat{width:var(--w);height:26px;border:0;border-radius:2px 4px 4px 2px;color:var(--ink);font-family:var(--serif);font-size:11.5px;font-weight:600;text-align:left;padding:0 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   background:linear-gradient(180deg,color-mix(in srgb,var(--sb) 85%,#fff) 0,var(--sb) 40%,color-mix(in srgb,var(--sb) 70%,#000) 100%);box-shadow:inset 0 -2px 0 rgba(0,0,0,.18);transition:transform .15s}
 .flat span{display:block;overflow:hidden;text-overflow:ellipsis}
-.flat.sp-sans{font-family:var(--sans);font-size:11px}.flat.sp-cond{font-family:"Oswald","Arial Narrow",sans-serif;font-weight:500;font-size:12.5px}.flat.sp-caps{text-transform:uppercase;letter-spacing:.07em;font-size:10px}
+.flat{display:block;max-width:100%}.flat span{white-space:nowrap}
+.flat.lt-smcaps{font-variant-caps:small-caps;letter-spacing:.04em}.flat.lt-italic{font-style:italic}.flat.lt-cond{font-family:"Oswald","Arial Narrow",sans-serif;font-weight:500;text-transform:uppercase;letter-spacing:.06em;font-size:11px}
 .flat:hover,.flat:focus-visible{transform:translateX(6px)}
 @media (max-width:1060px){.hero2-in{grid-template-columns:1fr}.hero2-img{min-height:160px}.pair{grid-template-columns:1fr}.pair>section.card+section.card{margin-top:36px}}
 @media (max-width:860px){.dgrid{grid-template-columns:1fr}.dside{border-left:0;padding-left:0;margin-top:36px}.dside section.card:first-child{border-top:1px solid var(--border);padding-top:22px}.lib-band{grid-template-columns:1fr}.lib-img{display:none}}
@@ -1544,33 +1551,43 @@ function libEmpty(){
 function recExtra(t){
   return `<div class="rec">${S.recs.filter(r=>r.titleId===t.id).map(r=>`<div><b>${esc(nameOf(r.from))}</b>${r.note?`: “${esc(r.note)}”`:''}</div>`).join('')}<div class="rec-acts"><button class="link-btn sm" data-act="dismissRec" data-id="${t.id}">Not for Me</button><span class="xs muted">Only you see this; ${esc([...new Set(S.recs.filter(r=>r.titleId===t.id).map(r=>nameOf(r.from)))].join(' and '))} won’t be told.</span></div></div>`;
 }
-/* Bookshelf looks. Every choice comes from the title, so a book looks the same each time.
-   Text color is picked for contrast with the spine color (all pairs are at least 4.5:1). */
-const SPINE_COLORS=['#2F5D4F','#8C3B2B','#8A5F1F','#55652B','#6E2C3C','#2F5560','#7B5B3A','#9C4826','#4E3F63','#3F6B5A',
-  '#EDE3C8','#CDB38A','#F3EFE4','#1F1D1B','#1C4A4F','#C99A2E'];
-const INK_LIGHT='#FFFFFF',INK_DARK='#2A2118';
-const relLum=h=>{const c=[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)/255).map(v=>v<=.03928?v/12.92:((v+.055)/1.055)**2.4);return .2126*c[0]+.7152*c[1]+.0722*c[2]};
-const contrast=(a,b)=>{const x=relLum(a),y=relLum(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05)};
+/* Bookshelf looks. Every choice comes from the book's title, so a book looks the same each visit.
+   Hashes and shifts are unsigned (>>>), so every pick is a valid, non-negative index.
+   All 16 colors keep cream and gold lettering at 4.5:1 or better. */
+const SPINE_COLORS=['#1F4A33','#5E1F2D','#4A1517','#5E3F0F','#3F4518','#2B4A50','#4A3220','#6A2A14',
+  '#43233F','#0F3D40','#2E1F17','#4F4010','#344A22','#5A3618','#1B2233','#6B2A1F']; // forest, wine, oxblood, ochre, olive, slate teal, walnut, rust, plum, deep teal, espresso, old gold, moss, saddle, ink, brick
+const INK_CREAM='#F2E8CF',INK_GOLD='#E2C47E';
+function titleHash(str){let h=0x811c9dc5;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,0x01000193)>>>0}return h>>>0}
+function hashPick(h,salt,n){let x=(h^Math.imul(salt+1,0x9E3779B9))>>>0;x^=x>>>16;x=Math.imul(x,0x7FEB352D)>>>0;x^=x>>>15;x=Math.imul(x,0x846CA68B)>>>0;x^=x>>>16;return (x>>>0)%n}
 function bookLook(t){
-  const k=x=>hashStr((t.title||'')+'|'+x),bg=SPINE_COLORS[k('color')%SPINE_COLORS.length];
-  const darkInk=contrast(bg,INK_DARK)>contrast(bg,INK_LIGHT);
-  return {bg,ink:darkInk?INK_DARK:INK_LIGHT,darkInk,font:['serif','sans','cond'][k('font')%3],caps:k('caps')%4===0,k};
+  const h=titleHash(String(t.title||'')),p=(salt,n)=>hashPick(h,salt,n);
+  return {bg:SPINE_COLORS[p(1,SPINE_COLORS.length)],ink:p(2,3)===0?INK_GOLD:INK_CREAM,letter:['serif','smcaps','italic','cond'][p(3,4)],
+    finish:['smooth','cloth','linen','pebbled'][p(4,4)],deco:['bands','ribs','band','diamond','headtail','plain'][p(5,6)],up:p(6,5)===0,w:24+p(7,23),h:150+p(8,56)};
 }
 function spine(t){
-  const L=bookLook(t),k=L.k,w=Math.max(26,Math.min(52,Math.round((t.pages||250)/12)));
-  const words=(t.title||'').split(/\s+/),across=w>=38&&t.title.length<=14&&Math.max(...words.map(x=>x.length))*7.2<=w-8;
-  const deco=['label','bands','ribs','mark','block','plain'][k('deco')%6];
-  /* Mostly regular heights, some short paperbacks, a few tall books; a long title gets just enough height to show, where the shelf allows. */
-  const hs=k('height')%100,pick=hs<20?120+k('pb')%26:hs<90?156+k('n')%42:200+k('tall')%12;
-  const need=across?0:t.title.length*(L.caps?8.2:L.font==='cond'?6.2:7)+lastName(t.author).length*6+(deco==='label'||deco==='block'?78:62);
-  const h=Math.max(pick,Math.min(211,Math.round(need)));
-  const cls=['spine','sp-'+L.font,L.caps?'sp-caps':'',across?'sp-h':'',k('dir')%3===0?'sp-up':'',k('pos')%2?'sp-mid':'','dk-'+deco].filter(Boolean).join(' ');
-  const vars=`--w:${w}px;--h:${h}px;--sb:${L.bg};--ink:${L.ink};--deco:${L.darkInk?'rgba(74,50,20,.75)':'rgba(236,208,150,.8)'};--blk:${L.darkInk?'#1F1D1B':'#F6F0DE'};--blk-ink:${L.darkInk?'#F6F0DE':'#2A2118'}`;
-  return `<button class="${cls}" data-act="openTitle" data-id="${t.id}" style="${vars}" aria-label="${esc(t.title)} by ${esc(t.author)}" title="${esc(t.title)} — ${esc(t.author)}"><span class="sp-t">${esc(t.title)}</span><span class="sp-a">${esc(lastName(t.author))}</span></button>`;
+  const L=bookLook(t);
+  const cls=['spine','lt-'+L.letter,'fn-'+L.finish,'dk-'+L.deco,L.up?'sp-up':''].filter(Boolean).join(' ');
+  return `<button class="${cls}" data-act="openTitle" data-id="${t.id}" data-w="${L.w}" style="--w:${L.w}px;--h:${L.h}px;--sb:${L.bg};--ink:${L.ink}" aria-label="${esc(t.title)} by ${esc(t.author)}" title="${esc(t.title)} — ${esc(t.author)}"><span class="sp-t" data-full="${esc(t.title)}"><span class="l">${esc(t.title)}</span></span><span class="sp-a">${esc(lastName(t.author))}</span></button>`;
 }
+/* After the shelf is drawn: on spines 36px or wider, a title that doesn't fit on one line wraps to two balanced lines.
+   Anything still too long ends in "…". Runs again once fonts load, since fonts change the measurements. */
+function fitSpines(){
+  document.querySelectorAll('.board .spine').forEach(el=>{
+    const t=el.querySelector('.sp-t'),full=t.dataset.full||'';
+    t.innerHTML=`<span class="l">${esc(full)}</span>`;
+    if(+el.dataset.w<36)return;
+    const l=t.firstChild;if(l.scrollHeight<=l.clientHeight+1)return;
+    const words=full.split(/\s+/);if(words.length<2)return;
+    let best=1,bestLen=Infinity;
+    for(let i=1;i<words.length;i++){const a=words.slice(0,i).join(' ').length,b=words.slice(i).join(' ').length,m=Math.max(a,b);if(m<bestLen){bestLen=m;best=i}}
+    t.innerHTML=`<span class="l">${esc(words.slice(0,best).join(' '))}</span><span class="l">${esc(words.slice(best).join(' '))}</span>`;
+  });
+}
+if(document.fonts){document.fonts.ready.then(()=>requestAnimationFrame(fitSpines));document.fonts.addEventListener?.('loadingdone',()=>requestAnimationFrame(fitSpines))}
+let fitTimer;window.addEventListener('resize',()=>{clearTimeout(fitTimer);fitTimer=setTimeout(fitSpines,150)});
 function flatBook(t,i){
-  const L=bookLook(t),w=118+hashStr(t.title)%56,h=22+hashStr(t.author||'')%9;
-  return `<button class="flat sp-${L.font}${L.caps?' sp-caps':''}" data-act="openTitle" data-id="${t.id}" style="--w:${w}px;--fh:${h}px;--sb:${L.bg};--ink:${L.ink};margin-left:${(hashStr(t.title)%3)*5}px" aria-label="${esc(t.title)} by ${esc(t.author)}" title="${esc(t.title)} — ${esc(t.author)}"><span>${esc(t.title)}</span></button>`;
+  const L=bookLook(t),h=titleHash(String(t.title||'')),w=118+hashPick(h,9,56);
+  return `<button class="flat lt-${L.letter}" data-act="openTitle" data-id="${t.id}" style="--w:${w}px;--sb:${L.bg};--ink:${L.ink};margin-left:${hashPick(h,10,3)*5}px" aria-label="${esc(t.title)} by ${esc(t.author)}" title="${esc(t.title)} — ${esc(t.author)}"><span>${esc(t.title)}</span></button>`;
 }
 function shelfItems(ts){
   let out='',i=0,k=0;
@@ -1584,6 +1601,8 @@ function shelfItems(ts){
 const plate=(id,label,n)=>`<span class="plate" id="${id}" role="heading" aria-level="3" aria-label="${esc(label)}, ${n} book${n===1?'':'s'}"><span class="bookend${/^.–.$/.test(label)||label.length<=4?'':' long'}" aria-hidden="true"><span class="be-l">${esc(label).replace('–','<i>–</i>')}</span><span class="be-orn"></span><span class="be-n">${n}</span></span></span>`;
 function shelfView(list){
   loadFont('Oswald:wght@500;600');
+  if(!document.getElementById('gf-spine-italic')){const l=document.createElement('link');l.id='gf-spine-italic';l.rel='stylesheet';l.href='https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@1,8..60,600&display=swap';document.head.appendChild(l)}
+  requestAnimationFrame(fitSpines);
   const g=lib.group,groups={};
   let sets;
   if(PER[g])sets=periodGroups(list,g).map(([k,ts])=>[perLabel(g,k),ts]);
