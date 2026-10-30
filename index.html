@@ -1117,6 +1117,8 @@ const KEY='rr-editorial-proto-v1';
 let S;
 try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){S=null}
 if(!S||S.v!==6)S=seed();
+/* Fill in anything the saved or freshly seeded data is missing. Runs on load and again after Restore Sample Data or the new-member view, which replace S. */
+function prepState(){
 S.me.admin=true;
 S.settings.hideAct=S.settings.hideAct||[];
 if(!S.seriesSeeded){S.seriesSeeded=true;['Wool','Shift','Dust'].forEach((n,i)=>{const t=(S.titles||[]).find(x=>x.title===n&&/Howey/.test(x.author||''));if(t){t.series='Silo';t.seriesNo=i+1}});(S.seriesLen=S.seriesLen||{}).Silo=3}
@@ -1134,6 +1136,8 @@ S.loanReqs=S.loanReqs||[];
 if(!S.upNext){const pk=n=>S.books.find(b=>b.status==='want'&&b.title===n)?.id;S.upNext=['Wool','Project Hail Mary','Shift'].map(pk).filter(Boolean)}
 S.notifs.forEach(n=>{if(!n.link){n.link=({n1:{type:'lib'},n2:{type:'ch',id:'f1'},n3:{type:'battle',id:'bb1'}})[n.id]||null;if(n.id==='n2')n.text='Keng started a group challenge: Family Reading Challenge.'}});
 if(!S.wantSeeded){S.wantSeeded=true;if(!S.books.some(b=>b.status==='want'))S.books.push(...seed().books.filter(b=>b.status==='want'))}
+}
+prepState();
 function save(){try{diffEvents()}catch(e){}try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 /* Prototype tool: pretend other members did a few things, so Group Activity, reactions, and notifications can be tried without other accounts. */
 /* Prototype tools for Request to Borrow, since the other members are sample people. */
@@ -3468,8 +3472,8 @@ document.addEventListener('click',e=>{
       else{view='library';lib.tab='recs';lib.rv='from';render();window.scrollTo(0,0)}
       break}
     case 'dismiss':S.notifs=S.notifs.filter(n=>n.id!==a.dataset.id);save();renderHeader();document.getElementById('bellMenu').hidden=false;break;
-    case 'emptyDemo':{const keep=S.settings;S=seed();S.settings={...keep,gsHidden:false};S.copies=S.copies.filter(c=>c.owner!=='me');S.battles.forEach(b=>{delete b.readers.me;if(b.moderator==='me')b.moderator=null;if(b.winner==='me')delete b.winner});S.recsSent=[];S.books=[];S.sessions=[];S.challenges=[];S.trophies=[];S.activity=[];S.notifs=[];save();closeMenus();view='dashboard';render();toast('Showing the new-member view.');break}
-    case 'resetDemo':{const th=S.settings.theme;S=seed();S.settings.theme=th;save();closeMenus();view='dashboard';render();setTimeout(coverFill,500);toast('Sample data restored.');break}
+    case 'emptyDemo':{const keep=S.settings;S=seed();prepState();S.settings={...keep,gsHidden:false};S.copies=S.copies.filter(c=>c.owner!=='me');S.battles.forEach(b=>{delete b.readers.me;if(b.moderator==='me')b.moderator=null;if(b.winner==='me')delete b.winner});S.recsSent=[];S.upNext=[];S.books=[];S.sessions=[];S.challenges=[];S.trophies=[];S.activity=[];S.notifs=[];save();closeMenus();view='dashboard';render();toast('Showing the new-member view.');break}
+    case 'resetDemo':{const th=S.settings.theme;S=seed();prepState();S.settings.theme=th;save();closeMenus();view='dashboard';render();setTimeout(coverFill,500);toast('Sample data restored.');break}
     case 'soon':toast(`${a.dataset.what} comes with the Library.`);break;
   }
 });
