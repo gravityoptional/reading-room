@@ -370,7 +370,33 @@ textarea.inp{resize:vertical;min-height:64px}
 .cal-d.future{background:none;border:1px dashed var(--border);color:var(--text-2)}
 .cal-d.today{box-shadow:0 0 0 2px var(--card),0 0 0 3.5px var(--primary)}
 .cal-nav{margin-left:auto;display:flex}
-.cal-legend{display:flex;gap:14px;margin-top:10px}
+.cal-legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;align-items:center}
+button.cal-d{border:0;font:inherit;color:inherit;cursor:pointer;position:relative;padding:0}
+.cal .cal-d.lv1{background:color-mix(in srgb,var(--primary) 22%,var(--track));color:var(--text)}
+.cal .cal-d.lv2{background:color-mix(in srgb,var(--primary) 45%,var(--track));color:var(--text)}
+.cal .cal-d.lv3{background:color-mix(in srgb,var(--primary) 72%,var(--track));color:var(--on-primary)}
+.cal .cal-d.lv4{background:var(--primary);color:var(--on-primary)}
+.cal .cal-d.met{font-weight:600}
+.cal .cal-d.met::after{content:"✓";position:absolute;top:3px;right:4px;font-size:9px;line-height:1;font-weight:700;width:12px;height:12px;display:grid;place-items:center;border-radius:50%;background:var(--card);color:var(--primary)}
+.cal .cal-d.sel{outline:2px solid var(--text);outline-offset:1px}
+.cal-mk{position:absolute;bottom:4px;left:0;right:0;display:flex;justify-content:center;gap:3px}
+.mk-s,.mk-f{display:inline-block;width:6px;height:6px;border-radius:50%;box-shadow:0 0 0 1.5px var(--card)}
+.mk-s{background:var(--blue)}.mk-f{background:var(--orange)}
+.cal-legend .mk-s,.cal-legend .mk-f{margin-right:5px;box-shadow:none}
+.lg-scale{display:inline-flex;align-items:center;gap:3px}.lg-scale .lg{margin:0}
+.lg.lv1{background:color-mix(in srgb,var(--primary) 22%,var(--track))}.lg.lv2{background:color-mix(in srgb,var(--primary) 45%,var(--track))}.lg.lv3{background:color-mix(in srgb,var(--primary) 72%,var(--track))}.lg.lv4{background:var(--primary)}
+.lg-ok{display:inline-grid;place-items:center;width:12px;height:12px;border-radius:50%;background:var(--primary);color:var(--on-primary);font-size:8px;font-style:normal;font-weight:700;margin-right:5px}
+.sess-mark{padding:4px 0;color:var(--text-2)}
+.yr-books{margin-top:14px;border-top:1px solid var(--border);padding-top:12px;display:grid;gap:10px}
+.yr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}
+.yr-b{display:flex;gap:10px;align-items:center;border:0;background:none;padding:4px;text-align:left;border-radius:10px}
+.yr-b:hover{background:var(--surface-alt)}.yr-b>span{display:grid}
+.act-more{margin-top:8px}
+.aw-given{margin-top:28px}
+.aw-list{display:grid;border-top:1px solid var(--border)}
+.aw-row{display:flex;gap:12px;align-items:center;padding:12px 2px;border-bottom:1px solid var(--border)}
+.aw-t{flex:1;min-width:0}.aw-acts{display:flex;gap:6px;flex-wrap:wrap}
+.aw-f{flex:1;display:grid;gap:8px}.aw-edit{align-items:flex-start}
 .lg{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
 .lg.met{background:var(--primary)}.lg.active{background:color-mix(in srgb,var(--primary) 30%,var(--track))}.lg.rest{background:color-mix(in srgb,var(--blue) 20%,var(--track))}
 .sess-list{max-height:560px;overflow-y:auto;padding-right:4px}
@@ -1335,13 +1361,13 @@ const REACTS=[['like','👍','Like'],['love','❤️','Love'],['celebrate','🎉
 function person(who){return who==='me'?{name:'You',color:S.me.color,init:S.me.name[0]}:{...S.members[who],init:S.members[who].name[0]}}
 const ACT_CAT={started:'reading',finished:'reading',reread:'reading',resumed:'reading',halfway:'reading',session:'reading',together:'reading',library:'library',loan:'library',rec:'library',goal:'goals',streak:'goals',record:'goals',challenge:'challenges',invite:'challenges',completed:'challenges',battle:'battle',earned:'trophies',award:'trophies',member:'group'};
 const ACT_LBL=[['reading','Reading'],['library','Library'],['goals','Goals and Streaks'],['challenges','Challenges'],['battle','Battle of the Books'],['trophies','Trophies and Awards'],['group','Group']];
-let actOpen=false;
+let actOpen=false,actLimit=6;
 function activityCard(){
   const hide=S.settings.hideAct||[];
   const all=S.activity.filter(a=>(a.who!=='me'||S.settings.share)&&(!a.ch||canSeeCh(S.challenges.find(c=>c.id===a.ch)||{}))&&!hide.includes(ACT_CAT[a.kind]||'reading')).sort((a,b)=>b.ts-a.ts);
   const out=[],grp={};
   all.forEach(a=>{if(a.kind==='session'){const k=a.who+'|'+new Date(a.ts).toDateString();if(grp[k]){grp[k].n++;if(grp[k].book!==a.book)grp[k].book='';return}const x={...a,n:1};grp[k]=x;out.push(x)}else out.push(a)});
-  const items=out.slice(0,6);
+  const items=out.slice(0,actLimit);
   const body=items.length?items.map(a=>{
     const p=person(a.who);const mine=a.who==='me';
     const txt=a.n>1?`logged ${a.n} reading sessions${new Date(a.ts).toDateString()===new Date().toDateString()?' today':''}`:a.text;
@@ -1351,7 +1377,8 @@ function activityCard(){
   }).join(''):`<div class="empty">${ic('users')}<h3>${hide.length?'Nothing to Show':'No Group Activity Yet'}</h3><p>${hide.length?'You’ve hidden some kinds of activity. Choose What Shows to bring them back.':'Group members who share their reading will show up here.'}</p></div>`;
   const filt=actOpen?`<div class="act-f"><div class="xs muted">Show activity about:</div><div class="chips">${ACT_LBL.map(([k,l])=>`<button class="tab sm" aria-pressed="${!hide.includes(k)}" data-act="actCat" data-v="${k}">${l}</button>`).join('')}</div></div>`:'';
   const note=S.settings.share?'':`<div class="privacy-note"><span>${ic('lock')} Your activity is private, so your group doesn’t see it here.</span><button data-act="share">Share with My Groups</button></div>`;
-  return `<section class="card" aria-labelledby="faH"><div class="card-h"><span class="ico">${ic('users')}</span><h2 id="faH">${esc(GN())} Activity</h2><button class="more" data-act="actFilter" aria-expanded="${actOpen}" aria-label="Choose what shows">${ic('filter')}Filter</button></div>${filt}${body}${note}</section>`;
+  const more=out.length>actLimit?`<button class="link-btn sm act-more" data-act="actMore" data-v="1">Show More (${out.length-actLimit} more)</button>`:actLimit>6&&out.length>6?`<button class="link-btn sm act-more" data-act="actMore" data-v="0">Show Less</button>`:'';
+  return `<section class="card" aria-labelledby="faH"><div class="card-h"><span class="ico">${ic('users')}</span><h2 id="faH">${esc(GN())} Activity</h2><button class="more" data-act="actFilter" aria-expanded="${actOpen}" aria-label="Choose what shows">${ic('filter')}Filter</button></div>${filt}${body}${more}${note}</section>`;
 }
 const QUOTES=[['A room without books is like a body without a soul.','Cicero (attributed)'],['There is more treasure in books than in all the pirate’s loot on Treasure Island.','Walt Disney'],['The man who does not read has no advantage over the man who cannot read.','Attributed to Mark Twain'],['Books are the quietest and most constant of friends.','Charles W. Eliot']];
 function hero(){
@@ -1417,7 +1444,7 @@ function calCard(){
   <p class="xs muted" style="margin:10px 0 0">${yearFinished()} book${yearFinished()===1?'':'s'} finished so far this year. <button class="link-btn sm" data-go="history">See History</button></p></section>`;
 }
 const MONF=['January','February','March','April','May','June','July','August','September','October','November','December'];
-let hist={m:today().slice(0,7)};
+let hist={m:today().slice(0,7),sel:null,books:false};
 function monthAdd(m,n){const [y,mo]=m.split('-').map(Number);const d=new Date(y,mo-1+n,1);return `${d.getFullYear()}-${pad(d.getMonth()+1)}`}
 function longestStreak(){return longestStreakRange().n}
 /* Longest streak with its first and last reading day; rest days inside a run don't break it. */
@@ -1458,7 +1485,7 @@ function historyView(){
   const upTo=today().slice(5),ly=String(+y-1),cur=yearTotals(y,upTo),prev=yearTotals(ly,upTo),LS=longestStreakRange();
   const cmp=(a,b,f)=>prev.any?`<div class="cmp xs ${a>b?'up':a<b?'down':''}">${a===b?'Same as':a>b?`${f(a-b)} more than`:`${f(b-a)} fewer than`} this time last year</div>`:'';
   const stats=[['book',`<button class="stat-link" data-act="goFinished" data-y="${y}" aria-label="${yearFinished()} books finished. See them on the shelf">${yearFinished()}</button>`,'books finished',cmp(cur.fin,prev.fin,n=>n)],
-    ['library',uniq,'different books read',cmp(cur.uniq,prev.uniq,n=>n)],
+    ['library',`<button class="stat-link" data-act="histBooks" aria-expanded="${!!hist.books}" aria-label="${uniq} different books read. Show them">${uniq}</button>`,'different books read',cmp(cur.uniq,prev.uniq,n=>n)],
     ['clock',fmtMin(rec),est?`reading time (+~${fmtMin(est)} estimated)`:'reading time',cmp(cur.min,prev.min,fmtMin)],
     ['chart',pages.toLocaleString(),'pages read',cmp(cur.pages,prev.pages,n=>n.toLocaleString())],
     ['flame',streak(),'day streak now',''],
@@ -1466,14 +1493,20 @@ function historyView(){
   const m=hist.m,[Y,M]=m.split('-').map(Number),days=new Date(Y,M,0).getDate(),lead=(new Date(Y,M-1,1).getDay()+6)%7,t=today(),{rest}=streakInfo();
   let cells='<span class="cal-h">M</span><span class="cal-h">T</span><span class="cal-h">W</span><span class="cal-h">T</span><span class="cal-h">F</span><span class="cal-h">S</span><span class="cal-h">S</span>';
   for(let i=0;i<lead;i++)cells+='<span class="cal-d blank"></span>';
+  const G=S.settings,ratio=g=>G.goalType==='pages'?g.pages/G.goalPages:G.goalType==='minutes'?g.mins/G.goalMinutes:Math.max(g.mins/G.goalMinutes,g.pages/G.goalPages);
   for(let d=1;d<=days;d++){const ds=`${m}-${pad(d)}`,g=goalState(ds),r=!g.active&&rest.has(ds);
-    const cls=ds>t?'future':g.met?'met':g.active?'active':r?'rest':'';
-    const tip=g.active?`${fmtDate(ds)}: ${Math.round(g.mins)} min${g.pages?`, ${g.pages} pages`:''}${g.met?', goal met':''}`:`${fmtDate(ds)}${r?': rest day':''}`;
-    cells+=`<span class="cal-d ${cls} ${ds===t?'today':''}" title="${tip}">${d}</span>`}
+    if(ds>t){cells+=`<span class="cal-d future">${d}</span>`;continue}
+    const q=g.active?ratio(g):0,lv=g.active?(q<.5?1:q<1?2:q<1.5?3:4):0;
+    const fin=S.books.filter(b=>b.finished===ds),st=S.books.filter(b=>b.started===ds);
+    const desc=[fmtDateY(ds),g.active?`${Math.round(g.mins)} min${g.pages?`, ${g.pages} pages`:''}`:'no reading',g.met?'goal met':'',r?'rest day':'',...st.map(b=>`started ${b.title}`),...fin.map(b=>`finished ${b.title}`)].filter(Boolean).join(', ');
+    cells+=`<button class="cal-d ${lv?'lv'+lv:''} ${g.met?'met':''} ${r?'rest':''} ${ds===t?'today':''} ${hist.sel===ds?'sel':''}" data-act="histDay" data-v="${ds}" aria-pressed="${hist.sel===ds}" aria-label="${esc(desc)}" title="${esc(desc)}">${d}${st.length||fin.length?`<span class="cal-mk" aria-hidden="true">${st.length?'<i class="mk-s"></i>':''}${fin.length?'<i class="mk-f"></i>':''}</span>`:''}</button>`}
   const ms=S.sessions.filter(x=>x.date.slice(0,7)===m);
   const mDays=new Set(ms.map(x=>x.date)).size,mMin=ms.reduce((a,x)=>a+(x.minutes||0),0),mEst=ms.reduce((a,x)=>a+(!x.minutes&&x.est?x.est:0),0),mPages=ms.reduce((a,x)=>a+(x.pages||0),0);
   const byDay={};ms.forEach(x=>{(byDay[x.date]=byDay[x.date]||[]).push(x)});
-  const list=Object.keys(byDay).sort().reverse().map(d=>`<div class="sess-day"><div class="sess-date">${fmtDateY(d)}</div>${byDay[d].map(x=>{const b=book(x.bookId);
+  const sel=hist.sel&&hist.sel.slice(0,7)===m?hist.sel:null;
+  const dayNotes=d=>[...S.books.filter(b=>b.started===d).map(b=>`Started <button class="sess-b" data-act="openTitle" data-id="${b.titleId||''}">${esc(b.title)}</button>`),...S.books.filter(b=>b.finished===d).map(b=>`Finished <button class="sess-b" data-act="openTitle" data-id="${b.titleId||''}">${esc(b.title)}</button>`)].map(h=>`<div class="small sess-mark">${h}</div>`).join('');
+  const dayKeys=sel?[sel]:Object.keys(byDay).sort().reverse();
+  const list=dayKeys.filter(d=>byDay[d]||dayNotes(d)).map(d=>`<div class="sess-day"><div class="sess-date">${fmtDateY(d)}</div>${dayNotes(d)}${(byDay[d]||[]).map(x=>{const b=book(x.bookId);
     const pg=x.pages?(x.start!=null?`p. ${x.start}–${x.end} (${x.pages} pages)`:`${x.pages} pages`):(b&&b.format==='audio'&&x.start!=null?`${fmtPos(x.start)}–${fmtPos(x.end)}`:'');
     const mn=x.minutes?fmtMin(x.minutes):x.est?`~${fmtMin(x.est)} (estimated)`:'';
     return `<div class="sess"><button class="sess-b" data-act="openTitle" data-id="${b?.titleId||''}">${esc(b?b.title:'Removed book')}</button><span class="small muted">${[pg,mn,x.with?`with ${x.with.map(nameOf).join(' and ')}`:''].filter(Boolean).join(' · ')}</span><button class="link-btn sm sess-edit" data-act="sessEdit" data-id="${x.id}" aria-label="Edit this session">${ic('pencil')}Edit</button>${x.note?`<div class="xs muted sess-note">“${esc(x.note)}”</div>`:''}</div>`}).join('')}</div>`).join('');
@@ -1482,12 +1515,14 @@ function historyView(){
   const rereads=rr.length?rr.map(([tid,v])=>{const tt=titleById(tid);return `<div class="rr"><button class="sess-b" data-act="openTitle" data-id="${tid}">${esc(tt.title)}</button>${[...v].sort((a,b)=>{const k=x=>x.started||x.finished||(['reading','paused','want'].includes(x.status)?'9999':'0000');return k(a).localeCompare(k(b))}).map((b,i)=>`<div class="small muted rr-row">Read-through ${i+1}: ${b.started?`started ${fmtDateY(b.started)}`:'start date unknown'}${b.finished?`, finished ${fmtDateY(b.finished)}`:''} <span class="st st-${b.status}">${STATUS[b.status]}</span></div>`).join('')}</div>`}).join('')
     :`<p class="small muted" style="margin:0">When you read a book again, each read-through appears here with its own dates.</p>`;
   return `<div class="hist"><div><h1 class="page-h">History</h1><p class="muted" style="margin:2px 0 0">Your reading over time. Only you can see this page.</p></div>
-  <section class="card"><div class="card-h"><span class="ico">${ic('chart')}</span><h2>This Year</h2></div><div class="stats hstats">${stats.map(([i,n,l,c])=>`<div class="stat ${i==='flame'?'o':''}">${ic(i)}<div class="n">${n}</div><div class="l">${l}</div>${c||''}</div>`).join('')}</div></section>
+  <section class="card"><div class="card-h"><span class="ico">${ic('chart')}</span><h2>This Year</h2></div><div class="stats hstats">${stats.map(([i,n,l,c])=>`<div class="stat ${i==='flame'?'o':''}">${ic(i)}<div class="n">${n}</div><div class="l">${l}</div>${c||''}</div>`).join('')}</div>${hist.books?(()=>{const last={};ys.forEach(x=>{const id=book(x.bookId)?.titleId;if(id&&(!last[id]||x.date>last[id]))last[id]=x.date});const ids=Object.keys(last).sort((a,b)=>last[b].localeCompare(last[a]));
+    return `<div class="yr-books"><div class="small muted">Books you logged reading for in ${y}, most recent first</div><div class="yr-grid">${ids.map(id=>{const t=titleById(id);return t?`<button class="yr-b" data-act="openTitle" data-id="${id}">${libCover(t,48)}<span><span class="small"><b>${esc(t.title)}</b></span><span class="xs muted">Last read ${fmtDate(last[id])}</span></span></button>`:''}).join('')}</div></div>`})():''}</section>
   <div class="hgrid"><section class="card"><div class="card-h"><span class="ico">${ic('cal')}</span><h2>${MONF[M-1]} ${Y}</h2><span class="cal-nav"><button class="icon-btn" data-act="histM" data-v="-1" aria-label="Previous month">${ic('chevL')}</button><button class="icon-btn" data-act="histM" data-v="1" aria-label="Next month" ${m>=t.slice(0,7)?'disabled':''}>${ic('chevR')}</button></span></div>
     <div class="cal">${cells}</div>
-    <div class="cal-legend xs muted"><span><i class="lg met"></i>Goal met</span><span><i class="lg active"></i>Read</span><span><i class="lg rest"></i>Rest day</span></div>
+    <div class="cal-legend xs muted"><span class="lg-scale">Less <i class="lg lv1"></i><i class="lg lv2"></i><i class="lg lv3"></i><i class="lg lv4"></i> More</span><span><i class="lg-ok" aria-hidden="true">✓</i>Goal met</span><span><i class="mk-s"></i>Started</span><span><i class="mk-f"></i>Finished</span><span><i class="lg rest"></i>Rest day</span></div>
+    <div class="xs muted" style="margin-top:6px">Tap a day to see what you read.</div>
     <div class="small muted" style="margin-top:10px">${mDays} day${mDays===1?'':'s'} read · ${fmtMin(mMin)}${mEst?` + ~${fmtMin(mEst)} estimated`:''} · ${mPages.toLocaleString()} pages</div></section>
-  <section class="card"><div class="card-h"><span class="ico">${ic('book')}</span><h2>Reading Sessions</h2><span class="count">${MONF[M-1]}</span></div>${list?`<div class="sess-list">${list}</div>`:''}${list?'':`<p class="small muted" style="margin:0">No reading logged this month.</p>`}</section></div>
+  <section class="card"><div class="card-h"><span class="ico">${ic('book')}</span><h2>Reading Sessions</h2><span class="count">${sel?fmtDate(sel):MONF[M-1]}</span>${sel?`<button class="link-btn sm" data-act="histDay" data-v="">Show All of ${MONF[M-1]}</button>`:''}</div>${list?`<div class="sess-list">${list}</div>`:''}${list?'':`<p class="small muted" style="margin:0">${sel?`No reading logged on ${fmtDate(sel)}.`:'No reading logged this month.'}</p>`}</section></div>
   <section class="card"><div class="card-h"><span class="ico o">${ic('trophy')}</span><h2>Records</h2></div><div class="rec-grid">${records().map(([i,l,v,sub,tid,html])=>`<div class="rec-t">${ic(i)}<div class="rec-l">${l}</div><div class="rec-v">${v}</div>${html?html:tid?`<button class="sess-b rec-s" data-act="openTitle" data-id="${tid}">${esc(sub)}</button>`:`<div class="xs muted">${esc(sub)}</div>`}</div>`).join('')}</div></section>
   <section class="card"><div class="card-h"><span class="ico">${ic('library')}</span><h2>Rereads</h2></div>${rereads}</section>
   <p class="xs muted" style="text-align:center"><button class="link-btn sm" data-act="goMyBooks" data-v="finished">Finished</button> and <button class="link-btn sm" data-act="goMyBooks" data-v="dnf">Did Not Finish</button> books are in Library → My Books.</p></div>`;
@@ -2324,7 +2359,14 @@ function trophyWall(){
   const custom=[...S.trophies,...battleWins()].map(t=>({...t,earned:true,custom:true})),A=achievements(),earned=A.filter(a=>a.earned),locked=A.filter(a=>!a.earned);
   const all=[...custom,...earned,...locked];
   return `<div class="tw-head"><span class="small muted">${custom.length+earned.length} earned · ${locked.length} still to earn</span><button class="btn btn-ghost" data-act="awardNew">${ic('trophy')}Give an Award</button></div>
-  <div class="tw-grid">${all.map(t=>`<div class="tw ${t.earned?'':'locked'}">${hexBadge(t)}${t.count>1?`<span class="tw-x" title="Earned ${t.count} times">×${t.count}</span>`:''}<div class="tn">${esc(t.name)}</div><div class="td">${t.custom?'Special Award':TIER[t.tier]}</div>${t.custom&&(!t.desc||t.desc==='Special award')?'':`<div class="td">${esc(t.desc)}</div>`}${t.earned?`<div class="td tw-date">${t.date?`Earned ${fmtDateY(t.date)}`:'Earned'}</div>`:''}</div>`).join('')}</div>`;
+  <div class="tw-grid">${all.map(t=>`<div class="tw ${t.earned?'':'locked'}">${hexBadge(t)}${t.count>1?`<span class="tw-x" title="Earned ${t.count} times">×${t.count}</span>`:''}<div class="tn">${esc(t.name)}</div><div class="td">${t.custom?'Special Award':TIER[t.tier]}</div>${t.custom&&(!t.desc||t.desc==='Special award')?'':`<div class="td">${esc(t.desc)}</div>`}${t.earned?`<div class="td tw-date">${t.date?`Earned ${fmtDateY(t.date)}`:'Earned'}</div>`:''}</div>`).join('')}</div>${givenAwards()}`;
+}
+let awEdit=null;
+function givenAwards(){
+  const g=[...(S.awardsGiven||[])].sort((a,b)=>b.date.localeCompare(a.date));if(!g.length)return '';
+  return `<section class="aw-given"><h3 class="shelf-l">Awards You’ve Given <span class="count">(${g.length})</span></h3><div class="aw-list">${g.map(w=>awEdit===w.id
+    ?`<div class="aw-row aw-edit"><span class="avatar" style="background:${colorOf(w.to)}">${initOf(w.to)}</span><div class="aw-f"><label class="f"><span class="sub">Award for ${esc(nameOf(w.to))}</span><input class="inp sm" id="awgName" maxlength="60" value="${esc(w.name)}"></label><label class="f"><span class="sub">Note (optional)</span><input class="inp sm" id="awgNote" maxlength="120" value="${esc(w.note||'')}"></label><div class="err" id="awgErr" role="alert"></div><div class="aw-acts"><button class="btn btn-primary sm" data-act="awgSave" data-id="${w.id}">Save</button><button class="btn btn-ghost sm" data-act="awgCancel">Cancel</button></div></div></div>`
+    :`<div class="aw-row"><span class="avatar" style="background:${colorOf(w.to)}">${initOf(w.to)}</span><div class="aw-t"><div class="small"><b>${esc(w.name)}</b> <span class="muted">to ${esc(nameOf(w.to))}</span></div><div class="xs muted">${fmtDateY(w.date)}${w.note?` · “${esc(w.note)}”`:''}</div></div><span class="aw-acts"><button class="link-btn sm" data-act="awgEdit" data-id="${w.id}">${ic('pencil')}Edit</button><button class="link-btn sm" data-act="awgRemove" data-id="${w.id}">Remove</button></span></div>`).join('')}</div></section>`;
 }
 function challengesView(){
   const ORDK={active:0,up:1,done:2,ended:3};
@@ -2618,10 +2660,14 @@ function openLog(bookId,focus,preMin){
 }
 let pendingNew=null;
 const findB=id=>book(id)||(pendingNew&&pendingNew.id===id?pendingNew:null);
+/* Log Pages marks Minutes optional and Log Time marks the ending page optional; from Log Reading the goal type decides, and Both marks neither. */
+function setLogOpt(){
+  const f=logForm.dataset.focus||'',gt=S.settings.goalType;
+  logForm.querySelector('[data-opt=end]')?.toggleAttribute('hidden',!(f==='minutes'||(!f&&gt==='minutes')));
+  logForm.querySelector('[data-opt=min]')?.toggleAttribute('hidden',!(f==='end'||f==='audio'||(!f&&gt==='pages')));
+}
 function drawLog(b,focus,preMin){
   /* Log Pages marks Minutes optional, Log Time marks the ending page optional; otherwise the goal type decides, and Both marks neither. */
-  focus=focus||logForm.dataset.focus||'';
-  const gt=S.settings.goalType,optEnd=focus==='minutes'||(!focus&&gt==='minutes'),optMin=focus==='end'||focus==='audio'||(!focus&&gt==='pages');
   const list0=S.books.filter(x=>x.status==='reading'||x.status==='paused');
   const list=list0.includes(b)?list0:[b,...list0];
   const isNew=!list0.includes(b);
@@ -2638,8 +2684,8 @@ function drawLog(b,focus,preMin){
     <div class="section-t">${audio?'Listening Progress':'Reading Progress'}</div>
     <div class="f3">
       <label class="f">${audio?'Start Position':'Starting Page'}<input class="inp" name="start" inputmode="${audio?'text':'numeric'}" value="${audio?fmtPos(b.pos):b.pos}" placeholder="${audio?'h:mm':''}"></label>
-      <label class="f"><span>${audio?'End Position':'Ending Page'}${optEnd?' <span class="sub">(optional)</span>':''}</span><input class="inp" name="end" inputmode="${audio?'text':'numeric'}" placeholder="${audio?'h:mm':'Page'}"></label>
-      <label class="f"><span>Minutes${optMin?' <span class="sub">(optional)</span>':''}</span><input class="inp" name="minutes" inputmode="numeric" value="${preMin||''}" placeholder="${audio?'Time spent':'Minutes'}"></label>
+      <label class="f"><span>${audio?'End Position':'Ending Page'} <span class="sub" data-opt="end" hidden>(optional)</span></span><input class="inp" name="end" inputmode="${audio?'text':'numeric'}" placeholder="${audio?'h:mm':'Page'}"></label>
+      <label class="f"><span>Minutes <span class="sub" data-opt="min" hidden>(optional)</span></span><input class="inp" name="minutes" inputmode="numeric" value="${preMin||''}" placeholder="${audio?'Time spent':'Minutes'}"></label>
     </div>
     <div class="calc" id="calc"></div>
     <div class="xs muted" style="margin-top:-8px">${audio?`Total length ${fmtPos(b.total)}. Enter positions as h:mm. Add minutes for the time you actually spent listening; otherwise the change in position counts as estimated time.`:(isNew?`New book: the starting page is 0, so reading pages 1–20 counts as 20 pages. Saving starts the book even if you don’t log pages yet.`:`The starting page is where you left off. Enter pages, minutes, or both.`)}</div>
@@ -2651,7 +2697,7 @@ function drawLog(b,focus,preMin){
     <div class="dlg-f"><button type="button" class="btn btn-ghost" data-act="closeLog">Cancel</button><button type="submit" class="btn btn-primary">Save Reading</button></div>
   </div>`;
   logForm.dataset.book=b.id;logForm.dataset.mode='log';
-  calcLog();
+  setLogOpt();calcLog();
 }
 function drawNew(){
   const has=S.books.some(x=>x.status==='reading'||x.status==='paused');
@@ -2813,7 +2859,7 @@ goalForm.addEventListener('submit',e=>{
   save();goalDlg.close();render();toast('Goal saved.');
 });
 /* Opened from Log Reading: the goal form sits on top of it, so what was typed stays put. Refresh the goal line for the new goal. */
-goalDlg.addEventListener('close',()=>{if(logDlg.open&&logForm.dataset.mode==='log'){calcLog();logForm.querySelector('#calc [data-act=editGoal]')?.focus()}});
+goalDlg.addEventListener('close',()=>{if(logDlg.open&&logForm.dataset.mode==='log'){setLogOpt();calcLog();logForm.querySelector('#calc [data-act=editGoal]')?.focus()}});
 
 /* ---------- edit book ---------- */
 const editDlg=document.getElementById('editDlg'),editForm=document.getElementById('editForm');
@@ -2995,13 +3041,21 @@ document.addEventListener('click',e=>{
     case 'bCreate':{const v=id=>document.getElementById(id).value.trim(),er=m=>document.getElementById('bfErr').textContent=m;if(!v('bfName'))return er('Give the battle a name.');if(!v('bfStart')||!v('bfEvent'))return er('Choose when reading starts and the battle date.');if(v('bfEvent')<v('bfStart'))return er('The battle date must be after reading starts.');
       const b={id:'bb'+uid(),name:v('bfName'),desc:v('bfDesc'),readStart:v('bfStart'),event:v('bfEvent'),moderator:null,readers:{},progress:{},creator:'me'};S.battles.push(b);save();chTab='battle';render();openBattle(b.id);toast(`Started ${b.name}.`);break}
     case 'awardNew':openAwardForm();break;
+    case 'awgEdit':awEdit=a.dataset.id;render();setTimeout(()=>document.getElementById('awgName')?.focus(),30);break;
+    case 'awgCancel':awEdit=null;render();break;
+    case 'awgSave':{const w=S.awardsGiven.find(x=>x.id===a.dataset.id),n=document.getElementById('awgName').value.trim();if(!n){document.getElementById('awgErr').textContent='Give the award a name.';break}
+      w.name=n;w.note=document.getElementById('awgNote').value.trim();awEdit=null;save();render();toast(`Saved the award for ${nameOf(w.to)}.`);break}
+    case 'awgRemove':{const snap=snapshot(),w=S.awardsGiven.find(x=>x.id===a.dataset.id);S.awardsGiven=S.awardsGiven.filter(x=>x!==w);save();render();toast(`Removed the ${w.name} award you gave ${nameOf(w.to)}.`,restoreTo(snap));break}
     case 'awSave':{const n=document.getElementById('awName').value.trim(),to=document.getElementById('awTo').value,note=document.getElementById('awNote').value.trim();if(!n){document.getElementById('awErr').textContent='Give the award a name.';break}
       if(to==='me'){S.trophies.push({id:'aw'+uid(),name:n,desc:note||'Special award',date:today(),tier:'trophy',icon:'trophy',hue:'purple'});post('award','added an award to their Trophy Wall:',n)}else{S.awardsGiven.push({id:uid(),to,name:n,note,date:today()});if(S.settings.share)S.activity.push({id:uid(),who:'me',kind:'award',text:`gave ${nameOf(to)} an award:`,book:n,ts:Date.now(),r:{}})}
       save();chDlg.close();toast(to==='me'?`Added ${n} to your Trophy Wall.`:`Gave ${nameOf(to)} the award ${n}.`);break}
     case 'libTab':lib.tab=a.dataset.v;if(lib.tab!=='mybooks'){if(lib.sort==='finished')lib.sort='title';if(['year','month','week'].includes(lib.group))lib.group='alpha'}if(lib.tab==='mybooks'&&lib.group==='alpha')lib.group='status';if(lib.tab!=='mybooks'&&lib.group==='status')lib.group='alpha';render();break;
     case 'mbChip':lib.mb=a.dataset.v;if(lib.mb==='finished'){if(lib.sort==='title')lib.sort='finished';if(lib.group==='status')lib.group='year'}else{if(lib.sort==='finished')lib.sort='title';if(['year','month','week'].includes(lib.group))lib.group='status'}refreshLib();break;
     case 'recView':lib.rv=a.dataset.v;render();break;
-    case 'histM':hist.m=monthAdd(hist.m,+a.dataset.v);render();break;
+    case 'histM':hist.m=monthAdd(hist.m,+a.dataset.v);hist.sel=null;render();break;
+    case 'histDay':{hist.sel=a.dataset.v&&hist.sel!==a.dataset.v?a.dataset.v:null;const y=window.scrollY;render();window.scrollTo(0,y);break}
+    case 'histBooks':{hist.books=!hist.books;const y=window.scrollY;render();window.scrollTo(0,y);break}
+    case 'actMore':{actLimit=a.dataset.v==='1'?actLimit+10:6;const y=window.scrollY;render();window.scrollTo(0,y);break}
     case 'startTitle':{const t=titleById(a.dataset.id);pendingNew={id:'n'+uid(),titleId:t.id,title:t.title,author:t.author,format:'print',total:t.pages||300,pos:0,status:'new',c:t.c};if(bookDlg.open)bookDlg.close();if(chDlg.open)chDlg.close();drawLog(pendingNew);logDlg.showModal();setTimeout(()=>logForm.querySelector('[name=end]')?.focus(),30);break}
     case 'libFilters':lib.open=!lib.open;refreshLib();break;
     case 'libF':lib.f[a.dataset.k]=a.dataset.v;refreshLib();break;
