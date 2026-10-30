@@ -818,6 +818,30 @@ main section.card .card-h .ico{display:none}
 .stat-link:hover{color:var(--primary)}
 .rec-books{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
 .rv-acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.tour{position:fixed;inset:0;z-index:60}
+.tour.nospot{background:rgba(15,23,42,.55)}
+.tour-spot{position:fixed;border-radius:14px;box-shadow:0 0 0 200vmax rgba(15,23,42,.55);pointer-events:none;transition:left .25s,top .25s,width .25s,height .25s}
+.tour.nospot .tour-spot{display:none}
+.tour-card{position:fixed;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:14px;box-shadow:0 18px 40px rgba(15,23,42,.3);padding:16px 18px 14px;display:grid;gap:8px;transition:left .25s,top .25s}
+.tour-card h2{font-size:19px;margin:0}.tour-card p{margin:0;color:var(--text-2)}
+.tour-card.hint{padding:10px 14px}.tour-hint{display:flex;gap:6px;align-items:center}.tour-hint svg.i{width:16px;height:16px;color:var(--primary)}
+.tour-nav{display:flex;gap:8px;align-items:center;margin-top:4px}
+.tour-act{display:grid;gap:10px;border-top:1px solid var(--border);padding-top:10px}
+.tour-act .row{display:flex;gap:12px;align-items:center;justify-content:space-between}
+.tour-books{display:grid;gap:6px}.tour-btns{display:flex;gap:8px;flex-wrap:wrap}
+.tour-offer{position:fixed;right:16px;bottom:16px;z-index:55;display:grid;gap:10px;max-width:320px;padding:14px 16px;box-shadow:0 12px 32px rgba(15,23,42,.18)}
+@media (max-width:720px){.tour-offer{left:12px;right:12px;bottom:calc(76px + env(safe-area-inset-bottom,0px));max-width:none}}
+@media (prefers-reduced-motion:reduce){.tour-spot,.tour-card{transition:none}}
+.sel-head{margin:4px 0 12px}
+.sel-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px;padding-bottom:80px}
+.selc{display:flex;gap:10px;align-items:center;padding:10px;border:1px solid var(--border);border-radius:12px;background:var(--surface);cursor:pointer}
+.selc.on{border-color:var(--primary);box-shadow:0 0 0 1px var(--primary)}
+.selc input{width:18px;height:18px;accent-color:var(--primary);flex:none}
+.selc-t{display:grid;gap:2px;min-width:0}
+.share-st{display:inline-flex;gap:4px;align-items:center;color:var(--text-2)}.share-st.is-sh{color:var(--primary)}.share-st svg.i{width:12px;height:12px}
+.sel-bar{position:sticky;bottom:12px;z-index:5;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:10px 14px;margin-top:-64px;background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:0 10px 28px rgba(15,23,42,.16)}
+.sel-acts{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto}
+@media (max-width:720px){.sel-bar{bottom:calc(72px + env(safe-area-inset-bottom,0px))}}
 .gs{margin:22px 0 4px}
 .gs-list{list-style:none;margin:6px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}
 .gs-i{display:flex;gap:12px;align-items:center;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
@@ -941,10 +965,10 @@ main section.card .card-h .ico{display:none}
       <button data-go="history"><span data-i="chart"></span>History</button>
     </nav>
     <div class="top-right">
-      <button class="grp-btn" id="grpBtn" aria-haspopup="true"><span data-i="users"></span><span id="grpName"></span><span class="chev" data-i="chev"></span></button>
+      <button class="grp-btn" id="grpBtn" aria-haspopup="true" data-tour="groups"><span data-i="users"></span><span id="grpName"></span><span class="chev" data-i="chev"></span></button>
       <div class="menu" id="grpMenu" hidden></div>
       <button class="icon-btn" id="bellBtn" aria-label="Notifications" aria-haspopup="true"><span data-i="bell"></span><span class="badge-dot" id="bellCount"></span></button>
-      <button class="me-btn" id="meBtn" aria-haspopup="true"><span class="avatar" id="meAvatar"></span><span class="nm" id="meName"></span><span class="chev" data-i="chev"></span></button>
+      <button class="me-btn" id="meBtn" aria-haspopup="true" data-tour="account"><span class="avatar" id="meAvatar"></span><span class="nm" id="meName"></span><span class="chev" data-i="chev"></span></button>
       <div class="menu" id="bellMenu" hidden></div>
       <div class="menu" id="meMenu" hidden></div>
     </div>
@@ -1344,7 +1368,7 @@ function readingCard(){
     :`<div class="empty">${ic('book')}<h3>Your Reading Journey Starts Here</h3><p>Add a book to your collection or search for a title to get started.</p><button class="btn btn-primary" data-act="startNew">Start a Book</button></div>`;
   const un=upList()[0];
   const upLine=''&&un?`<div class="up-line"><span class="small"><span class="muted">Next in your queue:</span> <b>${esc(un.title)}</b></span><button class="btn btn-ghost sm" data-act="bdLog" data-id="${un.id}">${ic('play')}Start Reading</button></div>`:'';
-  return `<section class="card" id="crCard" aria-labelledby="crH"><div class="card-h"><span class="ico">${ic('book')}</span><h2 id="crH">Currently Reading <span class="count">(${n})</span></h2>${n>1?`<span class="pos">${list.indexOf(b)+1} of ${n}</span>`:''}</div>${body}${upLine}</section>`;
+  return `<section class="card" id="crCard" data-tour="current" aria-labelledby="crH"><div class="card-h"><span class="ico">${ic('book')}</span><h2 id="crH">Currently Reading <span class="count">(${n})</span></h2>${n>1?`<span class="pos">${list.indexOf(b)+1} of ${n}</span>`:''}</div>${body}${upLine}</section>`;
 }
 function stepBook(d,refocus){
   const list=readingList();if(list.length<2)return;
@@ -1399,10 +1423,133 @@ function activityCard(){
   const filt=actOpen?`<div class="act-f"><div class="xs muted">Show activity about:</div><div class="chips">${ACT_LBL.map(([k,l])=>`<button class="tab sm" aria-pressed="${!hide.includes(k)}" data-act="actCat" data-v="${k}">${l}</button>`).join('')}</div></div>`:'';
   const note=S.settings.share?'':`<div class="privacy-note"><span>${ic('lock')} Your activity is private, so your group doesn’t see it here.</span><button data-act="share">Share with My Groups</button></div>`;
   const more=out.length>actLimit?`<button class="link-btn sm act-more" data-act="actMore" data-v="1">Show More (${out.length-actLimit} more)</button>`:actLimit>6&&out.length>6?`<button class="link-btn sm act-more" data-act="actMore" data-v="0">Show Less</button>`:'';
-  return `<section class="card" aria-labelledby="faH"><div class="card-h"><span class="ico">${ic('users')}</span><h2 id="faH">${esc(GN())} Activity</h2><button class="more" data-act="actFilter" aria-expanded="${actOpen}" aria-label="Choose what shows">${ic('filter')}Filter</button></div>${filt}${body}${more}${note}</section>`;
+  return `<section class="card" aria-labelledby="faH" data-tour="activity"><div class="card-h"><span class="ico">${ic('users')}</span><h2 id="faH">${esc(GN())} Activity</h2><button class="more" data-act="actFilter" aria-expanded="${actOpen}" aria-label="Choose what shows">${ic('filter')}Filter</button></div>${filt}${body}${more}${note}</section>`;
 }
 const QUOTES=[['A room without books is like a body without a soul.','Cicero (attributed)'],['There is more treasure in books than in all the pirate’s loot on Treasure Island.','Walt Disney'],['The man who does not read has no advantage over the man who cannot read.','Attributed to Mark Twain'],['Books are the quietest and most constant of friends.','Charles W. Eliot']];
 /* Phase 1 onboarding: three first steps on the dashboard. Each ticks off when done; the card goes away once all three are done or it's hidden. */
+/* ---------- guided tour ----------
+   One set of stops with conditions: solo readers skip group stops, admins get an admin stop, and the group add-on tour
+   covers just what's new when a solo reader joins a group. Each stop points at a stable data-tour marker and is skipped
+   if that feature isn't on screen. Remembered per browser for now; per account once accounts exist. */
+const tourPrefs=()=>S.settings.tour||(S.settings.tour={seen:false,notNow:0,visits:0,askAt:0,groupSeen:false});
+const privateCopies=()=>S.copies.filter(c=>c.owner==='me'&&c.private).length;
+function privacyExtra(){
+  const n=privateCopies();
+  return `<div class="tour-act"><div class="row"><span class="small"><b>Share My Activity with ${esc(GN())}</b><span class="xs muted" style="display:block">${S.settings.share?'Your group sees what you’re reading, finished books, and achievements.':'Right now only you see your reading.'}</span></span><button class="switch" role="switch" aria-checked="${!!S.settings.share}" data-act="tourShare" aria-label="Share My Activity with ${esc(GN())}"></button></div>
+  ${n?`<div class="tour-books"><span class="small">Show your ${n} book${n===1?'':'s'} in the ${esc(GN())} Library?</span><span class="tour-btns"><button class="btn btn-ghost sm" data-act="tourShareBooks">Show All</button><button class="btn btn-ghost sm" data-act="tourChooseBooks">Choose Books</button></span></div>`:''}</div>`;
+}
+function tourSteps(mode){
+  const solo=!!S.settings.solo,admin=!!S.me.admin,G=esc(GN());
+  const noBooks=()=>!S.books.some(b=>b.status==='reading'||b.status==='paused');
+  const finish={id:'finish',page:'history',sel:'[data-tour=account]',title:'You’re Ready',
+    text:()=>`Find this tour anytime under Take the Tour in your account menu.${solo?' Reading with family or a book club? You can join or start a group anytime.':''}`,
+    final:()=>S.books.length?{act:'tourLog',label:'Log Your Reading'}:{act:'tourFind',label:'Add Your First Book'}};
+  if(mode==='group')return [
+    {id:'gwelcome',page:'dashboard',title:`Welcome to ${G}`,text:()=>'You’re reading with a group now. Here’s what’s new, in a few quick stops. Your reading stays yours and counts in every group you join.'},
+    {id:'glib',page:'library',sel:'[data-tour=lib-family]',title:`The ${G} Library`,text:()=>'Books members own, in one place. See who has a copy and ask to borrow it.'},
+    {id:'gact',page:'dashboard',sel:'[data-tour=activity]',title:'Group Activity',text:()=>'What your group is reading and finishing. Cheer people on with a reaction. Only members who share appear here.'},
+    {id:'gch',page:'challenges',sel:'[data-tour=ch-family]',title:'Group Challenges and Battle of the Books',text:()=>'Join a challenge your group started, or organize a Battle of the Books with a shared reading list.'},
+    {id:'gpriv',page:'dashboard',sel:'[data-tour=account]',title:'Your Privacy',text:()=>'Choose what your group sees. You can change this anytime in your account menu.',extra:privacyExtra,final:()=>({act:'tourEnd',label:'Done'})}];
+  return [
+    {id:'welcome',page:'dashboard',title:solo?'Welcome to Reading Room':`Welcome to ${G}`,text:()=>`A quick look around, about a minute. Leave anytime with Skip or Esc.`},
+    {id:'privacy',cond:!solo,page:'dashboard',sel:'[data-tour=account]',title:'First, Your Privacy',text:()=>'You’re joining people who can see each other’s reading. New accounts start private; choose what your group sees. You can change this anytime in your account menu.',extra:privacyExtra},
+    {id:'goal',page:'dashboard',sel:'[data-tour=goal]',title:'Today’s Goal and Streak',text:()=>'The ring fills as you read toward today’s goal. Your streak counts reading days, and rest days keep it going.'},
+    {id:'log',page:'dashboard',sel:'[data-tour=log]',title:'Log Reading and the Timer',text:()=>'Log Reading records pages or minutes in a few seconds. Start Timer counts the minutes while you read, then logs them for you.'},
+    {id:'current',page:'dashboard',sel:'[data-tour=current]',title:'Currently Reading',text:()=>noBooks()?'Books you’re reading will show up here, each with its progress, finish estimate, and its own Log Reading button.':'Each book you’re reading shows its progress, finish estimate, and its own Log Reading button.'},
+    {id:'queue',page:'dashboard',sel:'[data-tour=queue]',title:'Reading Queue',text:()=>upList().length?'Your next few books, in order. The first one also appears in Currently Reading, so you always know what’s next.':'Your next few books will line up here, in order. Add them from your To Read list, and the first one appears in Currently Reading so you always know what’s next.'},
+    {id:'activity',cond:!solo,page:'dashboard',sel:'[data-tour=activity]',title:'Group Activity',text:()=>'What your group is reading and finishing. Cheer people on with a reaction. Only members who share appear here.'},
+    {id:'library',page:'library',sel:'[data-tour=library]',title:'Your Library',text:()=>`${solo?'My Books holds every book connected to you, from To Read to Finished.':`My Books holds every book connected to you, and the ${G} Library shows what everyone owns.`} Add a Book searches by title, author, or ISBN.${S.books.length?'':' Books you add will show up here.'}`},
+    {id:'challenges',page:'challenges',sel:'[data-tour=challenge-tabs]',title:'Challenges and Trophies',text:()=>solo?'Set personal challenges, like 12 books this year. Trophies you earn collect on the Trophy Wall.':'Join group challenges, organize a Battle of the Books, or set personal goals. Trophies you earn collect on the Trophy Wall.'},
+    {id:'admin',cond:!solo&&admin,page:'challenges',sel:'[data-tour=ch-battle]',title:'For Group Admins',text:()=>'As a group admin, you can correct shared book details with Edit Book and record Battle of the Books winners.'},
+    {id:'history',page:'history',sel:'[data-tour=calendar]',title:'History',text:()=>S.sessions.length?'Your reading over time. Darker days mean more reading; tap a day to see what you read. Records and yearly totals are below.':'Each day you read will fill in here, darker for more reading. Tap a day to see what you read; records and yearly totals are below.'},
+    finish].filter(x=>x.cond!==false);
+}
+let tour=null;
+const reducedMotion=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
+function tourStart(mode){
+  closeMenus();document.querySelectorAll('dialog[open]').forEach(d=>d.close());hideTourOffer();
+  const T=tourPrefs();if(mode==='group')T.groupSeen=true;else T.seen=true;save();
+  tour={mode,steps:tourSteps(mode),i:0,prev:document.activeElement};
+  const root=document.createElement('div');root.id='tour';root.className='tour';
+  root.innerHTML=`<div class="tour-spot"></div><div class="tour-card" role="dialog" aria-modal="true" aria-labelledby="tourT" aria-describedby="tourB" tabindex="-1"></div><div class="sr-only" aria-live="polite" id="tourLive"></div>`;
+  document.body.appendChild(root);document.body.classList.add('touring');
+  addEventListener('resize',tourPlace);addEventListener('scroll',tourPlace,true);
+  tourShow(0,1);
+}
+function tourEnd(){
+  if(!tour)return;const prev=tour.prev;tour=null;
+  document.getElementById('tour')?.remove();document.body.classList.remove('touring');
+  removeEventListener('resize',tourPlace);removeEventListener('scroll',tourPlace,true);
+  if(prev&&document.contains(prev))prev.focus();
+}
+const navBtn=page=>[...document.querySelectorAll(`[data-go=${page}]`)].find(b=>b.offsetParent&&b.closest('.nav,.bnav'));
+const PAGE_L={dashboard:'Dashboard',library:'Library',challenges:'Challenges',history:'History'};
+/* Wait until a scrolled feature stops moving, so the highlight and card land on it. */
+async function settle(el){let last='';for(let i=0;i<30;i++){await new Promise(r=>setTimeout(r,60));const r=el.getBoundingClientRect(),k=Math.round(r.top)+','+Math.round(r.left);if(k===last)return;last=k}}
+async function tourShow(i,dir){
+  if(!tour)return;const steps=tour.steps;
+  if(i<0)i=0;if(i>=steps.length)return tourEnd();
+  const st=steps[i];
+  if(st.page&&st.page!==view){
+    // Point at the page we're about to open, so people learn where it lives.
+    const nb=navBtn(st.page);
+    if(nb){tourRender({title:`Next: ${PAGE_L[st.page]}`,text:()=>'',hint:true},nb);await new Promise(r=>setTimeout(r,reducedMotion()?600:900));if(!tour)return}
+    view=st.page;if(st.page==='library'&&S.settings.solo&&lib.tab!=='mybooks')lib.tab='mybooks';render();
+  }
+  const el=st.sel?document.querySelector(st.sel):null;
+  if(st.sel&&(!el||!el.offsetParent)){tour.i=i;return tourShow(i+dir,dir)}
+  tour.i=i;
+  if(el){el.scrollIntoView({block:'center',behavior:reducedMotion()?'auto':'smooth'});await settle(el);if(!tour)return}
+  tourRender(st,el);
+}
+function tourRender(st,el){
+  const root=document.getElementById('tour');if(!root)return;
+  const card=root.querySelector('.tour-card'),steps=tour.steps,n=steps.length,k=steps.indexOf(st);
+  tour.el=el;tour.hint=!!st.hint;
+  if(st.hint){card.innerHTML=`<div class="tour-hint">${ic('chevR')}<b>${esc(st.title)}</b></div>`;card.classList.add('hint')}
+  else{card.classList.remove('hint');const fin=st.final?st.final():null;
+    card.innerHTML=`<div class="tour-step xs muted">${k+1} of ${n}</div><h2 id="tourT">${esc(st.title)}</h2><p id="tourB" class="small">${st.text()}</p>${st.extra?st.extra():''}
+    <div class="tour-nav">${k>0?'<button class="btn btn-ghost sm" data-act="tourBack">Back</button>':''}<span style="flex:1"></span>${fin?(fin.act==='tourEnd'?'':'<button class="link-btn sm" data-act="tourEnd">Done</button>'):'<button class="link-btn sm" data-act="tourEnd">Skip Tour</button>'}<button class="btn btn-primary sm" data-act="${fin?fin.act:'tourNext'}">${fin?fin.label:'Next'}</button></div>`;
+    document.getElementById('tourLive').textContent=`Step ${k+1} of ${n}: ${st.title}`;
+    setTimeout(()=>card.querySelector('.tour-nav .btn-primary')?.focus(),20);}
+  root.classList.toggle('nospot',!el);
+  tourPlace();
+}
+function tourPlace(){
+  if(!tour)return;const root=document.getElementById('tour');if(!root)return;
+  const spot=root.querySelector('.tour-spot'),card=root.querySelector('.tour-card'),el=tour.el,vw=innerWidth,vh=innerHeight,m=12;
+  const cw=Math.min(tour.hint?240:380,vw-2*m);card.style.width=cw+'px';
+  if(!el){spot.style.cssText='';card.style.left=Math.round((vw-cw)/2)+'px';card.style.top=Math.max(m,Math.round((vh-card.offsetHeight)/2))+'px';return}
+  const r=el.getBoundingClientRect(),pad=6;
+  Object.assign(spot.style,{left:r.left-pad+'px',top:r.top-pad+'px',width:r.width+pad*2+'px',height:r.height+pad*2+'px'});
+  // Below the feature, else above, else beside it (tall features on wide screens), else along the bottom edge.
+  const ch=card.offsetHeight,clampTop=t=>Math.max(m,Math.min(Math.round(t),vh-ch-m));let top,left=r.left+r.width/2-cw/2;
+  if(r.bottom+pad+m+ch<=vh)top=r.bottom+pad+m;
+  else if(r.top-pad-m-ch>=0)top=r.top-pad-m-ch;
+  else if(r.right+pad+m+cw<=vw-m){left=r.right+pad+m;top=clampTop(Math.max(r.top,m))}
+  else if(r.left-pad-m-cw>=m){left=r.left-pad-m-cw;top=clampTop(Math.max(r.top,m))}
+  else top=vh-ch-m;
+  card.style.top=clampTop(top)+'px';
+  card.style.left=Math.round(Math.min(Math.max(m,left),vw-cw-m))+'px';
+}
+document.addEventListener('keydown',e=>{
+  if(!tour)return;
+  if(e.key==='Escape'){e.preventDefault();e.stopPropagation();tourEnd();return}
+  if(e.key==='Tab'){const f=[...document.querySelectorAll('#tour .tour-card button:not([disabled])')];if(!f.length){e.preventDefault();return}
+    const i=f.indexOf(document.activeElement);if(e.shiftKey&&(i<=0)){e.preventDefault();f[f.length-1].focus()}else if(!e.shiftKey&&(i===f.length-1||i<0)){e.preventDefault();f[0].focus()}}
+},true);
+/* Offer the tour on a new member's first visit; after Not Now, ask once more a few visits later, then leave it to the account menu. */
+function maybeOfferTour(){
+  const T=tourPrefs();T.visits=(T.visits||0)+1;save();
+  if(!T.seen&&T.notNow<2&&T.visits>=(T.askAt||0))showTourOffer('full');
+}
+function showTourOffer(mode){
+  hideTourOffer();const d=document.createElement('div');d.id='tourOffer';d.className='tour-offer card';d.setAttribute('role','region');d.setAttribute('aria-label','Tour');
+  d.innerHTML=mode==='group'?`<div class="small"><b>Welcome to ${esc(GN())}</b><span class="muted" style="display:block">Take a quick look at what’s new with a group? A few quick stops.</span></div><div class="tour-btns"><button class="btn btn-primary sm" data-act="tourGo" data-v="group">Show Me</button><button class="btn btn-ghost sm" data-act="tourLater" data-v="group">Not Now</button></div>`
+    :`<div class="small"><b>New here?</b><span class="muted" style="display:block">Take a one-minute tour of Reading Room.</span></div><div class="tour-btns"><button class="btn btn-primary sm" data-act="tourGo" data-v="full">Start Tour</button><button class="btn btn-ghost sm" data-act="tourLater" data-v="full">Not Now</button></div>`;
+  document.body.appendChild(d);
+}
+function hideTourOffer(){document.getElementById('tourOffer')?.remove()}
 function getStarted(){
   if(S.settings.gsHidden)return '';
   const steps=[['find','Find a Book','Search for something you’re reading or want to read.',S.books.length>0||S.copies.some(c=>c.owner==='me'),'gsFind','search'],
@@ -1441,11 +1588,11 @@ function heroDash(){
   <div class="hero2-main">
     <h1 id="heroH">${greet}, ${esc(S.me.name)}.</h1>
     <p class="hero2-sub ${st.met?'ok':''}">${note}</p>
-    <div class="hero2-goal"><div class="rings">${rings}</div>
+    <div class="hero2-goal" data-tour="goal"><div class="rings">${rings}</div>
       <div class="streak2"><div class="streak-n">${ic('flame')}${sk}<span>day streak</span></div>
         <div><div class="dots">${dots}</div><div class="dlabels"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div></div>
         <div class="xs muted">Read ${activeDays} of 7 days this week${allow?`, ${restLeft} rest day${restLeft===1?'':'s'} left`:''}</div></div></div>
-    <div class="hero2-acts">${S.timer?timerBox():`<button class="btn btn-primary btn-big" data-act="log">${ic('book')}Log Reading</button><button class="btn btn-ghost btn-big" data-act="startTimer">${ic('clock')}Start Timer</button>`}</div>
+    <div class="hero2-acts" data-tour="log">${S.timer?timerBox():`<button class="btn btn-primary btn-big" data-act="log">${ic('book')}Log Reading</button><button class="btn btn-ghost btn-big" data-act="startTimer">${ic('clock')}Start Timer</button>`}</div>
     <div class="hero2-quick" role="group" aria-label="Shortcuts"><button data-act="log" data-focus="end">${ic('book')}Log Pages</button><button data-act="log" data-focus="minutes">${ic('clock')}Log Time</button><button data-act="log" data-focus="audio">${ic('head')}Log Audiobook</button><button data-act="editGoal">${ic('pencil')}Edit Goal</button></div>
   </div>
   </div>${photo?'':`<button class="hero-photo-btn" data-act="heroPhoto">${ic('image')}Add Your Photo</button>`}</section>`;
@@ -1454,7 +1601,7 @@ function upNextRow(){
   const L=upList(),show=L.slice(0,4);
   const body=show.length?`<ol class="un-row">${show.map((b,i)=>{const tt=b.titleId&&titleById(b.titleId);return `<li class="un-b"><button class="cover-btn" ${tt?`data-act="openTitle" data-id="${tt.id}"`:`data-act="editBook" data-book="${b.id}"`} aria-label="${i+1}. ${esc(b.title)} by ${esc(b.author)}">${libCover(tt||b,64)}</button><span class="un-t"><span class="un-n" aria-hidden="true">${i+1}</span>${esc(b.title)}</span><span class="un-a">${esc(b.author)}</span><span class="un-acts"><button class="icon-btn" data-act="upMove" data-id="${b.id}" data-v="-1" ${i===0?'disabled':''} aria-label="Move ${esc(b.title)} earlier">${ic('chevL')}</button><button class="icon-btn" data-act="upMove" data-id="${b.id}" data-v="1" ${i===L.length-1?'disabled':''} aria-label="Move ${esc(b.title)} later">${ic('chevR')}</button></span></li>`}).join('')}</ol>`
     :`<p class="small muted" style="margin:0">Line up the next few books you want to read from your To Read list.</p>`;
-  return `<section class="card" aria-labelledby="unH"><div class="card-h"><h2 id="unH">Reading Queue</h2>${L.length?`<span class="count">${L.length} of 10</span>`:''}<button class="more" data-act="goToRead">${L.length?'View All':'Open To Read'}</button></div>${body}</section>`;
+  return `<section class="card" aria-labelledby="unH" data-tour="queue"><div class="card-h"><h2 id="unH">Reading Queue</h2>${L.length?`<span class="count">${L.length} of 10</span>`:''}<button class="more" data-act="goToRead">${L.length?'View All':'Open To Read'}</button></div>${body}</section>`;
 }
 const HERO_KEY='rr_editorial_hero_v1';
 function heroPhoto(){try{const v=localStorage.getItem(HERO_KEY);return v&&/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(v)?v:''}catch(e){return ''}}
@@ -1567,7 +1714,7 @@ function historyView(){
   return `<div class="hist"><div><h1 class="page-h">History</h1><p class="muted" style="margin:2px 0 0">Your reading over time. Only you can see this page.</p></div>
   <section class="card"><div class="card-h"><span class="ico">${ic('chart')}</span><h2>This Year</h2></div><div class="stats hstats">${stats.map(([i,n,l,c])=>`<div class="stat ${i==='flame'?'o':''}">${ic(i)}<div class="n">${n}</div><div class="l">${l}</div>${c||''}</div>`).join('')}</div>${hist.panel==='read'?(()=>{const last={};ys.forEach(x=>{const id=book(x.bookId)?.titleId;if(id&&(!last[id]||x.date>last[id]))last[id]=x.date});const ids=Object.keys(last).sort((a,b)=>last[b].localeCompare(last[a]));
     return bookPanel(`Books you logged reading for in ${y}, most recent first`,ids.map(id=>[id,`Last read ${fmtDate(last[id])}`]))})():hist.panel==='fin'?bookPanel(`Books you finished in ${y}, most recent first`,finishedIn(y)):''}</section>
-  <div class="hgrid"><section class="card"><div class="card-h"><span class="ico">${ic('cal')}</span><h2>${hist.mode==='year'?Y:`${MONF[M-1]} ${Y}`}</h2><span class="vseg cal-mode" role="group" aria-label="Calendar view"><button aria-pressed="${hist.mode!=='year'}" data-act="histMode" data-v="month">Month</button><button aria-pressed="${hist.mode==='year'}" data-act="histMode" data-v="year">Year</button></span><span class="cal-nav"><button class="icon-btn" data-act="histM" data-v="${hist.mode==='year'?-12:-1}" aria-label="Previous ${hist.mode==='year'?'year':'month'}">${ic('chevL')}</button><button class="icon-btn" data-act="histM" data-v="${hist.mode==='year'?12:1}" aria-label="Next ${hist.mode==='year'?'year':'month'}" ${(hist.mode==='year'?String(Y)>=t.slice(0,4):m>=t.slice(0,7))?'disabled':''}>${ic('chevR')}</button></span></div>
+  <div class="hgrid"><section class="card" data-tour="calendar"><div class="card-h"><span class="ico">${ic('cal')}</span><h2>${hist.mode==='year'?Y:`${MONF[M-1]} ${Y}`}</h2><span class="vseg cal-mode" role="group" aria-label="Calendar view"><button aria-pressed="${hist.mode!=='year'}" data-act="histMode" data-v="month">Month</button><button aria-pressed="${hist.mode==='year'}" data-act="histMode" data-v="year">Year</button></span><span class="cal-nav"><button class="icon-btn" data-act="histM" data-v="${hist.mode==='year'?-12:-1}" aria-label="Previous ${hist.mode==='year'?'year':'month'}">${ic('chevL')}</button><button class="icon-btn" data-act="histM" data-v="${hist.mode==='year'?12:1}" aria-label="Next ${hist.mode==='year'?'year':'month'}" ${(hist.mode==='year'?String(Y)>=t.slice(0,4):m>=t.slice(0,7))?'disabled':''}>${ic('chevR')}</button></span></div>
     ${hist.mode==='year'?yearCal(Y,ratio):`<div class="cal cal-wk">${cells}</div>`}
     <div class="cal-legend xs muted"><span class="lg-scale">Less <i class="lg lv1"></i><i class="lg lv2"></i><i class="lg lv3"></i><i class="lg lv4"></i> More</span><span><i class="lg-ok" aria-hidden="true">✓</i>Goal met</span>${hist.mode==='year'?'':'<span><i class="mk-s"></i>Started</span><span><i class="mk-f"></i>Finished</span><span><i class="lg rest"></i>Rest day</span>'}</div>
     <div class="xs muted" style="margin-top:6px">${hist.mode==='year'?'Tap a month to open it.':'Tap a day to see what you read.'}</div>
@@ -1809,12 +1956,24 @@ function shelfView(list,given){
   const jump=sets.length>2?`<div class="jump" role="group" aria-label="Jump to a section of the shelf">${sets.map(([l],i)=>`<button class="tab sm" data-act="jumpShelf" data-v="sh${i}">${esc(l)}</button>`).join('')}</div>`:'';
   return jump+`<div class="board">${sets.map(([l,ts],i)=>plate('sh'+i,l,ts.length)+shelfItems(ts)).join('')}</div>`;
 }
+/* Pick several owned books at once to show in the group library or keep private. */
+function shareSelView(){
+  const q=lib.q.trim().toLowerCase(),owned=S.titles.filter(t=>S.copies.some(c=>c.titleId===t.id&&c.owner==='me')&&(!q||(t.title+' '+t.author).toLowerCase().includes(q))).sort((a,b)=>sortKey(a.title).localeCompare(sortKey(b.title)));
+  const shared=t=>S.copies.some(c=>c.titleId===t.id&&c.owner==='me'&&!c.private),n=lib.sel.size;
+  return `<div class="sel-head"><div><h3 class="shelf-l" style="margin:0">Choose Books to Share</h3><p class="small muted" style="margin:2px 0 0">Shared books appear in the ${esc(GN())} Library so members can see what you own and ask to borrow it. Your reading stays yours either way.</p></div></div>
+  <div class="sel-grid">${owned.map(t=>{const on=lib.sel.has(t.id);return `<label class="selc ${on?'on':''}"><input type="checkbox" data-sel="${t.id}" ${on?'checked':''}>${libCover(t,46)}<span class="selc-t"><span class="small"><b>${esc(t.title)}</b></span><span class="xs muted">${esc(t.author)}</span><span class="xs share-st ${shared(t)?'is-sh':''}">${shared(t)?`${ic('users')}Shared`:`${ic('lock')}Only Me`}</span></span></label>`}).join('')}</div>
+  <div class="sel-bar" role="region" aria-label="Selected books"><span class="small"><b>${n}</b> selected</span><button class="link-btn sm" data-act="shareAll" data-v="${n===owned.length?0:1}">${n===owned.length?'Clear':'Select All'}</button><span class="sel-acts"><button class="btn btn-primary sm" data-act="shareGo" data-v="1" ${n?'':'disabled'}>Share in Library</button><button class="btn btn-ghost sm" data-act="shareGo" data-v="0" ${n?'':'disabled'}>Keep Private</button><button class="btn btn-ghost sm" data-act="shareSel">Done</button></span></div>`;
+}
+function setShared(ids,on){
+  let n=0;S.copies.forEach(c=>{if(c.owner==='me'&&ids.includes(c.titleId)){const was=!c.private;if(on){if(!was)n++;delete c.private}else{if(was)n++;c.private=true}}});return n;
+}
 function libResults(){
   if(lib.tab==='recs'&&lib.rv==='from')return fromMe();
   const list=libTitles(),shelf=S.settings.libView==='shelf';
   const gs=(lib.tab==='mybooks'?[['status','Status'],['year','Year Finished'],['month','Month Finished'],['week','Week Finished']]:[]).concat([['alpha','Title'],['author','Author'],['genre','Genre']]);
   const fgrid=!shelf&&lib.tab==='mybooks'&&lib.sort==='finished';
-  const head=`<div class="lib-count"><span class="small muted">${list.length} book${list.length===1?'':'s'}</span>${shelf&&list.length?`<label class="sortl"><span class="small muted">Group by</span><select class="inp sm" data-lsel="group">${gs.map(([v,l])=>`<option value="${v}" ${lib.group===v?'selected':''}>${l}</option>`).join('')}</select></label>`:''}${fgrid&&list.length?`<label class="sortl"><span class="small muted">Group by</span><select class="inp sm" data-lsel="fgroup">${[['year','Year'],['month','Month'],['week','Week'],['none','None']].map(([v,l])=>`<option value="${v}" ${lib.fgroup===v?'selected':''}>${l}</option>`).join('')}</select></label>`:''}</div>`;
+  if(lib.sel&&lib.tab==='mybooks'&&!S.settings.solo)return shareSelView();
+  const head=`<div class="lib-count"><span class="small muted">${list.length} book${list.length===1?'':'s'}</span>${lib.tab==='mybooks'&&!S.settings.solo&&S.copies.some(c=>c.owner==='me')?`<button class="btn btn-ghost sm" data-act="shareSel">${ic('users')}Choose Books to Share</button>`:''}${shelf&&list.length?`<label class="sortl"><span class="small muted">Group by</span><select class="inp sm" data-lsel="group">${gs.map(([v,l])=>`<option value="${v}" ${lib.group===v?'selected':''}>${l}</option>`).join('')}</select></label>`:''}${fgrid&&list.length?`<label class="sortl"><span class="small muted">Group by</span><select class="inp sm" data-lsel="fgroup">${[['year','Year'],['month','Month'],['week','Week'],['none','None']].map(([v,l])=>`<option value="${v}" ${lib.fgroup===v?'selected':''}>${l}</option>`).join('')}</select></label>`:''}</div>`;
   const upTop=lib.tab==='mybooks'&&lib.mb==='want'&&!lib.q.trim()&&!nFilters()?upNextPanel():'';
   if(!list.length)return upTop+head+libEmpty();
   if(upTop&&!shelf)return upTop+head+`<div class="lib-grid">${list.map(mbCard).join('')}</div>`;
@@ -1829,8 +1988,8 @@ function libraryView(){
   const n=nFilters(),shelf=S.settings.libView==='shelf',toMe=new Set(S.recs.map(r=>r.titleId)).size,fromN=new Set(S.recsSent.map(r=>r.titleId)).size;
   const tools=!(lib.tab==='recs'&&lib.rv==='from');
   return `<div class="lib">
-  <div class="lib-h"><div><h1 class="page-h">${lib.tab==='family'?`${esc(GN())} Library`:lib.tab==='mybooks'?'My Books':'Recommendations'}</h1><p class="muted" style="margin:4px 0 0">${lib.tab==='family'?`Books everyone in ${esc(GN())} can borrow and read.`:lib.tab==='mybooks'?'Every book connected to you, from To Read to Finished.':'Books suggested to you, and the ones you’ve passed along.'}</p></div><button class="btn btn-primary" data-act="addBook">${ic('plus')}Add a Book</button></div>
-  <div class="tabs" role="tablist" aria-label="Library sections">${tabs.map(([k,l])=>`<button class="tab" role="tab" aria-selected="${lib.tab===k}" data-act="libTab" data-v="${k}">${l}${k==='recs'&&toMe?` <span class="tab-n">${toMe}</span>`:''}</button>`).join('')}</div>
+  <div class="lib-h" data-tour="library"><div><h1 class="page-h">${lib.tab==='family'?`${esc(GN())} Library`:lib.tab==='mybooks'?'My Books':'Recommendations'}</h1><p class="muted" style="margin:4px 0 0">${lib.tab==='family'?`Books everyone in ${esc(GN())} can borrow and read.`:lib.tab==='mybooks'?'Every book connected to you, from To Read to Finished.':'Books suggested to you, and the ones you’ve passed along.'}</p></div><button class="btn btn-primary" data-act="addBook">${ic('plus')}Add a Book</button></div>
+  <div class="tabs" role="tablist" aria-label="Library sections">${tabs.map(([k,l])=>`<button class="tab" role="tab" data-tour="lib-${k}" aria-selected="${lib.tab===k}" data-act="libTab" data-v="${k}">${l}${k==='recs'&&toMe?` <span class="tab-n">${toMe}</span>`:''}</button>`).join('')}</div>
   ${lib.tab==='mybooks'?mbChips():''}
   ${lib.tab==='recs'?`<div class="rv-row"><div class="vseg" role="group" aria-label="Recommendations"><button aria-pressed="${lib.rv==='to'}" data-act="recView" data-v="to">To Me (${toMe})</button><button aria-pressed="${lib.rv==='from'}" data-act="recView" data-v="from">From Me (${fromN})</button></div><span class="rv-acts">${lib.rv==='from'&&fromN?`<span class="vseg" role="group" aria-label="View"><button aria-pressed="${!shelf}" data-act="libView" data-v="grid">${ic('grid')}Grid</button><button aria-pressed="${shelf}" data-act="libView" data-v="shelf">${ic('shelf')}Shelf</button></span>`:''}<button class="btn btn-ghost" data-act="recPick">${ic('send')}Recommend a Book</button></span></div>`:''}
   ${tools?`<div class="lib-tools">
@@ -2163,6 +2322,7 @@ document.addEventListener('input',e=>{
   else if(e.target.id==='bdNotes'){S.notes[bd.id]=e.target.value;save()}
 });
 document.addEventListener('change',e=>{
+  if(e.target.dataset?.sel){const id=e.target.dataset.sel;if(e.target.checked)lib.sel.add(id);else lib.sel.delete(id);const y=window.scrollY;refreshLib();window.scrollTo(0,y);return}
   if(e.target.id==='adShare'){ad.share=e.target.checked;return}
   if(e.target.dataset?.pref){S.settings[e.target.dataset.pref]=e.target.value;save();applyPrefs();toast('Appearance updated.');return}
   if(e.target.dataset?.cfrule!==undefined&&chMode==='form'){captureCf();renderChForm();return}
@@ -2442,7 +2602,7 @@ function challengesView(){
     body=`<div class="tw-head"><span class="small muted">The battle happens in person. Reading Room keeps the shared list and everyone’s progress.</span><button class="btn btn-ghost" data-act="bNew">${ic('plus')}Start a Battle</button></div>${bs.length?`<div class="b-list">${bs.map(battleCard).join('')}</div>`:`<div class="empty">${ic('library')}<h3>No Battles Yet</h3><p>Start one to build a shared reading list.</p></div>`}${nh?`<button class="link-btn sm b-hidden-t" data-act="bShowHidden" style="margin-top:12px">${showHiddenB?'Hide':'Show'} ${nh} Hidden Battle${nh===1?'':'s'}</button>`:''}`}
   else body=trophyWall();
   return `<div class="lib"><div class="lib-h"><div><h1 class="page-h">Challenges</h1><p class="muted" style="margin:2px 0 0">Personal and group reading challenges to keep you motivated.</p></div><button class="btn btn-primary" data-act="chNew">${ic('plus')}Create Challenge</button></div>
-  <div class="tabs" role="tablist" aria-label="Challenge sections">${tabs.map(([k,l,n])=>`<button class="tab" role="tab" aria-selected="${chTab===k}" data-act="chTab" data-v="${k}">${l} <span class="cnt">${n}</span></button>`).join('')}</div>
+  <div class="tabs" role="tablist" aria-label="Challenge sections" data-tour="challenge-tabs">${tabs.map(([k,l,n])=>`<button class="tab" role="tab" data-tour="ch-${k}" aria-selected="${chTab===k}" data-act="chTab" data-v="${k}">${l} <span class="cnt">${n}</span></button>`).join('')}</div>
   <div style="margin-top:16px">${body}</div></div>`;
 }
 /* challenge detail */
@@ -2693,6 +2853,7 @@ function renderHeader(){
     <div class="row"><label class="small" for="hfSel">Heading Font</label><select class="inp sm" id="hfSel" data-pref="hfont">${HFONTS.map(([k,l])=>`<option value="${k}" ${(S.settings.hfont||'source')===k?'selected':''}>${l}</option>`).join('')}</select></div>
     <div class="row"><label class="small" for="bfSel">Body Font</label><select class="inp sm" id="bfSel" data-pref="bfont">${BFONTS.map(([k,l])=>`<option value="${k}" ${(S.settings.bfont||'inter')===k?'selected':''}>${l}</option>`).join('')}</select></div>
     <div class="row"><span class="small">Dashboard Photo</span><span><button class="link-btn sm" data-act="heroPhoto">${heroPhoto()?'Change':'Add'}</button>${heroPhoto()?` <button class="link-btn sm" data-act="heroRemove">Remove</button>`:''}</span></div>
+    <button class="link" data-act="tourStart">Take the Tour</button>${S.settings.solo?'':'<button class="link" data-act="tourGroup">Take the Group Tour</button>'}
     ${S.settings.gsHidden?'<button class="link" data-act="gsShow">Show Get Started</button>':''}
     <hr><div class="xs muted" style="padding:2px 10px">Prototype Tools</div>
     <button class="link" data-act="emptyDemo">Show New-Member (Empty) View</button>
@@ -3051,7 +3212,7 @@ document.addEventListener('click',e=>{
     case 'chDecline':{const c=S.challenges.find(x=>x.id===a.dataset.id);c.declined=[...(c.declined||[]),'me'];save();if(chDlg.open&&chMode==='ch')renderCh();else{const y=window.scrollY;render();window.scrollTo(0,y)}toast(`Declined ${c.name}.`,null,'You can still join later from Group Challenges.');break}
     case 'cfWho':captureCf();cf.who=a.dataset.v;renderChForm();break;
     case 'awPreset':{const i=document.getElementById('awName');if(i){i.value=a.dataset.v;i.focus()}break}
-    case 'grpSel':S.settings.solo=a.dataset.v==='solo';if(S.settings.solo){if(lib.tab==='family')lib.tab='mybooks';if(chTab==='family')chTab='mine'}save();closeMenus();render();toast(S.settings.solo?'Showing the solo view: no group features.':`Showing ${GN()}.`);break;
+    case 'grpSel':{const was=!!S.settings.solo;S.settings.solo=a.dataset.v==='solo';if(was&&!S.settings.solo&&!tourPrefs().groupSeen)setTimeout(()=>showTourOffer('group'),400);}if(S.settings.solo){if(lib.tab==='family')lib.tab='mybooks';if(chTab==='family')chTab='mine'}save();closeMenus();render();toast(S.settings.solo?'Showing the solo view: no group features.':`Showing ${GN()}.`);break;
     case 'heroPhoto':document.getElementById('heroUpload').click();break;
     case 'heroRemove':try{localStorage.removeItem(HERO_KEY)}catch(e){}closeMenus();render();toast('Dashboard photo removed.');break;
     case 'goToRead':view='library';lib.tab='mybooks';lib.mb='want';closeMenus();render();window.scrollTo(0,0);break;
@@ -3187,6 +3348,22 @@ document.addEventListener('click',e=>{
     case 'startNew':drawNew();if(!logDlg.open)logDlg.showModal();setTimeout(()=>document.getElementById('newQ')?.focus(),30);break;
     case 'backLog':{const c=currentSel()||S.books.find(x=>x.status==='paused');if(c)drawLog(c);break}
     case 'manualNew':drawManual();break;
+    case 'tourGo':tourStart(a.dataset.v);break;
+    case 'tourLater':{const T=tourPrefs();if(a.dataset.v==='group')T.groupSeen=true;else{T.notNow=(T.notNow||0)+1;T.askAt=(T.visits||0)+3}save();hideTourOffer();toast(a.dataset.v==='group'||T.notNow>=2?'You can take the tour anytime from your account menu.':'No problem. You can take the tour anytime from your account menu.');break}
+    case 'tourStart':tourStart(S.settings.solo?'full':'full');break;
+    case 'tourGroup':tourStart('group');break;
+    case 'tourNext':tourShow(tour.i+1,1);break;
+    case 'tourBack':tourShow(tour.i-1,-1);break;
+    case 'tourEnd':tourEnd();break;
+    case 'tourShare':{S.settings.share=!S.settings.share;save();render();const st=tour.steps[tour.i];tourRender(st,document.querySelector(st.sel));break}
+    case 'tourShareBooks':{const n=setShared(S.copies.filter(c=>c.owner==='me').map(c=>c.titleId),true);if(n)post('library',`added ${n} book${n===1?'':'s'} to the group library`);save();render();const st=tour.steps[tour.i];tourRender(st,document.querySelector(st.sel));toast(`Your books now show in the ${GN()} Library.`);break}
+    case 'tourChooseBooks':tourEnd();view='library';lib.tab='mybooks';lib.sel=new Set();render();window.scrollTo(0,0);break;
+    case 'tourFind':tourEnd();view='dashboard';render();drawNew();logDlg.showModal();setTimeout(()=>document.getElementById('newQ')?.focus(),30);break;
+    case 'tourLog':tourEnd();view='dashboard';render();openLog();break;
+    case 'shareSel':lib.sel=lib.sel?null:new Set();refreshLib();if(!lib.sel)window.scrollTo(0,0);break;
+    case 'shareAll':{const owned=S.titles.filter(t=>S.copies.some(c=>c.titleId===t.id&&c.owner==='me')).map(t=>t.id);lib.sel=new Set(a.dataset.v==='1'?owned:[]);refreshLib();break}
+    case 'shareGo':{const on=a.dataset.v==='1',ids=[...lib.sel],snap=snapshot(),n=setShared(ids,on);if(on&&n)post('library',`added ${n} book${n===1?'':'s'} to the group library`);lib.sel=new Set();save();refreshLib();
+      toast(n?(on?`Shared ${n} book${n===1?'':'s'} in the ${GN()} Library.`:`${n} book${n===1?' is':'s are'} now private.`):(on?'Those books were already shared.':'Those books were already private.'),n?restoreTo(snap):null);break}
     case 'gsFind':drawNew();if(!logDlg.open)logDlg.showModal();setTimeout(()=>document.getElementById('newQ')?.focus(),30);break;
     case 'gsLog':openLog();break;
     case 'gsJoin':view='challenges';chTab=S.settings.solo?'mine':'family';render();window.scrollTo(0,0);break;
@@ -3244,6 +3421,7 @@ paintIcons();
 readRoute();
 render();
 setTimeout(coverFill,1000);
+setTimeout(maybeOfferTour,700);
 </script>
 </body>
 </html>
