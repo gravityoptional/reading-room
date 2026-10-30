@@ -417,7 +417,7 @@ button.cal-d{border:0;font:inherit;color:inherit;cursor:pointer;position:relativ
 .sess{padding:7px 0;border-top:1px solid var(--border);display:flex;flex-wrap:wrap;gap:2px 10px;align-items:baseline}
 .sess-b{border:0;background:none;padding:0;font-family:var(--serif);font-weight:600;font-size:15px;color:var(--text);text-align:left}
 .sess-b:hover{color:var(--primary);text-decoration:underline;text-underline-offset:3px}
-.sess-note{flex-basis:100%}
+.sess-note,.sess-note-w{flex-basis:100%}.sess-note-w{min-width:0}
 .rr+.rr{margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
 .rr-row{margin-top:4px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 @media (max-width:860px){.hgrid{grid-template-columns:1fr}.hstats{grid-template-columns:repeat(3,1fr)}.from{grid-template-columns:1fr}}
@@ -857,6 +857,8 @@ main section.card .card-h .ico{display:none}
 .notes-list{display:grid;gap:8px;margin-bottom:12px}
 .note-i{border-left:3px solid var(--purple);background:var(--surface-alt);border-radius:0 10px 10px 0;padding:8px 12px}
 .note-i p{margin:4px 0 0;white-space:pre-wrap}
+.clamped{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:var(--lines,4);line-clamp:var(--lines,4);overflow:hidden}
+.more-t{padding:2px 0;margin-top:2px}.more-t[hidden]{display:none}
 /* Text people type can be one long unbroken string; let it wrap inside its box instead of widening the page. */
 .note-i,.note-i p,.sess-note,.act-txt,.notif p,.rec,.fr-txt,.aw-t,.chc-t,.lc-t,.pick-t,.selc-t,.tn,.td,.bd-h h2,#chTitle,#chBody p,.b-row .small,.req-in .small,.toast,.st,.joined{overflow-wrap:anywhere;min-width:0}
 .hgrid>*,.dgrid>*,.ch-grid>*,.b-list>*,.sess,.sess-day{min-width:0}
@@ -1743,7 +1745,18 @@ document.addEventListener('submit',e=>{
   if(n)Object.assign(n,{start,end:end&&end!==start?end:undefined,text});else{n={id:'j'+uid(),start,end:end&&end!==start?end:undefined,text,ts:Date.now()};S.journal.push(n)}
   save();noteDlg.close();const y=window.scrollY;render();window.scrollTo(0,y);toast(id?'Note saved.':`Added a note for ${noteRange(n)}.`);
 });
+const openNotes=new Set();
+function clampNotes(){
+  document.querySelectorAll('.clampable').forEach(el=>{
+    const k=el.dataset.clamp,open=openNotes.has(k),btn=el.parentElement.querySelector(`[data-act=noteMore][data-v="${k}"]`);
+    el.classList.toggle('clamped',!open);
+    const cut=!open&&el.scrollHeight>el.clientHeight+1;
+    if(btn){btn.hidden=!(cut||open);btn.textContent=open?'Show Less':'Show More';btn.setAttribute('aria-expanded',open)}
+  });
+}
+addEventListener('resize',()=>{if(view==='history')clampNotes()});
 function historyView(){
+  requestAnimationFrame(clampNotes);
   const y=today().slice(0,4),ys=S.sessions.filter(x=>x.date.slice(0,4)===y);
   const rec=ys.reduce((a,x)=>a+(x.minutes||0),0),est=ys.reduce((a,x)=>a+(!x.minutes&&x.est?x.est:0),0),pages=ys.reduce((a,x)=>a+(x.pages||0),0);
   const uniq=new Set(ys.map(x=>book(x.bookId)?.titleId)).size;
@@ -1779,7 +1792,7 @@ function historyView(){
   const list=dayKeys.filter(d=>byDay[d]||dayNotes(d)).map(d=>`<div class="sess-day"><div class="sess-date">${fmtDateY(d)}</div>${dayNotes(d)}${(byDay[d]||[]).map(x=>{const b=book(x.bookId);
     const pg=x.pages?(x.start!=null?`p. ${x.start}–${x.end} (${x.pages} pages)`:`${x.pages} pages`):(b&&b.format==='audio'&&x.start!=null?`${fmtPos(x.start)}–${fmtPos(x.end)}`:'');
     const mn=x.minutes?fmtMin(x.minutes):x.est?`~${fmtMin(x.est)} (estimated)`:'';
-    return `<div class="sess"><button class="sess-b" data-act="openTitle" data-id="${b?.titleId||''}">${esc(b?b.title:'Removed book')}</button><span class="small muted">${[pg,mn,x.with?`with ${x.with.map(nameOf).join(' and ')}`:''].filter(Boolean).join(' · ')}</span><button class="link-btn sm sess-edit" data-act="sessEdit" data-id="${x.id}" aria-label="Edit this session">${ic('pencil')}Edit</button>${x.note?`<div class="xs muted sess-note">“${esc(x.note)}”</div>`:''}</div>`}).join('')}</div>`).join('');
+    return `<div class="sess"><button class="sess-b" data-act="openTitle" data-id="${b?.titleId||''}">${esc(b?b.title:'Removed book')}</button><span class="small muted">${[pg,mn,x.with?`with ${x.with.map(nameOf).join(' and ')}`:''].filter(Boolean).join(' · ')}</span><button class="link-btn sm sess-edit" data-act="sessEdit" data-id="${x.id}" aria-label="Edit this session">${ic('pencil')}Edit</button>${x.note?`<div class="sess-note-w"><div class="xs muted sess-note clampable" data-clamp="s${x.id}" style="--lines:3">“${esc(x.note)}”</div><button class="link-btn sm more-t" data-act="noteMore" data-v="s${x.id}" hidden>Show More</button></div>`:''}</div>`}).join('')}</div>`).join('');
   const byTitle={};S.books.forEach(b=>{if(b.titleId&&b.status!=='want')(byTitle[b.titleId]=byTitle[b.titleId]||[]).push(b)});
   const rr=Object.entries(byTitle).filter(([,v])=>v.length>1);
   const rereads=rr.length?rr.map(([tid,v])=>{const tt=titleById(tid);return `<div class="rr"><button class="sess-b" data-act="openTitle" data-id="${tid}">${esc(tt.title)}</button>${[...v].sort((a,b)=>{const k=x=>x.started||x.finished||(['reading','paused','want'].includes(x.status)?'9999':'0000');return k(a).localeCompare(k(b))}).map((b,i)=>`<div class="small muted rr-row">Read-through ${i+1}: ${b.started?`started ${fmtDateY(b.started)}`:'start date unknown'}${b.finished?`, finished ${fmtDateY(b.finished)}`:''} <span class="st st-${b.status}">${STATUS[b.status]}</span></div>`).join('')}</div>`}).join('')
@@ -1794,7 +1807,7 @@ function historyView(){
     <div class="small muted" style="margin-top:10px">${hist.mode==='year'?(()=>{const ss=S.sessions.filter(x=>x.date.slice(0,4)===String(Y)),dd=new Set(ss.map(x=>x.date)).size,mm=ss.reduce((a,x)=>a+(x.minutes||0),0),pp=ss.reduce((a,x)=>a+(x.pages||0),0);return `${Y}: ${dd} day${dd===1?'':'s'} read · ${fmtMin(mm)} · ${pp.toLocaleString()} pages`})():`${mDays} day${mDays===1?'':'s'} read · ${fmtMin(mMin)}${mEst?` + ~${fmtMin(mEst)} estimated`:''} · ${mPages.toLocaleString()} pages`}</div></section>
   <section class="card"><div class="card-h"><span class="ico">${ic('book')}</span><h2>Reading Sessions</h2><span class="count">${sel?fmtDate(sel):MONF[M-1]}</span>${sel?`<button class="link-btn sm" data-act="histDay" data-v="">Show All of ${MONF[M-1]}</button>`:''}<button class="btn btn-ghost sm note-add" data-act="noteNew" data-v="${sel||''}" aria-label="${sel?`Add a note for ${fmtDate(sel)}`:'Add a note'}">${ic('plus')}Add Note</button></div>
     ${(()=>{const mStart=`${m}-01`,mEnd=`${m}-${pad(days)}`,ns=(sel?notesOn(sel):(S.journal||[]).filter(n=>n.start<=mEnd&&(n.end||n.start)>=mStart)).sort((a,b)=>b.start.localeCompare(a.start));
-      return ns.length?`<div class="notes-list">${ns.map(n=>`<div class="note-i"><div class="note-h"><span class="xs muted">${ic('pencil')}Note · ${noteRange(n)}</span><button class="link-btn sm" data-act="noteEdit" data-id="${n.id}" aria-label="Edit note for ${noteRange(n)}">Edit</button></div><p class="small">${esc(n.text)}</p></div>`).join('')}</div>`:''})()}
+      return ns.length?`<div class="notes-list">${ns.map(n=>`<div class="note-i"><div class="note-h"><span class="xs muted">${ic('pencil')}Note · ${noteRange(n)}</span><button class="link-btn sm" data-act="noteEdit" data-id="${n.id}" aria-label="Edit note for ${noteRange(n)}">Edit</button></div><p class="small clampable" data-clamp="n${n.id}" style="--lines:4">${esc(n.text)}</p><button class="link-btn sm more-t" data-act="noteMore" data-v="n${n.id}" hidden>Show More</button></div>`).join('')}</div>`:''})()}
     ${list?`<div class="sess-list">${list}</div>`:''}${list?'':`<p class="small muted" style="margin:0">${sel?`No reading logged on ${fmtDate(sel)}.`:'No reading logged this month.'}</p>`}</section></div>
   <section class="card"><div class="card-h"><span class="ico o">${ic('trophy')}</span><h2>Records</h2></div><div class="rec-grid">${records().map(([i,l,v,sub,tid,html])=>`<div class="rec-t">${ic(i)}<div class="rec-l">${l}</div><div class="rec-v">${v}</div>${html?html:tid?`<button class="sess-b rec-s" data-act="openTitle" data-id="${tid}">${esc(sub)}</button>`:`<div class="xs muted">${esc(sub)}</div>`}</div>`).join('')}</div>${hist.recYear&&hist.recYearKey?bookPanel(`Books you finished in ${hist.recYearKey}, your most in a year, most recent first`,finishedIn(hist.recYearKey)):''}</section>
   <section class="card"><div class="card-h"><span class="ico">${ic('library')}</span><h2>Rereads</h2></div>${rereads}</section>
@@ -3407,6 +3420,7 @@ document.addEventListener('click',e=>{
     case 'libTab':lib.tab=a.dataset.v;if(lib.tab!=='mybooks'){if(lib.sort==='finished')lib.sort='title';if(['year','month','week'].includes(lib.group))lib.group='alpha'}if(lib.tab==='mybooks'&&lib.group==='alpha')lib.group='status';if(lib.tab!=='mybooks'&&lib.group==='status')lib.group='alpha';render();break;
     case 'mbChip':lib.mb=a.dataset.v;if(lib.mb==='finished'){if(lib.sort==='title')lib.sort='finished';if(lib.group==='status')lib.group='year'}else{if(lib.sort==='finished')lib.sort='title';if(['year','month','week'].includes(lib.group))lib.group='status'}refreshLib();break;
     case 'recView':lib.rv=a.dataset.v;render();break;
+    case 'noteMore':{const k=a.dataset.v;openNotes.has(k)?openNotes.delete(k):openNotes.add(k);clampNotes();break}
     case 'noteNew':openNote(null,a.dataset.v||null);break;
     case 'noteEdit':openNote(a.dataset.id);break;
     case 'noteClose':noteDlg.close();break;
