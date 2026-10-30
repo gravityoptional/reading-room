@@ -2414,7 +2414,23 @@ document.addEventListener('input',e=>{
 
 /* ---------- views ---------- */
 let view='dashboard';
+/* The current page and its tab live in the address (for example #library/mybooks), so refresh, Back, and bookmarks return to it. */
+const ROUTES={dashboard:null,library:['family','mybooks','recs'],challenges:['mine','family','battle','trophies'],history:null};
+let routedView=null;
+function routeHash(){return view==='dashboard'?'':'#'+view+(view==='library'?'/'+lib.tab:view==='challenges'?'/'+chTab:'')}
+function readRoute(){
+  const [v,t]=decodeURIComponent(location.hash.slice(1)).split('/');
+  if(!Object.hasOwn(ROUTES,v)){view='dashboard';return}
+  view=v;if(t&&ROUTES[v]?.includes(t)){if(v==='library')lib.tab=t;else chTab=t}
+}
+function syncRoute(){
+  const h=routeHash();
+  if((location.hash||'')!==h){try{history[routedView&&routedView!==view?'pushState':'replaceState'](null,'',h||location.pathname+location.search)}catch(e){}}
+  routedView=view;
+}
+window.addEventListener('popstate',()=>{readRoute();closeMenus();render();window.scrollTo(0,0)});
 function render(){
+  syncRoute();
   if(!S.seen){try{S.seen=evSnap()}catch(e){}}
   document.querySelectorAll('[data-go]').forEach(b=>{if(b.closest('.nav,.bnav'))b.setAttribute('aria-current',b.dataset.go===view?'page':'false')});
   const m=document.getElementById('main');
@@ -2934,6 +2950,7 @@ let tx=null;
 document.addEventListener('touchstart',e=>{tx=e.target.closest('#detail')?e.touches[0].clientX:null},{passive:true});
 document.addEventListener('touchend',e=>{if(tx==null)return;const dx=e.changedTouches[0].clientX-tx;tx=null;if(Math.abs(dx)>50)stepBook(dx<0?1:-1)});
 paintIcons();
+readRoute();
 render();
 setTimeout(coverFill,1000);
 </script>
