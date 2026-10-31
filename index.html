@@ -1001,10 +1001,42 @@ main section.card .card-h .ico{display:none}
 .dc-card .lc-open .cover{width:88px}
 .dc-card .lc-t{overflow-wrap:anywhere}
 .dc-why{font-size:12.5px;color:var(--text-2);line-height:1.35}
-.dc-free{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--primary)}
-.dc-free svg.i{width:14px;height:14px}
+/* Lean card pieces */
+.dc-nfm{position:absolute;top:10px;right:10px;z-index:1;border:0;background:none;padding:2px 0;font-size:12px;color:var(--text-2);text-decoration:underline;text-underline-offset:3px;text-decoration-color:color-mix(in srgb,var(--text-2) 50%,transparent)}
+.dc-nfm:hover{color:var(--text)}
+.dc-why i,.nx-q i{font-style:italic}
+.dc-get{align-self:end;min-width:0}
+.dc-get-a{display:inline-flex;align-items:flex-start;gap:5px;border:0;background:none;padding:0;text-align:left;color:var(--primary);font-weight:600;font-size:12.5px;line-height:1.3;text-decoration:none}
+.dc-get-a:hover{text-decoration:underline;text-underline-offset:3px}
+.dc-get-a svg.i{width:14px;height:14px;flex:none;margin-top:1px}
+/* Compact rows */
+.dc-lines{display:grid}
+.dc-line{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--border)}
+.dc-line:first-child{border-top:0;padding-top:2px}
+.dl-cover{border:0;background:none;padding:0;line-height:0}
+/* Small covers in compact rows: just the title, smaller, so lettering doesn't collide. */
+.dc-line .cover{padding:5px 4px}
+.dc-line .cover .ca{display:none}
+.dc-line .cover .ct{font-size:8px;line-height:1.15;overflow:hidden;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow-wrap:anywhere;hyphens:auto;-webkit-hyphens:auto}
+.dl-txt{min-width:0}
+.dl-t{border:0;background:none;padding:0;text-align:left;font-family:var(--serif);font-weight:600;font-size:15px;line-height:1.25;color:var(--text);overflow-wrap:anywhere}
+.dl-t:hover{color:var(--primary);text-decoration:underline;text-underline-offset:3px}
+.dc-line .btn{white-space:nowrap}
+.dc-line .btn svg.i{width:14px;height:14px}
+.nr-lines{display:none}
+@media (max-width:720px){.nr-cards{display:none!important}.nr-lines{display:grid}}
+/* Finish window */
+.nx-q{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:center;border:2px solid var(--primary);border-radius:14px;padding:12px 14px;margin-bottom:20px}
+.nx-q .dc-why{margin:2px 0 10px}
+.nx-undo{padding:0 4px}
+.nx-f{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
+.nx-f .link-btn{padding-left:0}
+/* Book details: quiet links under Get This Book */
+.bd-quiet{grid-column:2/-1;grid-row:6;display:flex;align-items:center;flex-wrap:wrap;gap:2px 4px;margin-top:6px}
+.bd-quiet .link-btn{color:var(--text-2);font-weight:500}
+.bd-quiet .link-btn:hover{color:var(--text)}
+@media (max-width:560px){.bd-quiet{grid-column:1/-1}}
 .dc-acts{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding-top:4px}
-.dc-acts .dc-menu{flex:1 0 100%}
 .dc-acts>.btn{flex:1;min-width:0;white-space:nowrap;padding-left:6px;padding-right:6px}
 .dc-acts>.btn svg.i{display:none}
 a.btn{text-decoration:none}
@@ -1012,16 +1044,7 @@ a.btn{text-decoration:none}
 .dc-scroll{grid-template-rows:auto auto auto;row-gap:0}
 .dc-scroll>.dc-card{grid-row:span 3;display:grid;grid-template-rows:subgrid;row-gap:8px;align-content:start}
 .dc-top{display:flex;flex-direction:column;gap:6px;min-width:0}
-.dc-more{display:contents}
-.dc-more summary{flex:none}
-.dc-more summary{list-style:none;cursor:pointer;position:absolute;top:8px;right:8px;width:34px;height:34px;padding:0;display:grid;place-items:center;border:1px solid transparent;border-radius:9px;background:none;color:var(--text-2)}
-.dc-more summary:hover,.dc-more[open] summary{background:var(--surface-alt);border-color:var(--border)}
-.dc-more summary::-webkit-details-marker{display:none}
-.dc-menu{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px;margin-top:6px}
-.dc-menu .link{display:grid;gap:2px;width:100%;box-sizing:border-box;margin:0;text-align:left;border:0;background:none;padding:8px 10px;border-radius:8px;font-weight:600;font-size:14px;color:var(--text)}
-.dc-menu .link .xs{font-weight:400}
 .gs-link{display:inline;padding:0;font-size:inherit;vertical-align:baseline}
-.dc-menu .link:hover{background:var(--surface-alt)}
 .get{display:flex;flex-direction:column;align-items:flex-start;gap:4px}
 .dc-card .get .btn{width:100%}
 .get-more{display:flex;flex-wrap:wrap;gap:0 4px;align-items:center;color:var(--text-2)}
@@ -1032,28 +1055,8 @@ a.btn{text-decoration:none}
 @media (max-width:560px){.bd-h .get{grid-column:1/-1}}
 .lcard .get{margin-top:2px}
 .lcard .get .btn{width:100%}
-#nextDlg{width:min(720px,calc(100vw - 24px))}
+#nextDlg{width:min(520px,calc(100vw - 24px))}
 #nextDlg .dc-h{margin-top:4px}
-/* What's Next? with a queue: one grid so all three cards share rows and their buttons line up. */
-.nx-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:auto auto auto auto;column-gap:14px}
-.nx-grid .nx-h1{grid-column:1;grid-row:1}
-.nx-grid .nx-h2{grid-column:2/-1;grid-row:1}
-.nx-grid>.dc-card{grid-row:2/span 3;display:grid;grid-template-rows:subgrid;row-gap:8px;align-content:start}
-.nx-grid>.nx-qc{grid-column:1;border-color:var(--primary);box-shadow:inset 0 0 0 1px var(--primary)}
-.nx-grid.nx-solo{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
-@media (max-width:720px){
-  .nx-grid{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(8,auto)}
-  .nx-grid .nx-h1{grid-column:1/-1}
-  .nx-grid>.nx-qc{grid-column:1/-1;grid-row:2/span 3;margin-bottom:16px}
-  .nx-grid .nx-h2{grid-column:1/-1;grid-row:5}
-  .nx-grid>.dc-card:not(.nx-qc){grid-row:6/span 3}
-  .nx-qc .lc-open{grid-template-columns:auto 1fr;column-gap:12px;align-items:start}
-  .nx-qc .lc-open .cover{grid-row:1/4;margin-bottom:0}
-  .nx-qc .lc-open .lc-t{align-self:end}
-}
-#nextDlg .dlg-f{margin-top:16px;flex-wrap:wrap}
-@media (max-width:720px){#nextDlg .dlg-f .btn{flex:1 1 40%}#nextDlg .dlg-f [data-act=nextUndo]{flex-basis:100%;margin:0}}
-.get .btn{white-space:normal;text-align:center}
 @media (max-width:1060px){.dc-scroll:not(.dc-three){grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media (max-width:720px){
   .bnav{grid-template-columns:repeat(5,1fr)}
@@ -1152,7 +1155,8 @@ const ICONS={
   compass:'<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/>',
   plus:'<path d="M12 5v14M5 12h14"/>',
   lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
-  play:'<path d="M8 5v14l11-7z"/>'
+  play:'<path d="M8 5v14l11-7z"/>',
+  pin:'<path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>'
 };
 const ic=(n,cls='')=>`<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]||''}</svg>`;
 function paintIcons(root=document){root.querySelectorAll('[data-i]').forEach(el=>{el.outerHTML=ic(el.dataset.i)})}
@@ -1249,6 +1253,7 @@ if(!S.actSeeded2){S.actSeeded2=true;const n=Date.now(),H=3600e3,ms=Object.keys(S
   {id:uid(),who:m(0),kind:'session',text:'logged a reading session',book:'Dune',ts:n-4*H,r:{}},
   {id:uid(),who:m(0),kind:'session',text:'logged a reading session',book:'Dune',ts:n-5*H,r:{}})}}
 if(!S.group)S.group={name:'Emberton Family'};
+if(S.titles?.some(t=>t.fromDisc))pruneDisc();
 S.loanReqs=S.loanReqs||[];
 S.journal=S.journal||[];
 if(!S.upNext){const pk=n=>S.books.find(b=>b.status==='want'&&b.title===n)?.id;S.upNext=['Wool','Project Hail Mary','Shift'].map(pk).filter(Boolean)}
@@ -2248,6 +2253,8 @@ let discBusy=false,discTimer,surprise=null,discIdx={};
 /* Compare titles loosely: no leading article, subtitle, punctuation, or case. */
 const normT=x=>sortKey(String(x||'').split(/[:(]/)[0]).replace(/[^a-z0-9 ]/g,'').replace(/\s+/g,' ').trim();
 const fmtStars=r=>`${r} star${r===1?'':'s'}`;
+/* Reason lines are HTML: book titles in italics, everything else escaped. */
+const ti=x=>`<i>${esc(x)}</i>`;
 const fmtMonY=d=>`${MONF[+d.slice(5,7)-1]} ${d.slice(0,4)}`;
 /* Books you've finished more than once and never rated count as loved too: a reread says as much as a rating. */
 function rereads(){
@@ -2259,8 +2266,8 @@ function rereads(){
    (ranked with 4-star books). Ties go to the most recent finish. */
 function lovedAuthors(){
   const by={},put=(k,e)=>{const cur=by[k];if(!cur||e.score>cur.score||e.score===cur.score&&e.fin>cur.fin)by[k]=e};
-  S.books.filter(b=>b.rating>=4).forEach(b=>{const t=titleById(b.titleId),k=t?.olAuthor?.[0];if(k)put(k,{key:k,score:b.rating,why:`You gave ${t.title} ${fmtStars(b.rating)}`,fin:b.finished||''})});
-  rereads().forEach(r=>{const t=titleById(r.id),k=t?.olAuthor?.[0];if(k)put(k,{key:k,score:4,why:`You’ve read ${t.title} ${r.times===2?'twice':r.times+' times'}`,fin:r.fin})});
+  S.books.filter(b=>b.rating>=4).forEach(b=>{const t=titleById(b.titleId),k=t?.olAuthor?.[0];if(k)put(k,{key:k,score:b.rating,why:`You gave ${ti(t.title)} ${fmtStars(b.rating)}`,fin:b.finished||''})});
+  rereads().forEach(r=>{const t=titleById(r.id),k=t?.olAuthor?.[0];if(k)put(k,{key:k,score:4,why:`You’ve read ${ti(t.title)} ${r.times===2?'twice':r.times+' times'}`,fin:r.fin})});
   return Object.values(by).sort((a,b)=>b.score-a.score||b.fin.localeCompare(a.fin)).slice(0,DISC_AUTHORS);
 }
 /* An author's works on Open Library, most-published first, without collections, study guides, translations,
@@ -2297,13 +2304,16 @@ async function discLoad(){
 function discRefresh(){clearTimeout(discTimer);discTimer=setTimeout(discLoad,1500)}
 const discKey=it=>it.t?(it.t.olKey||'t:'+it.t.id):it.x.key;
 const discHidden=k=>(S.discHide||[]).includes(k);
+/* Already Read It: remembers you've read a book (no date) so it stays out of suggestions and counts toward
+   Continue a Series. Kept apart from your reading records, so it never counts in stats. */
+const readIt=id=>!!(S.readIt||{})[id];
 /* Open Library results that match a book already in Reading Room use that book, so its copies show. */
 function discMatch(x){
   const n=normT(x.title),ln=lastName(x.author.split(',')[0]).toLowerCase();
   return S.titles.find(t=>t.olKey&&t.olKey===x.key)||S.titles.find(t=>normT(t.title)===n&&lastName(t.author).toLowerCase()===ln);
 }
 function ruleAuthor(){
-  const mine=new Set(S.books.map(b=>b.titleId));S.copies.forEach(c=>{if(c.owner==='me')mine.add(c.titleId)});
+  const mine=new Set([...S.books.map(b=>b.titleId),...Object.keys(S.readIt||{})]);S.copies.forEach(c=>{if(c.owner==='me')mine.add(c.titleId)});
   const names=[...mine].map(id=>normT(titleById(id)?.title)).filter(Boolean);
   const known=n=>names.some(m=>m===n||n.length>=8&&m.length>=8&&(m.startsWith(n)||n.startsWith(m)));
   const lists=lovedAuthors().map(a=>(discCache.a[a.key]?.items||[]).map(x=>{const t=discMatch(x);return {rule:'author',reason:a.why,x,t}})
@@ -2314,12 +2324,12 @@ function ruleAuthor(){
   return out;
 }
 function ruleSeries(){
-  const fin=new Set(S.books.filter(b=>b.status==='finished').map(b=>b.titleId)),busy=new Set(S.books.filter(b=>b.status==='reading'||b.status==='paused').map(b=>b.titleId));
+  const fin=new Set([...S.books.filter(b=>b.status==='finished').map(b=>b.titleId),...Object.keys(S.readIt||{})]),busy=new Set(S.books.filter(b=>b.status==='reading'||b.status==='paused').map(b=>b.titleId));
   const by={};S.titles.forEach(t=>{if(t.series&&t.seriesNo!=null)(by[t.series]=by[t.series]||[]).push(t)});
   const out=[];
   Object.keys(by).sort().forEach(sn=>{const ts=by[sn].sort((a,b)=>a.seriesNo-b.seriesNo),done=ts.filter(t=>fin.has(t.id));if(!done.length)return;
     const last=done[done.length-1],next=ts.find(t=>t.seriesNo>last.seriesNo);
-    if(next&&!busy.has(next.id)&&!discHidden(next.olKey||'t:'+next.id))out.push({rule:'series',reason:`Next in ${sn}, after ${last.title}`,t:next})});
+    if(next&&!busy.has(next.id)&&!fin.has(next.id)&&!discHidden(next.olKey||'t:'+next.id))out.push({rule:'series',reason:`Next in ${esc(sn)}, after ${ti(last.title)}`,t:next})});
   return out.slice(0,6);
 }
 const wantList=()=>S.books.filter(b=>b.status==='want'&&titleById(b.titleId));
@@ -2329,34 +2339,50 @@ function ruleToRead(){
   return wantList().filter(b=>!q.has(b.id)).sort((a,b)=>(a.wantSince||'').localeCompare(b.wantSince||'')||added(a)-added(b)).slice(0,6)
     .map(b=>({rule:'toread',reason:b.wantSince?`On your To Read since ${fmtMonY(b.wantSince)}`:'On your To Read',t:titleById(b.titleId)}));
 }
-/* Get This Book: the first option that applies is a button, the rest are small links. Nothing when you own it. */
-function getLine(t,x){
-  if(t&&copiesOf(t.id).some(c=>c.owner==='me'))return '';
+/* Get This Book options in order: Borrow from a member, Read Free Online, Borrow Free on Open Library, Find at
+   Your Library. None when you own the book. */
+function getOpts(t,x){
+  if(t&&copiesOf(t.id).some(c=>c.owner==='me'))return null;
   const look=t||x,eb=t?.ebook||x?.ebook,key=t?.olKey||x?.key,au=look.author&&look.author!=='Unknown author'?look.author.split(',')[0]:'';
   const opts=[];
   const lend=!S.settings.solo&&t&&copiesOf(t.id).find(c=>c.owner!=='me'&&!c.private&&c.format==='physical'&&copyFree(c));
-  if(lend)opts.push({act:`data-act="getBorrow" data-id="${t.id}" data-c="${lend.id}"`,l:`Borrow from ${esc(nameOf(lend.owner))}`});
-  if(eb?.access==='public')opts.push({url:eb.ia?`https://archive.org/details/${encodeURIComponent(eb.ia)}`:`https://openlibrary.org${key}`,l:'Read Free Online'});
-  else if(eb?.access==='borrowable')opts.push({url:eb.ed?`https://openlibrary.org/books/${encodeURIComponent(eb.ed)}`:`https://openlibrary.org${key}`,l:'Borrow Free on Open Library'});
-  opts.push({url:t?.isbn?`https://search.worldcat.org/search?q=bn:${encodeURIComponent(t.isbn)}`:`https://search.worldcat.org/search?q=${encodeURIComponent(`ti:${look.title}${au?` au:${au}`:''}`)}`,l:'Find at Your Library'});
-  const buy={url:`https://bookshop.org/search?keywords=${encodeURIComponent(t?.isbn||`${look.title} ${au}`.trim())}`,l:'Buy'};
-  const ext='<span class="sr-only"> (opens in a new tab)</span>';
-  const one=(o,btn)=>o.act?`<button class="${btn?'btn btn-ghost sm':'link-btn sm'}" ${o.act}>${o.l}</button>`:`<a class="${btn?'btn btn-ghost sm':'get-a'}" href="${esc(o.url)}" target="_blank" rel="noopener">${o.l}${ext}</a>`;
-  const [first,...rest]=opts;rest.push(buy);
-  return `<div class="get"><span class="sr-only">Get this book: </span>${one(first,true)}<span class="get-more xs">${rest.map(o=>one(o)).join('<span aria-hidden="true"> · </span>')}</span></div>`;
+  if(lend)opts.push({act:`data-act="getBorrow" data-id="${t.id}" data-c="${lend.id}"`,l:`Borrow from ${esc(nameOf(lend.owner))}`,i:'users'});
+  if(eb?.access==='public')opts.push({url:eb.ia?`https://archive.org/details/${encodeURIComponent(eb.ia)}`:`https://openlibrary.org${key}`,l:'Read Free Online',i:'book'});
+  else if(eb?.access==='borrowable')opts.push({url:eb.ed?`https://openlibrary.org/books/${encodeURIComponent(eb.ed)}`:`https://openlibrary.org${key}`,l:'Borrow Free on Open Library',i:'book'});
+  opts.push({url:t?.isbn?`https://search.worldcat.org/search?q=bn:${encodeURIComponent(t.isbn)}`:`https://search.worldcat.org/search?q=${encodeURIComponent(`ti:${look.title}${au?` au:${au}`:''}`)}`,l:'Find at Your Library',i:'pin'});
+  opts.buy={url:`https://bookshop.org/search?keywords=${encodeURIComponent(t?.isbn||`${look.title} ${au}`.trim())}`,l:'Buy'};
+  return opts;
 }
+const EXT='<span class="sr-only"> (opens in a new tab)</span>';
+const getOne=(o,cls,icon)=>o.act?`<button class="${cls}" ${o.act}>${icon?ic(o.i):''}${o.l}</button>`:`<a class="${cls}" href="${esc(o.url)}" target="_blank" rel="noopener">${icon?ic(o.i):''}${o.l}${EXT}</a>`;
+/* Book details: the best option as a button, the rest as small links, Buy last. */
+function getLine(t,x){
+  const opts=getOpts(t,x);if(!opts)return '';
+  const [first,...rest]=opts;rest.push(opts.buy);
+  return `<div class="get"><span class="sr-only">Get this book: </span>${getOne(first,'btn btn-ghost sm')}<span class="get-more xs">${rest.map(o=>getOne(o,o.act?'link-btn sm':'get-a')).join('<span aria-hidden="true"> · </span>')}</span></div>`;
+}
+/* Discover cards: just the best option, with its icon. Buy and the rest are in the book's details. */
+function getBest(t,x){const opts=getOpts(t,x);return opts?`<div class="dc-get">${getOne(opts[0],'dc-get-a',true)}</div>`:'<div></div>'}
+/* Lean card: Not for Me (top right), cover, title, author, reason, best way to get it, one button. */
 function dcard(it){
   const t=it.t,x=it.x,k=discKey(it);discIdx[k]=it;
   const look=t||{title:x.title,author:x.author,c:hashStr(x.title)%COVERS.length,cover:x.coverId?`https://covers.openlibrary.org/b/id/${x.coverId}-M.jpg`:''};
-  const eb=t?.ebook||x?.ebook,free=eb&&(eb.access==='public'||eb.access==='borrowable'),r=t&&myReading(t.id);
-  const main=r&&r.status==='want'?`<button class="btn btn-primary sm" data-act="bdLog" data-id="${r.id}">${ic('play')}Start Reading</button>`
-    :`<button class="btn btn-primary sm" data-act="discWant" data-k="${esc(k)}">${ic('plus')}Add to To Read</button>`;
-  const open=t?`<button class="lc-open" data-act="openTitle" data-id="${t.id}">`:`<a class="lc-open" href="https://openlibrary.org${esc(x.key)}" target="_blank" rel="noopener" title="See this book on Open Library">`;
-  const nfm=it.rule==='rec'?`data-act="dismissRec" data-id="${t.id}">Not for Me<span class="xs muted">Takes it off your recommendations. Nobody is told.</span>`:`data-act="discHide" data-k="${esc(k)}">Not for Me<span class="xs muted">Hides it from your suggestions. Nobody is told.</span>`;
-  const menu=it.rule==='toread'?'':`<details class="dc-more"><summary class="icon-btn" aria-label="More for ${esc(look.title)}">${ic('dots')}</summary><div class="dc-menu"><button class="link" ${nfm}</button></div></details>`;
-  return `<div class="dc-card"><div class="dc-top">${open}${libCover(look)}<span class="lc-t">${esc(look.title)}</span><span class="bk-a">${esc(look.author)}</span>${t?'</button>':'</a>'}
-  <div class="dc-why">${esc(it.reason)}</div>${free?`<div class="dc-free">${ic('book')}Free to read online</div>`:''}</div>
-  <div class="dc-acts">${main}${menu}</div>${getLine(t,x)||'<div></div>'}</div>`;
+  const r=t&&myReading(t.id);
+  const main=r&&r.status==='want'?`<button class="btn btn-primary sm" data-act="bdLog" data-id="${r.id}">Start Reading</button>`
+    :`<button class="btn btn-primary sm" data-act="discWant" data-k="${esc(k)}">Add to To Read</button>`;
+  const open=t?`data-act="openTitle" data-id="${t.id}"`:`data-act="discOpen" data-k="${esc(k)}"`;
+  const nfm=it.rule==='toread'?'':it.rule==='rec'?`<button class="dc-nfm" data-act="dismissRec" data-id="${t.id}" aria-label="Not for Me: ${esc(look.title)}">Not for Me</button>`:`<button class="dc-nfm" data-act="discHide" data-k="${esc(k)}" aria-label="Not for Me: ${esc(look.title)}">Not for Me</button>`;
+  return `<div class="dc-card">${nfm}<div class="dc-top"><button class="lc-open" ${open}>${libCover(look)}<span class="lc-t">${esc(look.title)}</span><span class="bk-a">${esc(look.author)}</span></button>
+  <div class="dc-why">${it.reason}</div></div>${getBest(t,x)}<div class="dc-acts">${main}</div></div>`;
+}
+/* Compact row (finish window, and Your Next Read on phones): small cover, title and reason, one small button. */
+function drow(it){
+  const t=it.t,x=it.x,k=discKey(it);discIdx[k]=it;
+  const look=t||{title:x.title,author:x.author,c:hashStr(x.title)%COVERS.length,cover:x.coverId?`https://covers.openlibrary.org/b/id/${x.coverId}-S.jpg`:''};
+  const r=t&&myReading(t.id),open=t?`data-act="openTitle" data-id="${t.id}"`:`data-act="discOpen" data-k="${esc(k)}"`;
+  const btn=r&&r.status==='want'?`<button class="btn btn-ghost sm" data-act="bdLog" data-id="${r.id}" aria-label="Start reading ${esc(look.title)}">Start</button>`
+    :`<button class="btn btn-ghost sm" data-act="discWant" data-k="${esc(k)}" aria-label="Add ${esc(look.title)} to To Read">${ic('plus')}To Read</button>`;
+  return `<div class="dc-line"><button class="dl-cover" ${open} tabindex="-1" aria-hidden="true">${libCover(look,40)}</button><div class="dl-txt"><button class="dl-t" ${open}>${esc(look.title)}</button><div class="dc-why">${it.reason}</div></div>${btn}</div>`;
 }
 const dcRow=(id,h,items,extra='')=>items.length?`<section class="dc-row" aria-labelledby="${id}"><div class="dc-rh"><h3 class="dc-h" id="${id}">${h}</h3>${extra}</div><div class="dc-scroll">${items.map(dcard).join('')}</div></section>`:'';
 /* Recommended to You: up to six books people in your group suggested, each with who and their note.
@@ -2364,10 +2390,10 @@ const dcRow=(id,h,items,extra='')=>items.length?`<section class="dc-row" aria-la
 function ruleRecs(){
   if(S.settings.solo)return [];
   const by={};S.recs.forEach(r=>{(by[r.titleId]=by[r.titleId]||[]).push(r)});
-  return Object.keys(by).map(id=>({t:titleById(id),rs:by[id].sort((a,b)=>(b.ts||0)-(a.ts||0))})).filter(x=>x.t)
+  return Object.keys(by).map(id=>({t:titleById(id),rs:by[id].sort((a,b)=>(b.ts||0)-(a.ts||0))})).filter(x=>x.t&&!readIt(x.t.id))
     .sort((a,b)=>(b.rs[0].ts||0)-(a.rs[0].ts||0)).slice(0,6)
     .map(({t,rs})=>{const r=rs[0],more=rs.length>1?` and ${rs.length-1} other${rs.length>2?'s':''}`:'';
-      return {rule:'rec',reason:r.note?`${nameOf(r.from)}${more}: “${r.note}”`:`Recommended by ${nameOf(r.from)}${more}`,t}});
+      return {rule:'rec',reason:esc(r.note?`${nameOf(r.from)}${more}: “${r.note}”`:`Recommended by ${nameOf(r.from)}${more}`),t}});
 }
 function discoverView(){
   discLoad();discIdx={};
@@ -2389,7 +2415,7 @@ function nextReadStrip(){
   discLoad();// also readies picks for the What's Next window after Mark Finished
   if(readingList().length&&!justFinished())return '';
   const picks=nextPicks();if(!picks.length)return '';
-  return `<section class="card" aria-labelledby="nrH" data-tour="nextread"><div class="card-h"><h2 id="nrH">Your Next Read</h2><button class="more" data-go="discover">See More</button></div><div class="dc-scroll dc-three">${picks.map(dcard).join('')}</div></section>`;
+  return `<section class="card" aria-labelledby="nrH" data-tour="nextread"><div class="card-h"><h2 id="nrH">Your Next Read</h2><button class="more" data-go="discover">See More</button></div><div class="dc-scroll dc-three nr-cards">${picks.map(dcard).join('')}</div><div class="dc-lines nr-lines">${picks.map(drow).join('')}</div></section>`;
 }
 /* After Mark Finished: celebrate, then What's Next? The first book in the Reading Queue comes first, with two
    Discover More picks beside it (the next book in the finished book's series leads, when it isn't queued).
@@ -2399,9 +2425,9 @@ let nextDone=null;
 function nextMore(tid){
   const queued=new Set(upList().map(b=>b.titleId)),out=[],seen=new Set();
   const add=it=>{if(!it||out.length>=2)return;const k=discKey(it);if(seen.has(k)||it.t&&queued.has(it.t.id))return;seen.add(k);out.push(it)};
-  const ft=titleById(tid),fin=new Set(S.books.filter(b=>b.status==='finished'||b.status==='reading'||b.status==='paused').map(b=>b.titleId));
+  const ft=titleById(tid),fin=new Set([...S.books.filter(b=>b.status==='finished'||b.status==='reading'||b.status==='paused').map(b=>b.titleId),...Object.keys(S.readIt||{})]);
   if(ft?.series&&ft.seriesNo!=null){const nx=S.titles.filter(t=>t.series===ft.series&&t.seriesNo>ft.seriesNo).sort((a,b)=>a.seriesNo-b.seriesNo)[0];
-    if(nx&&!fin.has(nx.id)&&!discHidden(nx.olKey||'t:'+nx.id))add({rule:'series',reason:`Next in ${ft.series}, after ${ft.title}`,t:nx})}
+    if(nx&&!fin.has(nx.id)&&!discHidden(nx.olKey||'t:'+nx.id))add({rule:'series',reason:`Next in ${esc(ft.series)}, after ${ti(ft.title)}`,t:nx})}
   const lists=[ruleAuthor(),ruleSeries(),ruleToRead()];
   for(let i=0;out.length<2&&lists.some(l=>l[i]);i++)lists.forEach(l=>add(l[i]));
   return out;
@@ -2414,16 +2440,25 @@ function renderNextDlg(){
   if(!nextDone)return;const n=yearFinished(),q=upList()[0],qt=q&&titleById(q.titleId);
   let body;
   if(qt){const more=nextMore(nextDone.tid);
-    body=`<div class="nx-grid${more.length?'':' nx-solo'}"><h3 class="dc-h nx-h1">What’s Next?</h3>${dcard({rule:'toread',reason:'First in your Reading Queue',t:qt}).replace('class="dc-card"','class="dc-card nx-qc"')}
-      ${more.length?`<h3 class="dc-h nx-h2">Discover More</h3>${more.map(dcard).join('')}`:''}</div>`}
-  else{const picks=nextPicks();body=picks.length?`<h3 class="dc-h">What’s Next?</h3><div class="dc-scroll dc-three">${picks.map(dcard).join('')}</div>`:''}
-  nextBody.innerHTML=`<div class="dlg-h"><div style="flex:1;min-width:0"><h2 id="nxTitle">🎉 You finished ${esc(nextDone.title)}!</h2><div class="muted small">That’s ${n} book${n===1?'':'s'} this year.</div></div><button type="button" class="icon-btn x" data-act="nextClose" aria-label="Close">${ic('x')}</button></div>
+    body=`<h3 class="dc-h">What’s Next?</h3><div class="nx-q"><button class="dl-cover" data-act="openTitle" data-id="${qt.id}" tabindex="-1" aria-hidden="true">${libCover(qt,64)}</button><div class="dl-txt"><button class="dl-t" data-act="openTitle" data-id="${qt.id}">${esc(qt.title)}</button><div class="dc-why">First in your Reading Queue</div><button class="btn btn-primary sm" data-act="bdLog" data-id="${q.id}">Start Reading</button></div></div>
+      ${more.length?`<h3 class="dc-h">Discover More</h3><div class="dc-lines">${more.map(drow).join('')}</div>`:''}`}
+  else{const picks=nextPicks();body=picks.length?`<h3 class="dc-h">What’s Next?</h3><div class="dc-lines">${picks.map(drow).join('')}</div>`:''}
+  nextBody.innerHTML=`<div class="dlg-h"><div style="flex:1;min-width:0"><h2 id="nxTitle">🎉 You finished ${ti(nextDone.title)}!</h2><div class="muted small">That’s ${n} book${n===1?'':'s'} this year.${nextDone.undo?' <button class="link-btn sm nx-undo" data-act="nextUndo">Undo</button>':''}</div></div><button type="button" class="icon-btn x" data-act="nextClose" aria-label="Close">${ic('x')}</button></div>
   ${body}
-  <div class="dlg-f">${nextDone.undo?'<button class="link-btn" data-act="nextUndo" style="margin-right:auto">Undo</button>':''}<button class="btn btn-ghost" data-go="discover">See More in Discover</button><button class="btn btn-primary" data-act="nextClose">Done</button></div>`;
+  <div class="nx-f"><button class="link-btn" data-go="discover">See More in Discover</button><button class="btn btn-primary" data-act="nextClose" autofocus>Done</button></div>`;
+  nextBody.querySelector('[autofocus]')?.focus();
+}
+/* Books opened from Discover that aren't in Reading Room get a title so their details can show; it's dropped
+   again on close unless something now uses it (To Read, a copy, a note, Already Read It...). */
+function pruneDisc(){
+  const {titles,...rest}=S,txt=JSON.stringify(rest),n=S.titles.length;
+  S.titles=S.titles.filter(t=>!t.fromDisc||txt.includes(`"${t.id}"`));
+  if(S.titles.length!==n)save();
 }
 
 /* ---------- book detail ---------- */
 const bookDlg=document.getElementById('bookDlg'),bookBody=document.getElementById('bookBody');
+bookDlg.addEventListener('close',()=>pruneDisc());
 let bd={id:null,tab:'copies',rec:false,lend:null,addCopy:false,reqNote:null};
 function openTitle(id){bd={id,tab:'copies',rec:false,lend:null,addCopy:false,reqNote:null};renderBD();if(!bookDlg.open)bookDlg.showModal()}
 function copyRow(c){
@@ -2444,6 +2479,15 @@ function copyRow(c){
   <span class="avail ${ph?(c.loanTo||hold?'loan':'ok'):''}">${ph?(c.loanTo?(c.loanTo==='me'?'On loan to you':`On loan to ${nameOf(c.loanTo)}`):hold?(hold.from==='me'?'On hold for you':`On hold for ${nameOf(hold.from)} — awaiting pickup`):'Available'):'Digital'}</span>
   <span class="cp-act">${act}${mine&&!S.settings.solo?`<button class="link-btn sm cp-share" data-act="cpShare" data-id="${c.id}" aria-pressed="${!c.private}" title="Show this copy in the ${esc(GN())} Library">${c.private?`${ic('lock')}Only Me`:`${ic('users')}Shared`}</button>`:''}${mine?`<button class="link-btn sm" data-act="cpRemove" data-id="${c.id}">Remove</button>`:''}</span></div>${bd.reqNote===c.id&&!mine&&!mr?`<div class="req-in req-compose"><label class="f"><span>Note to ${esc(nameOf(c.owner))} <span class="sub">(optional)</span></span><textarea class="inp" id="reqNoteTx" rows="3" maxlength="200" data-count="200" aria-describedby="reqNoteCount" placeholder="When you could pick it up, or why you'd like to read it"></textarea>${charCount('reqNoteCount',0,200)}</label><span class="req-btns"><button class="btn btn-ghost sm" data-act="reqNoteOpen" data-id="">Cancel</button><button class="btn btn-primary sm" data-act="reqBorrow" data-id="${c.id}">${free?'Send Request':'Join the Waiting Line'}</button></span></div>`:''}${incoming.map((r,i)=>`<div class="req-in"><span class="small">${free?'':`<span class="xs muted">${ordinal(i+1)} in line · </span>`}<b>${esc(nameOf(r.from))}</b> asked to borrow this ${ago(r.ts)}.${r.note?`<span class="req-msg">“${esc(r.note)}”</span>`:''}</span>${replyBtns(r,free)}</div>`).join('')}`;
 }
+/* Under Get This Book: Not for Me and Already Read It, for books you haven't read and don't own. */
+function bdQuiet(t,r){
+  const k=t.olKey||'t:'+t.id;
+  if(readIt(t.id))return `<div class="bd-quiet xs muted">You’ve read this. It isn’t counted in your stats. <button class="link-btn sm" data-act="readItUndo" data-id="${t.id}">Undo</button></div>`;
+  if(discHidden(k))return `<div class="bd-quiet xs muted">Hidden from your suggestions. <button class="link-btn sm" data-act="discUnhide" data-k="${esc(k)}">Undo</button></div>`;
+  if(r||copiesOf(t.id).some(c=>c.owner==='me'))return '';
+  const rec=S.recs.some(x=>x.titleId===t.id);
+  return `<div class="bd-quiet">${rec?'':`<button class="link-btn sm" data-act="discHide" data-k="${esc(k)}">Not for Me</button><span aria-hidden="true" class="muted">·</span>`}<button class="link-btn sm" data-act="readIt" data-id="${t.id}">Already Read It</button></div>`;
+}
 function renderBD(){
   const t=titleById(bd.id);if(!t){bookDlg.close();return}
   const r=myReading(t.id),cs=copiesOf(t.id).filter(c=>!S.settings.solo||c.owner==='me');
@@ -2463,7 +2507,7 @@ function renderBD(){
       (bd.addCopy?`<div class="addcopy"><select class="inp sm" id="acFmt" aria-label="Format"><option value="physical">Physical</option><option value="ebook">Ebook</option><option value="audio">Audiobook</option></select><input class="inp sm" id="acWhere" placeholder="Where is it? (optional)" aria-label="Where is it">${S.settings.solo?'':`<label class="chk xs"><input type="checkbox" id="acShare" checked> Show in ${esc(GN())} Library</label>`}<button class="btn btn-primary sm" data-act="bdAddCopyGo">Add My Copy</button><button class="link-btn sm" data-act="bdAddCopy">Cancel</button></div>`
       :`<button class="link-btn" data-act="bdAddCopy">${ic('plus')}I Own a Copy</button>`);
   }else if(bd.tab==='mine'){
-    if(!r)body=`<p class="small muted">You haven’t read this book yet. Add it to your To Read list to keep it handy.</p>`;
+    if(!r)body=readIt(t.id)?`<p class="small muted">You marked this as already read, with no date. It stays out of your suggestions and isn’t counted in your stats.</p>`:`<p class="small muted">You haven’t read this book yet. Add it to your To Read list to keep it handy.</p>`;
     else{
       const prog=r.format==='audio'?`${fmtPos(r.pos)} of ${fmtPos(r.total)}`:`Page ${r.pos} of ${r.total}`;
       body=`<div class="st st-${r.status}">${STATUS[r.status]}</div> <button class="link-btn sm" data-act="editBook" data-book="${r.id}">${ic('pencil')}Change Status or Details</button>
@@ -2479,7 +2523,7 @@ function renderBD(){
     body=`<label class="f"><span>Notes <span class="sub">(only you see these)</span></span><textarea class="inp" id="bdNotes" rows="5" maxlength="5000" data-count="5000" aria-describedby="bdNoteCount" placeholder="Thoughts, favorite quotes, where you left off…">${esc(S.notes[t.id]||'')}</textarea>${charCount('bdNoteCount',(S.notes[t.id]||'').length,5000)}</label><div class="xs muted" style="margin-top:6px">Saved as you type.</div>`;
   }
   bookBody.innerHTML=`<div class="dlg-h bd-h">${libCover(t,84)}<div style="flex:1;min-width:0"><h2 id="bdTitle">${esc(t.title)}</h2><div class="muted">${esc(t.author)}</div><div class="xs muted" style="margin-top:4px">${[t.series?`${esc(t.series)} #${t.seriesNo??'?'}`:'',t.genre,t.pages?`${t.pages} pages`:''].filter(Boolean).join(' · ')}</div>
- <div class="bd-acts">${prim}</div>${getLine(t)}</div><button type="button" class="icon-btn x" data-act="closeBD" aria-label="Close">${ic('x')}</button></div>
+ <div class="bd-acts">${prim}</div>${getLine(t)}${bdQuiet(t,r)}</div><button type="button" class="icon-btn x" data-act="closeBD" aria-label="Close">${ic('x')}</button></div>
     ${(()=>{const rs=S.recs.filter(r=>r.titleId===t.id);return rs.length?`<div class="rec-box">${rs.map(r=>`<div class="small"><b>${esc(nameOf(r.from))}</b> recommended this to you${r.note?`: “${esc(r.note)}”`:'.'}</div>`).join('')}<div class="rec-acts"><button class="link-btn sm" data-act="dismissRec" data-id="${t.id}">Not for Me</button><span class="xs muted">Only you see this; ${esc([...new Set(rs.map(r=>nameOf(r.from)))].join(' and '))} won’t be told.</span></div></div>`:''})()}
     ${bd.rec?`<div class="recf"><div class="small" style="font-weight:600">Recommend To</div><div class="chips">${Object.entries(S.members).map(([k,m])=>{const done=S.recsSent.some(r=>r.titleId===t.id&&r.to===k);return `<label class="chk ${done?'dim':''}"><input type="checkbox" name="recTo" value="${k}" ${done?'disabled':''}> ${esc(m.name)}${done?' <span class="xs muted">(already recommended)</span>':''}</label>`}).join('')}</div><input class="inp sm" id="recNote" maxlength="140" placeholder="Add a note (optional)" aria-label="Note"><div class="err" id="recErr" role="alert"></div><div class="dlg-f"><button class="btn btn-ghost sm" data-act="bdRec">Cancel</button><button class="btn btn-primary sm" data-act="bdRecGo">Send Recommendation</button></div></div>`:''}
     <div class="bd-tabs" role="tablist">${tabs.map(([k,l])=>`<button class="bd-tab" role="tab" aria-selected="${bd.tab===k}" data-act="bdTab" data-v="${k}">${l}</button>`).join('')}</div>
@@ -2690,7 +2734,7 @@ async function olCoverFor(t){
 function coverRedraw(){
   clearTimeout(coverDraw);
   coverDraw=setTimeout(()=>{
-    if(document.activeElement?.closest('input,select,textarea')||document.querySelector('.menu:not([hidden]),details.dc-more[open]'))return coverRedraw();
+    if(document.activeElement?.closest('input,select,textarea')||document.querySelector('.menu:not([hidden])'))return coverRedraw();
     const y=window.scrollY;render();window.scrollTo(0,y);if(bookDlg.open)renderBD();if(addDlg.open)renderAdd(true);
   },2500);
 }
@@ -3679,7 +3723,6 @@ document.addEventListener('click',e=>{
   if(e.target.closest('#meBtn')){const m=document.getElementById('meMenu');const h=m.hidden;closeMenus();m.hidden=!h;return}
   const a=e.target.closest('[data-act]');
   if(a?.dataset.act!=='more'){const pop=document.getElementById('morePop');if(pop)pop.hidden=true}
-  document.querySelectorAll('details.dc-more[open]').forEach(d=>{if(!d.contains(e.target))d.open=false});
   if(!a){if(!e.target.closest('.menu'))closeMenus();return}
   const id=a.dataset.book;
   switch(a.dataset.act){
@@ -3818,7 +3861,11 @@ document.addEventListener('click',e=>{
     case 'discWant':{const it=discIdx[a.dataset.k];if(!it)break;const snap=snapshot(),t=it.t||olTitleFrom(it.x),r=myReading(t.id);
       if(!r||r.status==='finished'||r.status==='dnf')S.books.push({id:'r'+uid(),titleId:t.id,title:t.title,author:t.author,format:'print',total:t.pages||300,pos:0,status:'want',c:t.c,wantSince:today()});
       save();refreshLib();toast(`Added ${t.title} to your To Read list.`,restoreTo(snap));break}
-    case 'discHide':{const it=discIdx[a.dataset.k];if(!it)break;const snap=snapshot();S.discHide=[...(S.discHide||[]),a.dataset.k];save();refreshLib();toast(`You won’t see ${(it.t||it.x).title} in your suggestions.`,restoreTo(snap),'Only you see this.');break}
+    case 'discHide':{const k=a.dataset.k,it=discIdx[k],nm=it?(it.t||it.x).title:(S.titles.find(t=>(t.olKey||'t:'+t.id)===k)?.title||'This book');const snap=snapshot();S.discHide=[...(S.discHide||[]),k];save();refreshLib();toast(`You won’t see ${nm} in your suggestions.`,restoreTo(snap),'Only you see this.');break}
+    case 'discUnhide':S.discHide=(S.discHide||[]).filter(k=>k!==a.dataset.k);save();refreshLib();break;
+    case 'discOpen':{const it=discIdx[a.dataset.k];if(!it)break;let t=it.t;if(!t){const n=S.titles.length;t=olTitleFrom(it.x);if(S.titles.length>n)t.fromDisc=true}if(nextDlg.open)nextDlg.close();openTitle(t.id);break}
+    case 'readIt':{const t=titleById(a.dataset.id);if(!t)break;const snap=snapshot();(S.readIt=S.readIt||{})[t.id]=today();save();refreshLib();toast(`Marked ${t.title} as already read.`,restoreTo(snap),'It won’t be suggested, and it isn’t counted in your stats.');break}
+    case 'readItUndo':if(S.readIt)delete S.readIt[a.dataset.id];save();refreshLib();break;
     case 'surprise':{const w=wantList().filter(b=>b.id!==surprise);if(w.length)surprise=w[Math.floor(Math.random()*w.length)].id;refreshLib();document.getElementById('dcSurprise')?.closest('.dc-row')?.querySelector('.lc-open')?.focus();break}
     case 'getBorrow':{if(nextDlg.open)nextDlg.close();if(!bookDlg.open||bd.id!==a.dataset.id)openTitle(a.dataset.id);bd.tab='copies';bd.reqNote=a.dataset.c;renderBD();setTimeout(()=>document.getElementById('reqNoteTx')?.focus(),30);break}
     case 'goRecs':view='library';lib.tab='recs';lib.rv='to';render();window.scrollTo(0,0);break;
@@ -3948,7 +3995,7 @@ document.addEventListener('click',e=>{
   }
 });
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){closeMenus();const pop=document.getElementById('morePop');if(pop)pop.hidden=true;const dm=document.querySelector('details.dc-more[open]');if(dm){dm.open=false;dm.querySelector('summary').focus()}}
+  if(e.key==='Escape'){closeMenus();const pop=document.getElementById('morePop');if(pop)pop.hidden=true}
   if((e.key==='ArrowLeft'||e.key==='ArrowRight')&&document.activeElement?.closest('#crCard')&&!document.activeElement.closest('input,select,textarea')){e.preventDefault();stepBook(e.key==='ArrowLeft'?-1:1,e.key==='ArrowLeft'?'prevBook':'nextBook')}
 });
 let tx=null;
