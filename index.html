@@ -1004,6 +1004,8 @@ main section.card .card-h .ico{display:none}
 /* Lean card pieces */
 .dc-nfm{position:absolute;top:10px;right:10px;z-index:1;border:0;background:none;padding:2px 0;font-size:12px;color:var(--text-2);text-decoration:underline;text-underline-offset:3px;text-decoration-color:color-mix(in srgb,var(--text-2) 50%,transparent)}
 .dc-nfm:hover{color:var(--text)}
+/* Narrow phones: no room beside the cover, so Not for Me sits under the reason line instead. */
+@media (max-width:400px){.dc-nfm{position:static;align-self:flex-start;margin-top:2px}}
 .dc-why i,.nx-q i{font-style:italic}
 .dc-get{align-self:end;min-width:0}
 .dc-get-a{display:inline-flex;align-items:flex-start;gap:5px;border:0;background:none;padding:0;text-align:left;color:var(--primary);font-weight:600;font-size:12.5px;line-height:1.3;text-decoration:none}
@@ -2372,8 +2374,8 @@ function dcard(it){
     :`<button class="btn btn-primary sm" data-act="discWant" data-k="${esc(k)}">Add to To Read</button>`;
   const open=t?`data-act="openTitle" data-id="${t.id}"`:`data-act="discOpen" data-k="${esc(k)}"`;
   const nfm=it.rule==='toread'?'':it.rule==='rec'?`<button class="dc-nfm" data-act="dismissRec" data-id="${t.id}" aria-label="Not for Me: ${esc(look.title)}">Not for Me</button>`:`<button class="dc-nfm" data-act="discHide" data-k="${esc(k)}" aria-label="Not for Me: ${esc(look.title)}">Not for Me</button>`;
-  return `<div class="dc-card">${nfm}<div class="dc-top"><button class="lc-open" ${open}>${libCover(look)}<span class="lc-t">${esc(look.title)}</span><span class="bk-a">${esc(look.author)}</span></button>
-  <div class="dc-why">${it.reason}</div></div>${getBest(t,x)}<div class="dc-acts">${main}</div></div>`;
+  return `<div class="dc-card"><div class="dc-top"><button class="lc-open" ${open}>${libCover(look)}<span class="lc-t">${esc(look.title)}</span><span class="bk-a">${esc(look.author)}</span></button>
+  <div class="dc-why">${it.reason}</div>${nfm}</div>${getBest(t,x)}<div class="dc-acts">${main}</div></div>`;
 }
 /* Compact row (finish window, and Your Next Read on phones): small cover, title and reason, one small button. */
 function drow(it){
@@ -3861,7 +3863,10 @@ document.addEventListener('click',e=>{
     case 'discWant':{const it=discIdx[a.dataset.k];if(!it)break;const snap=snapshot(),t=it.t||olTitleFrom(it.x),r=myReading(t.id);
       if(!r||r.status==='finished'||r.status==='dnf')S.books.push({id:'r'+uid(),titleId:t.id,title:t.title,author:t.author,format:'print',total:t.pages||300,pos:0,status:'want',c:t.c,wantSince:today()});
       save();refreshLib();toast(`Added ${t.title} to your To Read list.`,restoreTo(snap));break}
-    case 'discHide':{const k=a.dataset.k,it=discIdx[k],nm=it?(it.t||it.x).title:(S.titles.find(t=>(t.olKey||'t:'+t.id)===k)?.title||'This book');const snap=snapshot();S.discHide=[...(S.discHide||[]),k];save();refreshLib();toast(`You won’t see ${nm} in your suggestions.`,restoreTo(snap),'Only you see this.');break}
+    case 'discHide':{const card=a.closest('.dc-card'),rowId=card?.closest('.dc-row')?.querySelector('.dc-h')?.id,idx=card?[...card.parentNode.children].indexOf(card):-1;
+      S.discHide=[...(S.discHide||[]),a.dataset.k];save();refreshLib();
+      // Quiet hide: no message. Keep keyboard focus on the card that took its place in the same row.
+      if(rowId){const cs=document.getElementById(rowId)?.closest('.dc-row')?.querySelectorAll('.dc-card');const c=cs?.[Math.min(idx,cs.length-1)];(c?.querySelector('.dc-nfm')||c?.querySelector('.lc-open'))?.focus({preventScroll:true})}break}
     case 'discUnhide':S.discHide=(S.discHide||[]).filter(k=>k!==a.dataset.k);save();refreshLib();break;
     case 'discOpen':{const it=discIdx[a.dataset.k];if(!it)break;let t=it.t;if(!t){const n=S.titles.length;t=olTitleFrom(it.x);if(S.titles.length>n)t.fromDisc=true}if(nextDlg.open)nextDlg.close();openTitle(t.id);break}
     case 'readIt':{const t=titleById(a.dataset.id);if(!t)break;const snap=snapshot();(S.readIt=S.readIt||{})[t.id]=today();save();refreshLib();toast(`Marked ${t.title} as already read.`,restoreTo(snap),'It won’t be suggested, and it isn’t counted in your stats.');break}
@@ -3873,7 +3878,7 @@ document.addEventListener('click',e=>{
     case 'nextClose':nextDlg.close();break;
     case 'nextUndo':{const u=nextDone?.undo;nextDlg.close();if(u){u();toast('Undone.')}break}
     case 'toggleWant':toggleWant(a.dataset.id);break;
-    case 'dismissRec':{const snap=snapshot(),t=titleById(a.dataset.id);S.recs=S.recs.filter(r=>r.titleId!==a.dataset.id);save();refreshLib();toast(`Dismissed ${t.title}.`,restoreTo(snap));break}
+    case 'dismissRec':{const snap=snapshot(),t=titleById(a.dataset.id),who=[...new Set(S.recs.filter(r=>r.titleId===a.dataset.id).map(r=>nameOf(r.from)))].join(' and ');S.recs=S.recs.filter(r=>r.titleId!==a.dataset.id);save();refreshLib();toast(`Removed ${t.title} from your recommendations.`,restoreTo(snap),`${who} won’t be told.`);break}
     case 'addBook':openAdd();break;
     case 'closeAdd':addDlg.close();refreshLib();break;
     case 'adTab':ad.tab=a.dataset.v;ad.own=null;renderAdd();if(ad.tab==='search')setTimeout(()=>document.getElementById('adQ')?.focus(),30);if(ad.tab==='manual')setTimeout(()=>document.getElementById('amTitle')?.focus(),30);break;
