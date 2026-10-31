@@ -17,5 +17,3 @@ Known issues and follow-ups for the next prototype. Not published; the site only
   the full title in book details, and size rows to what's visible.
 - **WorldCat "Error 1015" on the first Find at Your Library click** (seen Oct 31, 2026; the same link worked on
   retry). WorldCat's traffic protection, not Reading Room. If it recurs, switch the link target.
-- **Toast "Undo" wraps to "Un / do" at 320 px.** Affects every toast in both prototypes, so the fix belongs on
-  main first (awaiting James's go-ahead). Fix: keep the Undo button on one line.
