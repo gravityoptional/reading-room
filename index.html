@@ -992,6 +992,8 @@ main section.card .card-h .ico{display:none}
 .dc-find .dc-row:first-child .dc-h{border-top:1px solid var(--border);padding-top:22px}
 .dc-row{min-width:0}
 .dc-h{font-size:17px;font-weight:600;margin:0 0 12px}
+.dc-rh{display:flex;align-items:baseline;gap:8px}
+.dc-rh .link-btn svg.i{width:14px;height:14px}
 .dc-scroll{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:14px}
 .dc-three{grid-template-columns:repeat(3,minmax(0,1fr))}
 .dc-card{position:relative;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px;min-width:0}
@@ -2330,7 +2332,7 @@ function dcard(it){
   <div class="dc-why">${esc(it.reason)}</div>${free?`<div class="dc-free">${ic('book')}Free to read online</div>`:''}</div>
   <div class="dc-acts">${main}${menu}</div>${getLine(t,x)||'<div></div>'}</div>`;
 }
-const dcRow=(id,h,items)=>items.length?`<section class="dc-row" aria-labelledby="${id}"><h3 class="dc-h" id="${id}">${h}</h3><div class="dc-scroll">${items.map(dcard).join('')}</div></section>`:'';
+const dcRow=(id,h,items,extra='')=>items.length?`<section class="dc-row" aria-labelledby="${id}"><div class="dc-rh"><h3 class="dc-h" id="${id}">${h}</h3>${extra}</div><div class="dc-scroll">${items.map(dcard).join('')}</div></section>`:'';
 /* Recommendations, moved here from the Library: To Me and From Me, each with Grid and Shelf views. */
 function recsSection(){
   const toMe=[...new Set(S.recs.map(r=>r.titleId))].map(titleById).filter(Boolean),fromN=new Set(S.recsSent.map(r=>r.titleId)).size,shelf=S.settings.libView==='shelf';
@@ -2353,7 +2355,7 @@ function discoverView(){
   const loading=!author.length&&discBusy?`<p class="xs muted" role="status">Looking for more books by authors you rated highly…</p>`:'';
   const sb=surprise&&book(surprise),sp=sb?[{rule:'toread',reason:'Picked at random from your To Read',t:titleById(sb.titleId)}]:[];
   const have=series.length||want.length?`<section class="dc-have" aria-labelledby="haveH"><div class="dc-sec-h"><h2 id="haveH">Choose From What You Have</h2>${want.length?`<button class="btn btn-ghost sm" data-act="surprise">${ic('compass')}${sb?'Surprise Me Again':'Surprise Me'}</button>`:''}</div>
-    ${dcRow('dcSurprise','Surprise Me',sp)}${dcRow('dcSeries','Continue a Series',series)}${dcRow('dcToRead','From Your To Read',toRead)}</section>`:'';
+    ${dcRow('dcSurprise','Surprise Me',sp,`<button class="link-btn sm" data-act="surpriseClear">${ic('x')}Clear</button>`)}${dcRow('dcSeries','Continue a Series',series)}${dcRow('dcToRead','From Your To Read',toRead)}</section>`:'';
   const rows=dcRow('dcAuthor','More by This Author',author);
   const none=!rows&&!have&&!loading?`<div class="empty">${ic('compass')}<h3>Suggestions Will Show Up Here</h3><p>Rate the books you finish and add a few to To Read. Discover uses them to suggest what to read next.</p><button class="btn btn-primary" data-act="addBook">${ic('plus')}Add a Book</button></div>`:'';
   return `<div class="disc"><div class="lib-h" data-tour="discover"><div><h1 class="page-h">Discover</h1><p class="muted" style="margin:4px 0 0">Books you might like, why each one is here, and where to get it.</p></div></div>
@@ -3783,6 +3785,7 @@ document.addEventListener('click',e=>{
     case 'discHide':{const it=discIdx[a.dataset.k];if(!it)break;const snap=snapshot();S.discHide=[...(S.discHide||[]),a.dataset.k];save();refreshLib();toast(`You won’t see ${(it.t||it.x).title} in your suggestions.`,restoreTo(snap),'Only you see this.');break}
     case 'surprise':{const w=wantList().filter(b=>b.id!==surprise);if(w.length)surprise=w[Math.floor(Math.random()*w.length)].id;refreshLib();document.getElementById('dcSurprise')?.closest('.dc-row')?.querySelector('.lc-open')?.focus();break}
     case 'getBorrow':{if(nextDlg.open)nextDlg.close();if(!bookDlg.open||bd.id!==a.dataset.id)openTitle(a.dataset.id);bd.tab='copies';bd.reqNote=a.dataset.c;renderBD();setTimeout(()=>document.getElementById('reqNoteTx')?.focus(),30);break}
+    case 'surpriseClear':surprise=null;refreshLib();document.querySelector('[data-act=surprise]')?.focus();break;
     case 'nextClose':nextDlg.close();break;
     case 'nextUndo':{const u=nextDone?.undo;nextDlg.close();if(u){u();toast('Undone.')}break}
     case 'toggleWant':toggleWant(a.dataset.id);break;
