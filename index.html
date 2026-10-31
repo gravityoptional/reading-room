@@ -844,6 +844,9 @@ main section.card .card-h .ico{display:none}
 .sel-acts{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto}
 @media (max-width:720px){.sel-bar{bottom:calc(72px + env(safe-area-inset-bottom,0px))}}
 .req-st{font-size:12px;color:var(--text-2)}.req-st.ok{color:var(--primary);font-weight:600}
+.req-msg{display:block;margin-top:3px;font-style:italic;color:var(--text-2)}.notif p.req-msg{margin:2px 0 0;font-size:13px}
+.req-mine{flex-basis:100%;overflow-wrap:anywhere;min-width:0}
+.req-in.req-compose{display:block}.req-compose .f{margin:0 0 8px;display:block}.req-compose textarea{width:100%;resize:vertical}.req-compose .req-btns{display:flex;justify-content:flex-end;gap:8px}
 .req-in{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between;margin:-2px 0 8px 44px;padding:10px 12px;border-radius:10px;background:var(--primary-light)}
 .req-btns{display:flex;gap:6px;flex-wrap:wrap}
 .notif{flex-wrap:wrap}.notif-req{flex-basis:100%;margin-top:2px}
@@ -1167,7 +1170,8 @@ function simBorrowIn(){
   const mine=S.copies.filter(c=>c.owner==='me'&&c.format==='physical'&&!c.private);
   if(!mine.length){closeMenus();toast('You have no shared physical copies that are available to request.');return}
   const busy=mine.filter(c=>!copyFree(c)||lineFor(c).length),c=(busy.length&&Math.random()<.5?busy:mine)[Math.floor(Math.random()*(busy.length&&Math.random()<.5?busy.length:mine.length))]||mine[0],ms=Object.keys(S.members).filter(w=>c.loanTo!==w&&!activeReqs().some(r=>r.copyId===c.id&&r.from===w)),who=ms[Math.floor(Math.random()*ms.length)]||Object.keys(S.members)[0],t=titleById(c.titleId);
-  const r={id:'q'+uid(),copyId:c.id,titleId:c.titleId,from:who,to:'me',status:'pending',ts:Date.now()};S.loanReqs.push(r);
+  const notes=['Could I pick it up this weekend?','I’ve wanted to read this since you mentioned it!','For my book report — I’ll take good care of it.','Whenever you’re done with it, no rush.'];
+  const r={id:'q'+uid(),copyId:c.id,titleId:c.titleId,from:who,to:'me',status:'pending',ts:Date.now()};if(Math.random()<.7)r.note=notes[Math.floor(Math.random()*notes.length)];S.loanReqs.push(r);
   S.notifs.unshift({id:'n'+uid(),text:`${nameOf(who)} asked to borrow ${t.title}.`,ts:Date.now(),link:{type:'title',id:c.titleId},req:r.id});
   save();closeMenus();render();toast(`${nameOf(who)} asked to borrow ${t.title}. Approve or decline from the bell or the book.`);
 }
@@ -2133,8 +2137,8 @@ function refreshLib(){
 
 /* ---------- book detail ---------- */
 const bookDlg=document.getElementById('bookDlg'),bookBody=document.getElementById('bookBody');
-let bd={id:null,tab:'copies',rec:false,lend:null,addCopy:false};
-function openTitle(id){bd={id,tab:'copies',rec:false,lend:null,addCopy:false};renderBD();if(!bookDlg.open)bookDlg.showModal()}
+let bd={id:null,tab:'copies',rec:false,lend:null,addCopy:false,reqNote:null};
+function openTitle(id){bd={id,tab:'copies',rec:false,lend:null,addCopy:false,reqNote:null};renderBD();if(!bookDlg.open)bookDlg.showModal()}
 function copyRow(c){
   const mine=c.owner==='me',ph=c.format==='physical';
   let act='';
@@ -2143,15 +2147,15 @@ function copyRow(c){
   if(mine&&ph&&hold)act=`<button class="btn btn-primary sm" data-act="reqHandOver" data-id="${hold.id}">Mark Loaned</button><button class="link-btn sm" data-act="reqCancelHold" data-id="${hold.id}">Cancel Hold</button>`;
   else if(!mine&&ph){
     if(c.loanTo==='me')act='';
-    else if(mr){const pos=lineFor(c).indexOf(mr)+1+(copyFree(c)?0:1);act=`<span class="req-st ${mr.status==='approved'?'ok':''}">${mr.status==='approved'?`Approved — awaiting pickup from ${esc(nameOf(c.owner))}`:pos>1?`Request sent · you’re ${ordinal(pos)} in line`:'Request sent'}</span><button class="link-btn sm" data-act="reqCancel" data-id="${mr.id}">Cancel Request</button>`}
-    else if(!S.settings.solo)act=`<button class="btn ${copyFree(c)?'btn-primary':'btn-ghost'} sm" data-act="reqBorrow" data-id="${c.id}">${copyFree(c)?'Request to Borrow':'Join the Waiting Line'}</button>`;
+    else if(mr){const pos=lineFor(c).indexOf(mr)+1+(copyFree(c)?0:1);act=`${mr.note?`<span class="req-mine xs muted">Your note: “${esc(mr.note)}”</span>`:''}<span class="req-st ${mr.status==='approved'?'ok':''}">${mr.status==='approved'?`Approved — awaiting pickup from ${esc(nameOf(c.owner))}`:pos>1?`Request sent · you’re ${ordinal(pos)} in line`:'Request sent'}</span><button class="link-btn sm" data-act="reqCancel" data-id="${mr.id}">Cancel Request</button>`}
+    else if(!S.settings.solo)act=bd.reqNote===c.id?'':`<button class="btn ${copyFree(c)?'btn-primary':'btn-ghost'} sm" data-act="reqBorrow" data-id="${c.id}">${copyFree(c)?'Request to Borrow':'Join the Waiting Line'}</button><button class="link-btn sm" data-act="reqNoteOpen" data-id="${c.id}">Add a Note</button>`;
   }
   else if(mine&&ph)act=c.loanTo?`<button class="btn btn-ghost sm" data-act="cpReturn" data-id="${c.id}">Mark Returned</button>`
     :bd.lend===c.id?`<span class="lend"><select class="inp sm" id="lendTo" aria-label="Lend to">${Object.entries(S.members).map(([k,m])=>`<option value="${k}">${esc(m.name)}</option>`).join('')}</select><button class="btn btn-primary sm" data-act="cpLendGo" data-id="${c.id}">Lend</button><button class="link-btn sm" data-act="cpLend" data-id="">Cancel</button></span>`
     :`<button class="btn btn-ghost sm" data-act="cpLend" data-id="${c.id}">Mark Loaned</button>`;
   return `<div class="copy"><span class="avatar" style="background:${colorOf(c.owner)}">${initOf(c.owner)}</span><div class="cp-main"><div class="small"><b>${FMT[c.format]}</b>${c.where?` · ${esc(c.where)}`:''}</div><div class="xs muted">Owned by ${nameOf(c.owner)}</div></div>
   <span class="avail ${ph?(c.loanTo||hold?'loan':'ok'):''}">${ph?(c.loanTo?(c.loanTo==='me'?'On loan to you':`On loan to ${nameOf(c.loanTo)}`):hold?(hold.from==='me'?'On hold for you':`On hold for ${nameOf(hold.from)} — awaiting pickup`):'Available'):'Digital'}</span>
-  <span class="cp-act">${act}${mine&&!S.settings.solo?`<button class="link-btn sm cp-share" data-act="cpShare" data-id="${c.id}" aria-pressed="${!c.private}" title="Show this copy in the ${esc(GN())} Library">${c.private?`${ic('lock')}Only Me`:`${ic('users')}Shared`}</button>`:''}${mine?`<button class="link-btn sm" data-act="cpRemove" data-id="${c.id}">Remove</button>`:''}</span></div>${incoming.map((r,i)=>`<div class="req-in"><span class="small">${free?'':`<span class="xs muted">${ordinal(i+1)} in line · </span>`}<b>${esc(nameOf(r.from))}</b> asked to borrow this ${ago(r.ts)}.</span><span class="req-btns">${free?`<button class="btn btn-primary sm" data-act="reqApprove" data-id="${r.id}">Approve</button>`:''}<button class="btn btn-ghost sm" data-act="reqDecline" data-id="${r.id}">Decline</button></span></div>`).join('')}`;
+  <span class="cp-act">${act}${mine&&!S.settings.solo?`<button class="link-btn sm cp-share" data-act="cpShare" data-id="${c.id}" aria-pressed="${!c.private}" title="Show this copy in the ${esc(GN())} Library">${c.private?`${ic('lock')}Only Me`:`${ic('users')}Shared`}</button>`:''}${mine?`<button class="link-btn sm" data-act="cpRemove" data-id="${c.id}">Remove</button>`:''}</span></div>${bd.reqNote===c.id&&!mine&&!mr?`<div class="req-in req-compose"><label class="f"><span>Note to ${esc(nameOf(c.owner))} <span class="sub">(optional)</span></span><textarea class="inp" id="reqNoteTx" rows="3" maxlength="200" data-count="200" aria-describedby="reqNoteCount" placeholder="When you could pick it up, or why you'd like to read it"></textarea>${charCount('reqNoteCount',0,200)}</label><span class="req-btns"><button class="btn btn-ghost sm" data-act="reqNoteOpen" data-id="">Cancel</button><button class="btn btn-primary sm" data-act="reqBorrow" data-id="${c.id}">${free?'Send Request':'Join the Waiting Line'}</button></span></div>`:''}${incoming.map((r,i)=>`<div class="req-in"><span class="small">${free?'':`<span class="xs muted">${ordinal(i+1)} in line · </span>`}<b>${esc(nameOf(r.from))}</b> asked to borrow this ${ago(r.ts)}.${r.note?`<span class="req-msg">“${esc(r.note)}”</span>`:''}</span><span class="req-btns">${free?`<button class="btn btn-primary sm" data-act="reqApprove" data-id="${r.id}">Approve</button>`:''}<button class="btn btn-ghost sm" data-act="reqDecline" data-id="${r.id}">Decline</button></span></div>`).join('')}`;
 }
 function renderBD(){
   const t=titleById(bd.id);if(!t){bookDlg.close();return}
@@ -3015,7 +3019,7 @@ function renderHeader(){
   document.getElementById('meAvatar').style.background=S.me.color;
   document.getElementById('meName').textContent=S.me.name;
   const bc=document.getElementById('bellCount');const unread=S.notifs.filter(n=>!n.read).length;bc.textContent=unread;bc.hidden=!unread;
-  document.getElementById('bellMenu').innerHTML=`<h3>Notifications</h3>${S.notifs.length?S.notifs.map(n=>`<div class="notif ${n.read?'read':''}"><button class="notif-go" ${n.link?`data-act="notifGo" data-id="${n.id}"`:'disabled'}><p>${esc(n.text)}</p><span class="xs muted">${ago(n.ts)}${n.link?' · Open':''}</span></button><button class="icon-btn x" data-act="dismiss" data-id="${n.id}" aria-label="Dismiss">${ic('x')}</button>${(()=>{const r=n.req&&(S.loanReqs||[]).find(x=>x.id===n.req);if(!r||r.status!=='pending')return '';const c=S.copies.find(x=>x.id===r.copyId),free=c&&copyFree(c);
+  document.getElementById('bellMenu').innerHTML=`<h3>Notifications</h3>${S.notifs.length?S.notifs.map(n=>`<div class="notif ${n.read?'read':''}"><button class="notif-go" ${n.link?`data-act="notifGo" data-id="${n.id}"`:'disabled'}><p>${esc(n.text)}</p>${(()=>{const r=n.req&&(S.loanReqs||[]).find(x=>x.id===n.req);return r?.note?`<p class="req-msg">“${esc(r.note)}”</p>`:''})()}<span class="xs muted">${ago(n.ts)}${n.link?' · Open':''}</span></button><button class="icon-btn x" data-act="dismiss" data-id="${n.id}" aria-label="Dismiss">${ic('x')}</button>${(()=>{const r=n.req&&(S.loanReqs||[]).find(x=>x.id===n.req);if(!r||r.status!=='pending')return '';const c=S.copies.find(x=>x.id===r.copyId),free=c&&copyFree(c);
       return `<div class="notif-req req-btns">${free?`<button class="btn btn-primary sm" data-act="reqApprove" data-id="${r.id}">Approve</button>`:`<span class="xs muted" style="align-self:center">Waiting in line until your copy is back.</span>`}<button class="btn btn-ghost sm" data-act="reqDecline" data-id="${r.id}">Decline</button></div>`})()}</div>`).join(''):'<p class="muted small" style="padding:4px 10px 10px;margin:0">You’re all caught up.</p>'}`;
   const th=S.settings.theme;
   document.getElementById('meMenu').innerHTML=`<h3>${esc(S.me.name)}</h3>
@@ -3519,8 +3523,10 @@ document.addEventListener('click',e=>{
       bd.rec=false;save();renderBD();toast(`Recommended ${t.title} to ${names}.`);break}
     case 'bdAddCopy':bd.addCopy=!bd.addCopy;renderBD();break;
     case 'bdAddCopyGo':{const f=document.getElementById('acFmt').value,w=document.getElementById('acWhere').value.trim();const sh=!S.settings.solo&&document.getElementById('acShare')?.checked!==false,had=copiesOf(bd.id).some(c=>!c.private);S.copies.push({id:'c'+uid(),titleId:bd.id,owner:'me',format:f,where:w,loanTo:null,private:!sh||undefined});if(sh)post('library',had?`added a${f==='audio'||f==='ebook'?'n':''} ${FMT[f].toLowerCase()} copy of`:'added a book to the group library:',titleById(bd.id).title);bd.addCopy=false;save();renderBD();toast(`Added your ${FMT[f].toLowerCase()} copy.`);break}
+    case 'reqNoteOpen':bd.reqNote=a.dataset.id||null;renderBD();if(bd.reqNote)document.getElementById('reqNoteTx')?.focus();break;
     case 'reqBorrow':{const c=S.copies.find(x=>x.id===a.dataset.id),t=titleById(c.titleId);if(c.loanTo==='me'||myReqFor(c))break;const free=copyFree(c);
-      const r={id:'q'+uid(),copyId:c.id,titleId:c.titleId,from:'me',to:c.owner,status:'pending',ts:Date.now()};S.loanReqs.push(r);save();renderBD();
+      const note=bd.reqNote===c.id?(document.getElementById('reqNoteTx')?.value.trim().slice(0,200)||''):'';bd.reqNote=null;
+      const r={id:'q'+uid(),copyId:c.id,titleId:c.titleId,from:'me',to:c.owner,status:'pending',ts:Date.now(),...(note?{note}:{})};S.loanReqs.push(r);save();renderBD();
       const pos=lineFor(c).indexOf(r)+1+(free?0:1);toast(free&&pos===1?`Asked ${nameOf(c.owner)} to borrow ${t.title}. You’ll get a notification when they answer.`:`You’re ${ordinal(pos)} in line for ${t.title}. You’ll get a notification when ${nameOf(c.owner)} answers.`);break}
     case 'reqCancel':{const r=S.loanReqs.find(x=>x.id===a.dataset.id);if(!r||!['pending','approved'].includes(r.status))break;r.status='cancelled';save();renderBD();toast(`Canceled your request for ${titleById(r.titleId)?.title}.`);break}
     case 'reqApprove':{const r=S.loanReqs.find(x=>x.id===a.dataset.id),c=S.copies.find(x=>x.id===r?.copyId);if(!r||r.status!=='pending'||!c)break;if(!copyFree(c)){toast('That copy is on loan or on hold. Requests stay in line until it’s back.');break}
