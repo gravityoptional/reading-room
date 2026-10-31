@@ -2148,7 +2148,7 @@ function copyRow(c){
   else if(!mine&&ph){
     if(c.loanTo==='me')act='';
     else if(mr){const pos=lineFor(c).indexOf(mr)+1+(copyFree(c)?0:1);act=`${mr.note?`<span class="req-mine xs muted">Your note: “${esc(mr.note)}”</span>`:''}<span class="req-st ${mr.status==='approved'?'ok':''}">${mr.status==='approved'?`Approved — awaiting pickup from ${esc(nameOf(c.owner))}`:pos>1?`Request sent · you’re ${ordinal(pos)} in line`:'Request sent'}</span><button class="link-btn sm" data-act="reqCancel" data-id="${mr.id}">Cancel Request</button>`}
-    else if(!S.settings.solo)act=bd.reqNote===c.id?'':`<button class="btn ${copyFree(c)?'btn-primary':'btn-ghost'} sm" data-act="reqBorrow" data-id="${c.id}">${copyFree(c)?'Request to Borrow':'Join the Waiting Line'}</button><button class="link-btn sm" data-act="reqNoteOpen" data-id="${c.id}">Add a Note</button>`;
+    else if(!S.settings.solo)act=bd.reqNote===c.id?'':`<button class="btn ${copyFree(c)?'btn-primary':'btn-ghost'} sm" data-act="reqNoteOpen" data-id="${c.id}">${copyFree(c)?'Request to Borrow':'Join the Waiting Line'}</button>`;
   }
   else if(mine&&ph)act=c.loanTo?`<button class="btn btn-ghost sm" data-act="cpReturn" data-id="${c.id}">Mark Returned</button>`
     :bd.lend===c.id?`<span class="lend"><select class="inp sm" id="lendTo" aria-label="Lend to">${Object.entries(S.members).map(([k,m])=>`<option value="${k}">${esc(m.name)}</option>`).join('')}</select><button class="btn btn-primary sm" data-act="cpLendGo" data-id="${c.id}">Lend</button><button class="link-btn sm" data-act="cpLend" data-id="">Cancel</button></span>`
