@@ -1604,6 +1604,7 @@ function tourSteps(mode){
     {id:'log',page:'dashboard',sel:'[data-tour=log]',title:'Log Reading and the Timer',text:()=>'Log Reading records pages or minutes in a few seconds. Start Timer counts the minutes while you read, then logs them for you.'},
     {id:'current',page:'dashboard',sel:'[data-tour=current]',title:'Currently Reading',text:()=>noBooks()?'Books you’re reading will show up here, each with its progress, finish estimate, and its own Log Reading button.':'Each book you’re reading shows its progress, finish estimate, and its own Log Reading button.'},
     {id:'queue',page:'dashboard',sel:'[data-tour=queue]',title:'Reading Queue',text:()=>`${upList().length?'Your next few books, in order.':'Your next few books will line up here, in order.'} Add up to 10 from your To Read list with Add to Reading Queue, and use the arrows there to put them in order. The first one also appears in Currently Reading, so you always know what’s next.`},
+    {id:'nextread',page:'dashboard',sel:'[data-tour=nextread]',soft:true,title:'Your Next Read',text:()=>`${document.querySelector('[data-tour=nextread]')?.offsetParent?'When you’re between books, or just finished one, three picks show up here, each with why it’s here and where to get it.':'When you’re between books, or just finished one, three picks show up on your dashboard, each with why it’s here and where to get it.'} Finish a book and What’s Next? shows the next book in your Reading Queue first.`},
     {id:'activity',cond:!solo,page:'dashboard',sel:'[data-tour=activity]',title:'Group Activity',text:()=>'What your group is reading and finishing. Cheer people on with a reaction. Only members who share appear here.'},
     {id:'library',page:'library',sel:'[data-tour=library]',title:'Your Library',text:()=>`${solo?'My Books holds every book connected to you, from To Read to Finished.':`My Books holds every book connected to you, and the ${G} Library shows what everyone owns.`} Add a Book searches by title, author, or ISBN.${S.books.length?'':' Books you add will show up here.'} Tap any book, wherever you see it, to open it: from there you can start or log reading, change its status, rate it, add notes, add your copy${solo?', or edit its details':', edit its details, recommend it to someone, or ask to borrow it'}.`},
     {id:'discover',page:'discover',sel:'[data-tour=discover]',title:'Discover',text:()=>'Discover suggests books you might like, says why, and shows where to get each one.'},
@@ -1644,8 +1645,8 @@ async function tourShow(i,dir){
     if(nb){tourRender({title:`Next: ${PAGE_L[st.page]}`,text:()=>'',hint:true},nb);await new Promise(r=>setTimeout(r,reducedMotion()?600:900));if(!tour)return}
     view=st.page;if(st.page==='library'&&S.settings.solo&&lib.tab!=='mybooks')lib.tab='mybooks';render();
   }
-  const el=st.sel?document.querySelector(st.sel):null;
-  if(st.sel&&(!el||!el.offsetParent)){tour.i=i;return tourShow(i+dir,dir)}
+  let el=st.sel?document.querySelector(st.sel):null;
+  if(st.sel&&(!el||!el.offsetParent)){if(!st.soft){tour.i=i;return tourShow(i+dir,dir)}el=null}
   tour.i=i;
   if(el){el.scrollIntoView({block:'center',behavior:reducedMotion()?'auto':'smooth'});await settle(el);if(!tour)return}
   tourRender(st,el);
@@ -1656,9 +1657,10 @@ function tourRender(st,el){
   tour.el=el;tour.hint=!!st.hint;
   if(st.hint){card.innerHTML=`<div class="tour-hint">${ic('chevR')}<b>${esc(st.title)}</b></div>`;card.classList.add('hint')}
   else{card.classList.remove('hint');const fin=st.final?st.final():null;
-    card.innerHTML=`<div class="tour-step xs muted">${k+1} of ${n}</div><h2 id="tourT">${esc(st.title)}</h2><p id="tourB" class="small">${st.text()}</p>${st.extra?st.extra():''}
+    const num=n===13&&k===12?14:k+1,of=n===13?14:n; // no stop 13, for the superstitious
+    card.innerHTML=`<div class="tour-step xs muted">${num} of ${of}</div><h2 id="tourT">${esc(st.title)}</h2><p id="tourB" class="small">${st.text()}</p>${st.extra?st.extra():''}
     <div class="tour-nav">${k>0?'<button class="btn btn-ghost sm" data-act="tourBack">Back</button>':''}<span style="flex:1"></span>${fin?(fin.act==='tourEnd'?'':'<button class="link-btn sm" data-act="tourEnd">Done</button>'):'<button class="link-btn sm" data-act="tourEnd">Skip Tour</button>'}<button class="btn btn-primary sm" data-act="${fin?fin.act:'tourNext'}">${fin?fin.label:'Next'}</button></div>`;
-    document.getElementById('tourLive').textContent=`Step ${k+1} of ${n}: ${st.title}`;
+    document.getElementById('tourLive').textContent=`Step ${num} of ${of}: ${st.title}`;
     setTimeout(()=>card.querySelector('.tour-nav .btn-primary')?.focus(),20);}
   root.classList.toggle('nospot',!el);
   tourPlace();
@@ -2387,7 +2389,7 @@ function nextReadStrip(){
   discLoad();// also readies picks for the What's Next window after Mark Finished
   if(readingList().length&&!justFinished())return '';
   const picks=nextPicks();if(!picks.length)return '';
-  return `<section class="card" aria-labelledby="nrH"><div class="card-h"><h2 id="nrH">Your Next Read</h2><button class="more" data-go="discover">See More</button></div><div class="dc-scroll dc-three">${picks.map(dcard).join('')}</div></section>`;
+  return `<section class="card" aria-labelledby="nrH" data-tour="nextread"><div class="card-h"><h2 id="nrH">Your Next Read</h2><button class="more" data-go="discover">See More</button></div><div class="dc-scroll dc-three">${picks.map(dcard).join('')}</div></section>`;
 }
 /* After Mark Finished: celebrate, then What's Next? The first book in the Reading Queue comes first, with two
    Discover More picks beside it (the next book in the finished book's series leads, when it isn't queued).
