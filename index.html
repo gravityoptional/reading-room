@@ -2222,12 +2222,19 @@ let discBusy=false,discTimer,surprise=null,discIdx={};
 const normT=x=>sortKey(String(x||'').split(/[:(]/)[0]).replace(/[^a-z0-9 ]/g,'').replace(/\s+/g,' ').trim();
 const fmtStars=r=>`${r} star${r===1?'':'s'}`;
 const fmtMonY=d=>`${MONF[+d.slice(5,7)-1]} ${d.slice(0,4)}`;
-/* Authors of books you rated 4 or more, each with your highest-rated book by them. */
+/* Books you've finished more than once and never rated count as loved too: a reread says as much as a rating. */
+function rereads(){
+  const n={},rated=new Set(S.books.filter(b=>b.rating).map(b=>b.titleId));
+  S.books.forEach(b=>{if(b.status==='finished')n[b.titleId]=(n[b.titleId]||0)+1});
+  return Object.keys(n).filter(id=>n[id]>1&&!rated.has(id)).map(id=>({id,times:n[id],fin:S.books.filter(b=>b.titleId===id&&b.finished).map(b=>b.finished).sort().pop()||''}));
+}
+/* Authors of books you rated 4 or more, each with your highest-rated book by them, then authors you've reread
+   (ranked with 4-star books). Ties go to the most recent finish. */
 function lovedAuthors(){
-  const by={};
-  S.books.filter(b=>b.rating>=4).forEach(b=>{const t=titleById(b.titleId),k=t?.olAuthor?.[0];if(!k)return;
-    const cur=by[k],fin=b.finished||'';if(!cur||b.rating>cur.rating||b.rating===cur.rating&&fin>cur.fin)by[k]={key:k,rating:b.rating,title:t.title,fin}});
-  return Object.values(by).sort((a,b)=>b.rating-a.rating||b.fin.localeCompare(a.fin)).slice(0,DISC_AUTHORS);
+  const by={},put=(k,e)=>{const cur=by[k];if(!cur||e.score>cur.score||e.score===cur.score&&e.fin>cur.fin)by[k]=e};
+  S.books.filter(b=>b.rating>=4).forEach(b=>{const t=titleById(b.titleId),k=t?.olAuthor?.[0];if(k)put(k,{key:k,score:b.rating,why:`You gave ${t.title} ${fmtStars(b.rating)}`,fin:b.finished||''})});
+  rereads().forEach(r=>{const t=titleById(r.id),k=t?.olAuthor?.[0];if(k)put(k,{key:k,score:4,why:`You’ve read ${t.title} ${r.times===2?'twice':r.times+' times'}`,fin:r.fin})});
+  return Object.values(by).sort((a,b)=>b.score-a.score||b.fin.localeCompare(a.fin)).slice(0,DISC_AUTHORS);
 }
 /* An author's works on Open Library, most-published first, without collections, study guides, translations,
    books where they aren't the main author, and duplicate entries. */
@@ -2272,7 +2279,7 @@ function ruleAuthor(){
   const mine=new Set(S.books.map(b=>b.titleId));S.copies.forEach(c=>{if(c.owner==='me')mine.add(c.titleId)});
   const names=[...mine].map(id=>normT(titleById(id)?.title)).filter(Boolean);
   const known=n=>names.some(m=>m===n||n.length>=8&&m.length>=8&&(m.startsWith(n)||n.startsWith(m)));
-  const lists=lovedAuthors().map(a=>(discCache.a[a.key]?.items||[]).map(x=>{const t=discMatch(x);return {rule:'author',reason:`You gave ${a.title} ${fmtStars(a.rating)}`,x,t}})
+  const lists=lovedAuthors().map(a=>(discCache.a[a.key]?.items||[]).map(x=>{const t=discMatch(x);return {rule:'author',reason:a.why,x,t}})
     .filter(it=>!(it.t&&mine.has(it.t.id))&&!known(normT(it.x.title))&&!discHidden(discKey(it))));
   // Take turns between authors so one prolific author doesn't fill the row.
   const out=[],seen=new Set();
@@ -2619,7 +2626,7 @@ function olSection(res){
 /* Finds covers and Open Library details (work key, author keys, ebook availability) for books added before
    Find a Book saved them, or added by hand. Works through them one at a time in the background, saves what it
    finds on the title so each is only looked up once, and tries books with no match again after 30 days.
-   Books you rated 4 or more go first, since Discover uses their authors. */
+   Books you rated 4 or more or reread go first, since Discover uses their authors. */
 const COVER_RETRY=30*864e5;
 let coverBusy=false,coverDraw;
 const needCover=t=>!t.cover&&!t.noAutoCover&&!(t.coverTried>Date.now()-COVER_RETRY);
@@ -2650,7 +2657,7 @@ function coverRedraw(){
 async function coverFill(){
   if(coverBusy||navigator.onLine===false)return;coverBusy=true;
   try{
-    const loved=new Set(S.books.filter(b=>b.rating>=4).map(b=>b.titleId));
+    const loved=new Set([...S.books.filter(b=>b.rating>=4).map(b=>b.titleId),...rereads().map(r=>r.id)]);
     const todo=S.titles.filter(t=>needCover(t)||needInfo(t)).sort((a,b)=>loved.has(b.id)-loved.has(a.id));
     for(const t of todo){
       if(!S.titles.includes(t)||!needCover(t)&&!needInfo(t))continue;
