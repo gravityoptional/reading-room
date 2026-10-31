@@ -983,6 +983,68 @@ main section.card .card-h .ico{display:none}
 .d-stat{background:none;border-left:1px solid var(--border);border-radius:0;padding:2px 0 2px 12px}
 .trophy .tn,.tw .tn{overflow-wrap:anywhere}
 
+/* Discover */
+.disc{display:grid;gap:34px}
+.disc>.lib-h{margin-bottom:-14px}
+.dc-find,.dc-have,.dc-recs{display:grid;gap:22px;min-width:0}
+.dc-sec-h{display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:22px}
+.dc-sec-h h2{font-size:24px;font-weight:600;display:flex;align-items:center;gap:8px}
+.dc-find .dc-row:first-child .dc-h{border-top:1px solid var(--border);padding-top:22px}
+.dc-row{min-width:0}
+.dc-h{font-size:17px;font-weight:600;margin:0 0 12px}
+.dc-scroll{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:14px}
+.dc-three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.dc-card{position:relative;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.dc-card .lc-open{color:inherit;text-decoration:none}
+.dc-card .lc-open .cover{width:88px}
+.dc-card .lc-t{overflow-wrap:anywhere}
+.dc-why{font-size:12.5px;color:var(--text-2);line-height:1.35}
+.dc-free{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--primary)}
+.dc-free svg.i{width:14px;height:14px}
+.dc-acts{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding-top:4px}
+.dc-acts .dc-menu{flex:1 0 100%}
+.dc-acts>.btn{flex:1;min-width:0;white-space:nowrap;padding-left:6px;padding-right:6px}
+.dc-acts>.btn svg.i{display:none}
+a.btn{text-decoration:none}
+.dc-foot{margin-top:auto;display:grid;gap:6px}
+.dc-more{display:contents}
+.dc-more summary{flex:none}
+.dc-more summary{list-style:none;cursor:pointer;position:absolute;top:8px;right:8px;width:34px;height:34px;padding:0;display:grid;place-items:center;border:1px solid transparent;border-radius:9px;background:none;color:var(--text-2)}
+.dc-more summary:hover,.dc-more[open] summary{background:var(--surface-alt);border-color:var(--border)}
+.dc-more summary::-webkit-details-marker{display:none}
+.dc-menu{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px;margin-top:6px}
+.dc-menu .link{display:grid;gap:2px;width:100%;box-sizing:border-box;margin:0;text-align:left;border:0;background:none;padding:8px 10px;border-radius:8px;font-weight:600;font-size:14px;color:var(--text)}
+.dc-menu .link .xs{font-weight:400}
+.gs-link{display:inline;padding:0;font-size:inherit;vertical-align:baseline}
+.dc-menu .link:hover{background:var(--surface-alt)}
+.get{display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+.dc-card .get .btn{width:100%}
+.get-more{display:flex;flex-wrap:wrap;gap:0 4px;align-items:center;color:var(--text-2)}
+.get-a{color:var(--primary);font-weight:500;text-decoration:none}
+.get-a:hover{text-decoration:underline;text-underline-offset:3px}
+.get-more .link-btn.sm{padding:0;font-size:inherit}
+.bd-h .get{grid-column:2/-1;grid-row:5;flex-direction:row;flex-wrap:wrap;align-items:center;gap:6px 12px;margin-top:10px}
+@media (max-width:560px){.bd-h .get{grid-column:1/-1}}
+.lcard .get{margin-top:2px}
+.lcard .get .btn{width:100%}
+#nextDlg{width:min(720px,calc(100vw - 24px))}
+#nextDlg .dc-h{margin-top:4px}
+#nextDlg .dlg-f{margin-top:16px;flex-wrap:wrap}
+@media (max-width:720px){#nextDlg .dlg-f .btn{flex:1 1 40%}#nextDlg .dlg-f [data-act=nextUndo]{flex-basis:100%;margin:0}}
+.get .btn{white-space:normal;text-align:center}
+@media (max-width:1060px){.dc-scroll:not(.dc-three){grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media (max-width:720px){
+  .bnav{grid-template-columns:repeat(5,1fr)}
+  .bnav button{padding:9px 1px 8px;font-size:10.5px;letter-spacing:-.01em}
+  .disc{gap:28px}
+  .dc-scroll,.dc-scroll:not(.dc-three){display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:10px;margin:0 -14px;padding:0 14px 6px;scrollbar-width:thin}
+  .dc-scroll>.dc-card{flex:0 0 min(46vw,200px);scroll-snap-align:start}
+  .dc-sec-h h2{font-size:21px}
+  .dc-card .lc-open .cover{width:80px}
+  .dc-acts .btn{font-size:12px;padding:6px 6px}
+  .dc-acts .btn svg.i{display:none}
+}
+
 </style>
 </head>
 <body>
@@ -992,6 +1054,7 @@ main section.card .card-h .ico{display:none}
     <nav class="nav" aria-label="Main">
       <button data-go="dashboard"><span data-i="home"></span>Dashboard</button>
       <button data-go="library"><span data-i="library"></span>Library</button>
+      <button data-go="discover"><span data-i="compass"></span>Discover</button>
       <button data-go="challenges"><span data-i="trophy"></span>Challenges</button>
       <button data-go="history"><span data-i="chart"></span>History</button>
     </nav>
@@ -1011,6 +1074,7 @@ main section.card .card-h .ico{display:none}
 <nav class="bnav" aria-label="Main">
   <button data-go="dashboard"><span data-i="home"></span>Dashboard</button>
   <button data-go="library"><span data-i="library"></span>Library</button>
+  <button data-go="discover"><span data-i="compass"></span>Discover</button>
   <button data-go="challenges"><span data-i="trophy"></span>Challenges</button>
   <button data-go="history"><span data-i="chart"></span>History</button>
 </nav>
@@ -1025,6 +1089,7 @@ main section.card .card-h .ico{display:none}
 <dialog id="addDlg" aria-labelledby="adTitle"><div class="dlg" id="addBody"></div></dialog>
 <dialog id="chDlg" aria-labelledby="chTitle"><div class="dlg" id="chBody"></div></dialog>
 <dialog id="recDlg" aria-labelledby="rpTitle"><div class="dlg" id="recBody"></div></dialog>
+<dialog id="nextDlg" aria-labelledby="nxTitle"><div class="dlg" id="nextBody"></div></dialog>
 <dialog id="sessDlg" aria-labelledby="seTitle"><form class="dlg" id="sessForm" method="dialog" novalidate></form></dialog>
 <div id="pill"></div>
 <div class="toast" id="toast" role="status" popover="manual"></div>
@@ -1519,6 +1584,7 @@ function tourSteps(mode){
     {id:'queue',page:'dashboard',sel:'[data-tour=queue]',title:'Reading Queue',text:()=>`${upList().length?'Your next few books, in order.':'Your next few books will line up here, in order.'} Add up to 10 from your To Read list with Add to Reading Queue, and use the arrows there to put them in order. The first one also appears in Currently Reading, so you always know what’s next.`},
     {id:'activity',cond:!solo,page:'dashboard',sel:'[data-tour=activity]',title:'Group Activity',text:()=>'What your group is reading and finishing. Cheer people on with a reaction. Only members who share appear here.'},
     {id:'library',page:'library',sel:'[data-tour=library]',title:'Your Library',text:()=>`${solo?'My Books holds every book connected to you, from To Read to Finished.':`My Books holds every book connected to you, and the ${G} Library shows what everyone owns.`} Add a Book searches by title, author, or ISBN.${S.books.length?'':' Books you add will show up here.'} Tap any book, wherever you see it, to open it: from there you can start or log reading, change its status, rate it, add notes, add your copy${solo?', or edit its details':', edit its details, recommend it to someone, or ask to borrow it'}.`},
+    {id:'discover',page:'discover',sel:'[data-tour=discover]',title:'Discover',text:()=>'Discover suggests books you might like, says why, and shows where to get each one.'},
     {id:'challenges',page:'challenges',sel:'[data-tour=challenge-tabs]',title:'Challenges and Trophies',text:()=>solo?'Set personal challenges, like 12 books this year. Trophies you earn collect on the Trophy Wall.':'Join group challenges, set personal goals, or organize a Battle of the Books, where everyone adds books to a shared list, reads them all, and then meets for an in-person quiz. Trophies you earn collect on the Trophy Wall, where you can also give awards to each other, like Read-Aloud Star or Most Improved.'},
     {id:'admin',cond:!solo&&admin,page:'challenges',sel:'[data-tour=groups]',title:'For Group Admins',text:()=>`You’re an admin of ${G}. That means you can also correct shared book details with Edit Book on any book, and record the winner when a Battle of the Books ends. Everyone can join and start battles and challenges.`},
     {id:'history',page:'history',sel:'[data-tour=calendar]',title:'History',text:()=>S.sessions.length?'Your reading over time. Darker days mean more reading; tap a day to see what you read. Records and yearly totals are below.':'Each day you read will fill in here, darker for more reading. Tap a day to see what you read; records and yearly totals are below.'},
@@ -1543,7 +1609,7 @@ function tourEnd(){
   if(prev&&document.contains(prev))prev.focus();
 }
 const navBtn=page=>[...document.querySelectorAll(`[data-go=${page}]`)].find(b=>b.offsetParent&&b.closest('.nav,.bnav'));
-const PAGE_L={dashboard:'Dashboard',library:'Library',challenges:'Challenges',history:'History'};
+const PAGE_L={dashboard:'Dashboard',library:'Library',discover:'Discover',challenges:'Challenges',history:'History'};
 /* Wait until a scrolled feature stops moving, so the highlight and card land on it. */
 async function settle(el){let last='';for(let i=0;i<30;i++){await new Promise(r=>setTimeout(r,60));const r=el.getBoundingClientRect(),k=Math.round(r.top)+','+Math.round(r.left);if(k===last)return;last=k}}
 async function tourShow(i,dir){
@@ -1612,7 +1678,7 @@ function showTourOffer(mode){
 function hideTourOffer(){document.getElementById('tourOffer')?.remove()}
 function getStarted(){
   if(S.settings.gsHidden)return '';
-  const steps=[['find','Find a Book','Search for something you’re reading or want to read.',S.books.length>0||S.copies.some(c=>c.owner==='me'),'gsFind','search'],
+  const steps=[['find','Find a Book','Search for something you’re reading or want to read, or browse <button class="link-btn sm gs-link" data-go="discover">Discover</button>.',S.books.length>0||S.copies.some(c=>c.owner==='me'),'gsFind','search'],
     ['log','Log Your Reading','Record pages or minutes. Start Timer can count the minutes for you.',S.sessions.length>0,'gsLog','book'],
     S.settings.solo?['join','Start a Challenge','Set a personal goal, like 12 books this year.',S.challenges.some(c=>(c.participants||[]).includes('me')),'gsJoin','trophy']:['join','Join a Challenge','Read along with your group in a challenge or Battle of the Books.',S.challenges.some(c=>(c.participants||[]).includes('me'))||S.battles.some(b=>b.readers.me||b.moderator==='me'),'gsJoin','trophy']];
   const done=steps.filter(x=>x[3]).length;if(done===steps.length)return '';
@@ -1898,8 +1964,7 @@ const nFilters=()=>Object.keys(LIB0).filter(k=>lib.f[k]!==LIB0[k]).length;
 function mbStatus(t){const r=myReading(t.id);if(r)return r.status;return copiesOf(t.id).some(c=>c.owner==='me')?'owned':null}
 function baseList(){
   if(lib.tab==='family')return S.titles.filter(t=>copiesOf(t.id).some(c=>!c.private));
-  if(lib.tab==='mybooks')return S.titles.filter(t=>mbStatus(t));
-  return [...new Set(S.recs.map(r=>r.titleId))].map(titleById).filter(Boolean);
+  return S.titles.filter(t=>mbStatus(t));
 }
 function libTitles(){
   let list=baseList();
@@ -1971,9 +2036,8 @@ function libEmpty(){
   if(lib.q.trim()||nFilters())return `<div class="empty">${ic('search')}<h3>No Books Found</h3><p>Try a different search or clear your filters.</p><button class="btn btn-ghost" data-act="libClear">Clear Filters</button></div>`;
   if(lib.tab==='mybooks'&&lib.mb!=='all')return `<div class="empty">${ic('book')}<h3>No Books Here Yet</h3><p>Books with this status will show up here.</p></div>`;
   const E={family:['library','Your Library Is Empty','Add your first book to get started. Search for it, add it yourself, or import a list.'],
-    mybooks:['book','Your Books Will Show Up Here','Everything you’ve read, are reading, want to read, or own appears here.'],
-    recs:['send','No Recommendations Yet','When someone in your group recommends a book to you, it shows up here.']}[lib.tab];
-  return `<div class="empty">${ic(E[0])}<h3>${E[1]}</h3><p>${E[2]}</p>${lib.tab!=='recs'?`<button class="btn btn-primary" data-act="addBook">${ic('plus')}Add a Book</button>`:''}</div>`;
+    mybooks:['book','Your Books Will Show Up Here','Everything you’ve read, are reading, want to read, or own appears here.']}[lib.tab];
+  return `<div class="empty">${ic(E[0])}<h3>${E[1]}</h3><p>${E[2]}</p><button class="btn btn-primary" data-act="addBook">${ic('plus')}Add a Book</button></div>`;
 }
 function recExtra(t){
   return `<div class="rec">${S.recs.filter(r=>r.titleId===t.id).map(r=>`<div><b>${esc(nameOf(r.from))}</b>${r.note?`: “${esc(r.note)}”`:''}</div>`).join('')}<div class="rec-acts"><button class="link-btn sm" data-act="dismissRec" data-id="${t.id}">Not for Me</button><span class="xs muted">Only you see this; ${esc([...new Set(S.recs.filter(r=>r.titleId===t.id).map(r=>nameOf(r.from)))].join(' and '))} won’t be told.</span></div></div>`;
@@ -2098,7 +2162,6 @@ function setShared(ids,on){
   let n=0;S.copies.forEach(c=>{if(c.owner==='me'&&ids.includes(c.titleId)){const was=!c.private;if(on){if(!was)n++;delete c.private}else{if(was)n++;c.private=true}}});return n;
 }
 function libResults(){
-  if(lib.tab==='recs'&&lib.rv==='from')return fromMe();
   const list=libTitles(),shelf=S.settings.libView==='shelf';
   const gs=(lib.tab==='mybooks'?[['status','Status'],['year','Year Finished'],['month','Month Finished'],['week','Week Finished']]:[]).concat([['alpha','Title'],['author','Author'],['genre','Genre']]);
   const fgrid=!shelf&&lib.tab==='mybooks'&&lib.sort==='finished';
@@ -2107,28 +2170,25 @@ function libResults(){
   const upTop=lib.tab==='mybooks'&&lib.mb==='want'&&!lib.q.trim()&&!nFilters()?upNextPanel():'';
   if(!list.length)return upTop+head+libEmpty();
   if(upTop&&!shelf)return upTop+head+`<div class="lib-grid">${list.map(mbCard).join('')}</div>`;
-  const card=lib.tab==='mybooks'?mbCard:t=>lcard(t,lib.tab==='recs'?recExtra(t):'');
+  const card=lib.tab==='mybooks'?mbCard:t=>lcard(t);
   if(fgrid&&lib.fgroup!=='none')return head+periodGroups(list,lib.fgroup).map(([k,ts])=>`<section class="shelf-g"><h3 class="shelf-l">${esc(perLabel(lib.fgroup,k))} <span class="count">(${ts.length} book${ts.length===1?'':'s'})</span></h3><div class="lib-grid">${ts.map(card).join('')}</div></section>`).join('');
   return head+(shelf?shelfView(list):`<div class="lib-grid">${list.map(card).join('')}</div>`);
 }
 function libraryView(){
-  if(S.settings.solo&&lib.tab==='family')lib.tab='mybooks';
-  if(S.settings.solo&&lib.tab==='recs')lib.tab='mybooks';
-  const tabs=[['family',`${GN()} Library`],['mybooks','My Books'],['recs','Recommendations']].filter(x=>!(S.settings.solo&&(x[0]==='family'||x[0]==='recs')));
-  const n=nFilters(),shelf=S.settings.libView==='shelf',toMe=new Set(S.recs.map(r=>r.titleId)).size,fromN=new Set(S.recsSent.map(r=>r.titleId)).size;
-  const tools=!(lib.tab==='recs'&&lib.rv==='from');
+  if(!ROUTES.library.includes(lib.tab)||S.settings.solo&&lib.tab==='family')lib.tab='mybooks';
+  const tabs=[['family',`${GN()} Library`],['mybooks','My Books']].filter(x=>!(S.settings.solo&&x[0]==='family'));
+  const n=nFilters(),shelf=S.settings.libView==='shelf';
   return `<div class="lib">
-  <div class="lib-h" data-tour="library"><div><h1 class="page-h">${lib.tab==='family'?`${esc(GN())} Library`:lib.tab==='mybooks'?'My Books':'Recommendations'}</h1><p class="muted" style="margin:4px 0 0">${lib.tab==='family'?`Books everyone in ${esc(GN())} can borrow and read.`:lib.tab==='mybooks'?'Every book connected to you, from To Read to Finished.':'Books suggested to you, and the ones you’ve passed along.'}</p></div><button class="btn btn-primary" data-act="addBook">${ic('plus')}Add a Book</button></div>
-  <div class="tabs" role="tablist" aria-label="Library sections">${tabs.map(([k,l])=>`<button class="tab" role="tab" data-tour="lib-${k}" aria-selected="${lib.tab===k}" data-act="libTab" data-v="${k}">${l}${k==='recs'&&toMe?` <span class="tab-n">${toMe}</span>`:''}</button>`).join('')}</div>
+  <div class="lib-h" data-tour="library"><div><h1 class="page-h">${lib.tab==='family'?`${esc(GN())} Library`:'My Books'}</h1><p class="muted" style="margin:4px 0 0">${lib.tab==='family'?`Books everyone in ${esc(GN())} can borrow and read.`:'Every book connected to you, from To Read to Finished.'}</p></div><button class="btn btn-primary" data-act="addBook">${ic('plus')}Add a Book</button></div>
+  <div class="tabs" role="tablist" aria-label="Library sections">${tabs.map(([k,l])=>`<button class="tab" role="tab" data-tour="lib-${k}" aria-selected="${lib.tab===k}" data-act="libTab" data-v="${k}">${l}</button>`).join('')}</div>
   ${lib.tab==='mybooks'?mbChips():''}
-  ${lib.tab==='recs'?`<div class="rv-row"><div class="vseg" role="group" aria-label="Recommendations"><button aria-pressed="${lib.rv==='to'}" data-act="recView" data-v="to">To Me (${toMe})</button><button aria-pressed="${lib.rv==='from'}" data-act="recView" data-v="from">From Me (${fromN})</button></div><span class="rv-acts">${lib.rv==='from'&&fromN?`<span class="vseg" role="group" aria-label="View"><button aria-pressed="${!shelf}" data-act="libView" data-v="grid">${ic('grid')}Grid</button><button aria-pressed="${shelf}" data-act="libView" data-v="shelf">${ic('shelf')}Shelf</button></span>`:''}<button class="btn btn-ghost" data-act="recPick">${ic('send')}Recommend a Book</button></span></div>`:''}
-  ${tools?`<div class="lib-tools">
+  <div class="lib-tools">
     <label class="search">${ic('search')}<input id="libQ" type="search" placeholder="Search by title or author" value="${esc(lib.q)}" aria-label="Search the library" autocomplete="off"></label>
     <button class="btn btn-ghost" data-act="libFilters" aria-expanded="${lib.open}" aria-controls="libFilters">${ic('filter')}Filters${n?` (${n})`:''}</button>
     <label class="sortl"><span class="small muted">Sort</span><select class="inp sm" data-lsel="sort">${[['title','Title A–Z'],['author','Author'],['added','Recently Added'],['read','Recently Read']].concat(lib.tab==='mybooks'?[['finished','Date Finished']]:[]).map(([v,l])=>`<option value="${v}" ${lib.sort===v?'selected':''}>${l}</option>`).join('')}</select></label>
     <span class="vseg" role="group" aria-label="View"><button aria-pressed="${!shelf}" data-act="libView" data-v="grid">${ic('grid')}Grid</button><button aria-pressed="${shelf}" data-act="libView" data-v="shelf">${ic('shelf')}Shelf</button></span>
   </div>
-  ${lib.open?filtersPanel():''}`:'<div style="height:14px"></div>'}
+  ${lib.open?filtersPanel():''}
   <div id="libResults">${libResults()}</div></div>`;
 }
 function toggleWant(tid){
@@ -2139,11 +2199,177 @@ function toggleWant(tid){
   save();refreshLib();
 }
 function refreshLib(){
-  if(view==='library'){const y=window.scrollY;render();window.scrollTo(0,y)}else render();
+  if(view==='library'||view==='discover'){const y=window.scrollY;render();window.scrollTo(0,y)}else render();
   if(bookDlg.open)renderBD();
+  if(nextDlg.open)renderNextDlg();
   if(addDlg.open)renderAdd(true);
   if(chDlg.open&&chMode==='battle')renderBattle();
   if(chDlg.open&&chMode==='ch')renderCh();
+}
+
+/* ---------- discover ----------
+   Discover suggests books from outside Reading Room, says why each one is there, and says where to get it.
+   Release 1: More by This Author (from Open Library, using saved author keys), the Free to Read Online label,
+   Choose From What You Have (Continue a Series, From Your To Read, Surprise Me), and Recommendations. */
+const DISC_KEY=NEXT?'rr-next-disc-v1':'rr-disc-v1',DISC_TTL=14*864e5,DISC_AUTHORS=8;
+let discCache;try{discCache=JSON.parse(localStorage.getItem(DISC_KEY))||{}}catch(e){discCache={}}
+discCache.a=discCache.a||{};
+let discBusy=false,discTimer,surprise=null,discIdx={};
+/* Compare titles loosely: no leading article, subtitle, punctuation, or case. */
+const normT=x=>sortKey(String(x||'').split(/[:(]/)[0]).replace(/[^a-z0-9 ]/g,'').replace(/\s+/g,' ').trim();
+const fmtStars=r=>`${r} star${r===1?'':'s'}`;
+const fmtMonY=d=>`${MONF[+d.slice(5,7)-1]} ${d.slice(0,4)}`;
+/* Authors of books you rated 4 or more, each with your highest-rated book by them. */
+function lovedAuthors(){
+  const by={};
+  S.books.filter(b=>b.rating>=4).forEach(b=>{const t=titleById(b.titleId),k=t?.olAuthor?.[0];if(!k)return;
+    const cur=by[k],fin=b.finished||'';if(!cur||b.rating>cur.rating||b.rating===cur.rating&&fin>cur.fin)by[k]={key:k,rating:b.rating,title:t.title,fin}});
+  return Object.values(by).sort((a,b)=>b.rating-a.rating||b.fin.localeCompare(a.fin)).slice(0,DISC_AUTHORS);
+}
+/* An author's works on Open Library, most-published first, without collections, study guides, translations,
+   books where they aren't the main author, and duplicate entries. */
+const DISC_FIELDS='key,title,author_name,author_key,first_publish_year,number_of_pages_median,cover_i,ebook_access,lending_edition_s,lending_identifier_s,language';
+const DISC_JUNK=/\b(collection|collected|complete|works|omnibus|box(ed)? ?set|set of|trilogy|quartet|novels|selected|anthology|study guide|sparknotes|cliffs ?notes|summary|analysis|teacher'?s?|workbook|coloring|calendar|sampler|excerpts?|abridged|graphic novel|adaptation|edition|books? \d+\s*(-|–|&|and|to)\s*\d+)\b/i;
+async function discAuthor(k){
+  const r=await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent('author_key:'+k)}&fields=${DISC_FIELDS}&sort=editions&limit=40`,{headers:{Accept:'application/json'}});
+  if(!r.ok)throw new Error('Open Library '+r.status);
+  const seen=new Set(),items=[];
+  for(const d of (await r.json()).docs||[]){
+    const ak=d.author_key||[],nt=normT(d.title);
+    if(!d.title||!nt||ak[0]!==k||ak.length>3||seen.has(nt)||DISC_JUNK.test(d.title)||/[\/;]/.test(d.title))continue;
+    if(d.language?.length&&!d.language.includes('eng'))continue;
+    seen.add(nt);
+    items.push({key:d.key,title:d.title,author:(d.author_name||[]).slice(0,2).join(', ')||'Unknown author',authorKeys:ak.slice(0,2),ebook:olEbook(d),year:d.first_publish_year||'',pages:d.number_of_pages_median||0,coverId:d.cover_i||0});
+    if(items.length>=24)break;
+  }
+  return items;
+}
+/* Looks up loved authors one per second, keeping each list for two weeks in this browser. */
+async function discLoad(){
+  if(discBusy||navigator.onLine===false)return;
+  const todo=lovedAuthors().filter(a=>!(discCache.a[a.key]?.ts>Date.now()-DISC_TTL));if(!todo.length)return;
+  discBusy=true;
+  try{for(const a of todo){
+    let items;try{items=await discAuthor(a.key)}catch(e){break}
+    discCache.a[a.key]={ts:Date.now(),items};try{localStorage.setItem(DISC_KEY,JSON.stringify(discCache))}catch(e){}
+    if(view==='discover'||view==='dashboard')coverRedraw();
+    await new Promise(r=>setTimeout(r,1000));
+  }}finally{discBusy=false}
+}
+/* Called when the background lookup finds the author of a book you rated highly. */
+function discRefresh(){clearTimeout(discTimer);discTimer=setTimeout(discLoad,1500)}
+const discKey=it=>it.t?(it.t.olKey||'t:'+it.t.id):it.x.key;
+const discHidden=k=>(S.discHide||[]).includes(k);
+/* Open Library results that match a book already in Reading Room use that book, so its copies show. */
+function discMatch(x){
+  const n=normT(x.title),ln=lastName(x.author.split(',')[0]).toLowerCase();
+  return S.titles.find(t=>t.olKey&&t.olKey===x.key)||S.titles.find(t=>normT(t.title)===n&&lastName(t.author).toLowerCase()===ln);
+}
+function ruleAuthor(){
+  const mine=new Set(S.books.map(b=>b.titleId));S.copies.forEach(c=>{if(c.owner==='me')mine.add(c.titleId)});
+  const names=[...mine].map(id=>normT(titleById(id)?.title)).filter(Boolean);
+  const known=n=>names.some(m=>m===n||n.length>=8&&m.length>=8&&(m.startsWith(n)||n.startsWith(m)));
+  const lists=lovedAuthors().map(a=>(discCache.a[a.key]?.items||[]).map(x=>{const t=discMatch(x);return {rule:'author',reason:`You gave ${a.title} ${fmtStars(a.rating)}`,x,t}})
+    .filter(it=>!(it.t&&mine.has(it.t.id))&&!known(normT(it.x.title))&&!discHidden(discKey(it))));
+  // Take turns between authors so one prolific author doesn't fill the row.
+  const out=[],seen=new Set();
+  for(let i=0;out.length<6&&lists.some(l=>l[i]);i++)lists.forEach(l=>{const it=l[i];if(it&&out.length<6&&!seen.has(discKey(it))){seen.add(discKey(it));out.push(it)}});
+  return out;
+}
+function ruleSeries(){
+  const fin=new Set(S.books.filter(b=>b.status==='finished').map(b=>b.titleId)),busy=new Set(S.books.filter(b=>b.status==='reading'||b.status==='paused').map(b=>b.titleId));
+  const by={};S.titles.forEach(t=>{if(t.series&&t.seriesNo!=null)(by[t.series]=by[t.series]||[]).push(t)});
+  const out=[];
+  Object.keys(by).sort().forEach(sn=>{const ts=by[sn].sort((a,b)=>a.seriesNo-b.seriesNo),done=ts.filter(t=>fin.has(t.id));if(!done.length)return;
+    const last=done[done.length-1],next=ts.find(t=>t.seriesNo>last.seriesNo);
+    if(next&&!busy.has(next.id)&&!discHidden(next.olKey||'t:'+next.id))out.push({rule:'series',reason:`Next in ${sn}, after ${last.title}`,t:next})});
+  return out.slice(0,6);
+}
+const wantList=()=>S.books.filter(b=>b.status==='want'&&titleById(b.titleId));
+/* Longest-waiting first. Books added before To Read dates were saved have no date, so they come first. */
+function ruleToRead(){
+  const q=new Set(S.upNext||[]),added=b=>titleById(b.titleId)?.added||0;
+  return wantList().filter(b=>!q.has(b.id)).sort((a,b)=>(a.wantSince||'').localeCompare(b.wantSince||'')||added(a)-added(b)).slice(0,6)
+    .map(b=>({rule:'toread',reason:b.wantSince?`On your To Read since ${fmtMonY(b.wantSince)}`:'On your To Read',t:titleById(b.titleId)}));
+}
+/* Get This Book: the first option that applies is a button, the rest are small links. Nothing when you own it. */
+function getLine(t,x){
+  if(t&&copiesOf(t.id).some(c=>c.owner==='me'))return '';
+  const look=t||x,eb=t?.ebook||x?.ebook,key=t?.olKey||x?.key,au=look.author&&look.author!=='Unknown author'?look.author.split(',')[0]:'';
+  const opts=[];
+  const lend=!S.settings.solo&&t&&copiesOf(t.id).find(c=>c.owner!=='me'&&!c.private&&c.format==='physical'&&copyFree(c));
+  if(lend)opts.push({act:`data-act="getBorrow" data-id="${t.id}" data-c="${lend.id}"`,l:`Borrow from ${esc(nameOf(lend.owner))}`});
+  if(eb?.access==='public')opts.push({url:eb.ia?`https://archive.org/details/${encodeURIComponent(eb.ia)}`:`https://openlibrary.org${key}`,l:'Read Free Online'});
+  else if(eb?.access==='borrowable')opts.push({url:eb.ed?`https://openlibrary.org/books/${encodeURIComponent(eb.ed)}`:`https://openlibrary.org${key}`,l:'Borrow Free on Open Library'});
+  opts.push({url:t?.isbn?`https://search.worldcat.org/search?q=bn:${encodeURIComponent(t.isbn)}`:`https://search.worldcat.org/search?q=${encodeURIComponent(`ti:${look.title}${au?` au:${au}`:''}`)}`,l:'Find at Your Library'});
+  const buy={url:`https://bookshop.org/search?keywords=${encodeURIComponent(t?.isbn||`${look.title} ${au}`.trim())}`,l:'Buy'};
+  const ext='<span class="sr-only"> (opens in a new tab)</span>';
+  const one=(o,btn)=>o.act?`<button class="${btn?'btn btn-ghost sm':'link-btn sm'}" ${o.act}>${o.l}</button>`:`<a class="${btn?'btn btn-ghost sm':'get-a'}" href="${esc(o.url)}" target="_blank" rel="noopener">${o.l}${ext}</a>`;
+  const [first,...rest]=opts;rest.push(buy);
+  return `<div class="get"><span class="sr-only">Get this book: </span>${one(first,true)}<span class="get-more xs">${rest.map(o=>one(o)).join('<span aria-hidden="true"> · </span>')}</span></div>`;
+}
+function dcard(it){
+  const t=it.t,x=it.x,k=discKey(it);discIdx[k]=it;
+  const look=t||{title:x.title,author:x.author,c:hashStr(x.title)%COVERS.length,cover:x.coverId?`https://covers.openlibrary.org/b/id/${x.coverId}-M.jpg`:''};
+  const eb=t?.ebook||x?.ebook,free=eb&&(eb.access==='public'||eb.access==='borrowable'),r=t&&myReading(t.id);
+  const main=r&&r.status==='want'?`<button class="btn btn-primary sm" data-act="bdLog" data-id="${r.id}">${ic('play')}Start Reading</button>`
+    :`<button class="btn btn-primary sm" data-act="discWant" data-k="${esc(k)}">${ic('plus')}Add to To Read</button>`;
+  const open=t?`<button class="lc-open" data-act="openTitle" data-id="${t.id}">`:`<a class="lc-open" href="https://openlibrary.org${esc(x.key)}" target="_blank" rel="noopener" title="See this book on Open Library">`;
+  const menu=it.rule==='toread'?'':`<details class="dc-more"><summary class="icon-btn" aria-label="More for ${esc(look.title)}">${ic('dots')}</summary><div class="dc-menu"><button class="link" data-act="discHide" data-k="${esc(k)}">Not for Me<span class="xs muted">Hides it from your suggestions. Nobody is told.</span></button></div></details>`;
+  return `<div class="dc-card">${open}${libCover(look)}<span class="lc-t">${esc(look.title)}</span><span class="bk-a">${esc(look.author)}</span>${t?'</button>':'</a>'}
+  <div class="dc-why">${esc(it.reason)}</div>${free?`<div class="dc-free">${ic('book')}Free to read online</div>`:''}
+  <div class="dc-foot"><div class="dc-acts">${main}${menu}</div>${getLine(t,x)}</div></div>`;
+}
+const dcRow=(id,h,items)=>items.length?`<section class="dc-row" aria-labelledby="${id}"><h3 class="dc-h" id="${id}">${h}</h3><div class="dc-scroll">${items.map(dcard).join('')}</div></section>`:'';
+/* Recommendations, moved here from the Library: To Me and From Me, each with Grid and Shelf views. */
+function recsSection(){
+  const toMe=[...new Set(S.recs.map(r=>r.titleId))].map(titleById).filter(Boolean),fromN=new Set(S.recsSent.map(r=>r.titleId)).size,shelf=S.settings.libView==='shelf';
+  const latest=t=>Math.max(...S.recs.filter(r=>r.titleId===t.id).map(r=>r.ts||0));toMe.sort((a,b)=>latest(b)-latest(a));
+  const views=(lib.rv==='from'?fromN:toMe.length)?`<span class="vseg" role="group" aria-label="View"><button aria-pressed="${!shelf}" data-act="libView" data-v="grid">${ic('grid')}Grid</button><button aria-pressed="${shelf}" data-act="libView" data-v="shelf">${ic('shelf')}Shelf</button></span>`:'';
+  let body;
+  if(lib.rv==='from')body=fromMe();
+  else if(!toMe.length)body=`<div class="empty">${ic('send')}<h3>No Recommendations Yet</h3><p>When someone in your group recommends a book to you, it shows up here.</p></div>`;
+  else if(shelf){const who={};S.recs.forEach(r=>{if(titleById(r.titleId))(who[r.from]=who[r.from]||new Set()).add(r.titleId)});
+    body=`<div class="lib-count"><span class="small muted">${toMe.length} book${toMe.length===1?'':'s'} · grouped by who recommended them</span></div>`+shelfView([],Object.keys(who).sort((a,b)=>nameOf(a).localeCompare(nameOf(b))).map(w=>[nameOf(w),[...who[w]].map(titleById)]))}
+  else body=`<div class="lib-grid">${toMe.map(t=>lcard(t,recExtra(t)+getLine(t))).join('')}</div>`;
+  return `<section class="dc-recs" aria-labelledby="recsH"><div class="dc-sec-h"><h2 id="recsH">Recommendations${toMe.length?` <span class="tab-n" aria-label="${toMe.length} recommended to you">${toMe.length}</span>`:''}</h2></div>
+  <div class="rv-row"><div class="vseg" role="group" aria-label="Recommendations"><button aria-pressed="${lib.rv==='to'}" data-act="recView" data-v="to">To Me (${toMe.length})</button><button aria-pressed="${lib.rv==='from'}" data-act="recView" data-v="from">From Me (${fromN})</button></div><span class="rv-acts">${views}<button class="btn btn-ghost" data-act="recPick">${ic('send')}Recommend a Book</button></span></div>
+  <div class="dc-recs-b">${body}</div></section>`;
+}
+function discoverView(){
+  discLoad();discIdx={};
+  const author=ruleAuthor(),series=ruleSeries(),toRead=ruleToRead(),want=wantList();
+  if(surprise&&!want.some(b=>b.id===surprise))surprise=null;
+  const loading=!author.length&&discBusy?`<p class="xs muted" role="status">Looking for more books by authors you rated highly…</p>`:'';
+  const sb=surprise&&book(surprise),sp=sb?[{rule:'toread',reason:'Picked at random from your To Read',t:titleById(sb.titleId)}]:[];
+  const have=series.length||want.length?`<section class="dc-have" aria-labelledby="haveH"><div class="dc-sec-h"><h2 id="haveH">Choose From What You Have</h2>${want.length?`<button class="btn btn-ghost sm" data-act="surprise">${ic('compass')}${sb?'Surprise Me Again':'Surprise Me'}</button>`:''}</div>
+    ${dcRow('dcSurprise','Surprise Me',sp)}${dcRow('dcSeries','Continue a Series',series)}${dcRow('dcToRead','From Your To Read',toRead)}</section>`:'';
+  const rows=dcRow('dcAuthor','More by This Author',author);
+  const none=!rows&&!have&&!loading?`<div class="empty">${ic('compass')}<h3>Suggestions Will Show Up Here</h3><p>Rate the books you finish and add a few to To Read. Discover uses them to suggest what to read next.</p><button class="btn btn-primary" data-act="addBook">${ic('plus')}Add a Book</button></div>`:'';
+  return `<div class="disc"><div class="lib-h" data-tour="discover"><div><h1 class="page-h">Discover</h1><p class="muted" style="margin:4px 0 0">Books you might like, why each one is here, and where to get it.</p></div></div>
+  ${rows||loading?`<section class="dc-find" aria-label="Suggestions">${rows}${loading}</section>`:''}${have}${none}${S.settings.solo?'':recsSection()}</div>`;
+}
+/* Your Next Read: three picks, each from a different rule, while nothing is being read or for a week after finishing a book. */
+const nextPicks=()=>[ruleAuthor()[0],ruleSeries()[0],ruleToRead()[0]].filter(Boolean);
+const justFinished=()=>{const w=addDays(today(),-7);return S.books.some(b=>b.status==='finished'&&b.finished&&b.finished>=w&&b.finished<=today())};
+function nextReadStrip(){
+  discLoad();// also readies picks for the What's Next window after Mark Finished
+  if(readingList().length&&!justFinished())return '';
+  const picks=nextPicks();if(!picks.length)return '';
+  return `<section class="card" aria-labelledby="nrH"><div class="card-h"><h2 id="nrH">Your Next Read</h2><button class="more" data-go="discover">See More</button></div><div class="dc-scroll dc-three">${picks.map(dcard).join('')}</div></section>`;
+}
+/* After Mark Finished: celebrate, then offer the same three picks under What's Next? */
+const nextDlg=document.getElementById('nextDlg'),nextBody=document.getElementById('nextBody');
+let nextDone=null;
+function openNextDlg(b,undo){
+  const picks=nextPicks();if(!picks.length)return false;
+  nextDone={title:b.title,undo};renderNextDlg();if(!nextDlg.open)nextDlg.showModal();return true;
+}
+function renderNextDlg(){
+  if(!nextDone)return;const picks=nextPicks(),n=yearFinished();
+  nextBody.innerHTML=`<div class="dlg-h"><div style="flex:1;min-width:0"><h2 id="nxTitle">🎉 You finished ${esc(nextDone.title)}!</h2><div class="muted small">That’s ${n} book${n===1?'':'s'} this year.</div></div><button type="button" class="icon-btn x" data-act="nextClose" aria-label="Close">${ic('x')}</button></div>
+  ${picks.length?`<h3 class="dc-h">What’s Next?</h3><div class="dc-scroll dc-three">${picks.map(dcard).join('')}</div>`:''}
+  <div class="dlg-f">${nextDone.undo?'<button class="link-btn" data-act="nextUndo" style="margin-right:auto">Undo</button>':''}<button class="btn btn-ghost" data-go="discover">See More in Discover</button><button class="btn btn-primary" data-act="nextClose">Done</button></div>`;
 }
 
 /* ---------- book detail ---------- */
@@ -2203,7 +2429,7 @@ function renderBD(){
     body=`<label class="f"><span>Notes <span class="sub">(only you see these)</span></span><textarea class="inp" id="bdNotes" rows="5" maxlength="5000" data-count="5000" aria-describedby="bdNoteCount" placeholder="Thoughts, favorite quotes, where you left off…">${esc(S.notes[t.id]||'')}</textarea>${charCount('bdNoteCount',(S.notes[t.id]||'').length,5000)}</label><div class="xs muted" style="margin-top:6px">Saved as you type.</div>`;
   }
   bookBody.innerHTML=`<div class="dlg-h bd-h">${libCover(t,84)}<div style="flex:1;min-width:0"><h2 id="bdTitle">${esc(t.title)}</h2><div class="muted">${esc(t.author)}</div><div class="xs muted" style="margin-top:4px">${[t.series?`${esc(t.series)} #${t.seriesNo??'?'}`:'',t.genre,t.pages?`${t.pages} pages`:''].filter(Boolean).join(' · ')}</div>
-    <div class="bd-acts">${prim}</div></div><button type="button" class="icon-btn x" data-act="closeBD" aria-label="Close">${ic('x')}</button></div>
+ <div class="bd-acts">${prim}</div>${getLine(t)}</div><button type="button" class="icon-btn x" data-act="closeBD" aria-label="Close">${ic('x')}</button></div>
     ${(()=>{const rs=S.recs.filter(r=>r.titleId===t.id);return rs.length?`<div class="rec-box">${rs.map(r=>`<div class="small"><b>${esc(nameOf(r.from))}</b> recommended this to you${r.note?`: “${esc(r.note)}”`:'.'}</div>`).join('')}<div class="rec-acts"><button class="link-btn sm" data-act="dismissRec" data-id="${t.id}">Not for Me</button><span class="xs muted">Only you see this; ${esc([...new Set(rs.map(r=>nameOf(r.from)))].join(' and '))} won’t be told.</span></div></div>`:''})()}
     ${bd.rec?`<div class="recf"><div class="small" style="font-weight:600">Recommend To</div><div class="chips">${Object.entries(S.members).map(([k,m])=>{const done=S.recsSent.some(r=>r.titleId===t.id&&r.to===k);return `<label class="chk ${done?'dim':''}"><input type="checkbox" name="recTo" value="${k}" ${done?'disabled':''}> ${esc(m.name)}${done?' <span class="xs muted">(already recommended)</span>':''}</label>`}).join('')}</div><input class="inp sm" id="recNote" maxlength="140" placeholder="Add a note (optional)" aria-label="Note"><div class="err" id="recErr" role="alert"></div><div class="dlg-f"><button class="btn btn-ghost sm" data-act="bdRec">Cancel</button><button class="btn btn-primary sm" data-act="bdRecGo">Send Recommendation</button></div></div>`:''}
     <div class="bd-tabs" role="tablist">${tabs.map(([k,l])=>`<button class="bd-tab" role="tab" aria-selected="${bd.tab===k}" data-act="bdTab" data-v="${k}">${l}</button>`).join('')}</div>
@@ -2404,7 +2630,9 @@ async function olCoverFor(t){
     if(!r.ok)throw new Error('Open Library '+r.status);
     const docs=(await r.json()).docs||[];
     // m: this book's own entry, for its details. c: an entry with a cover, as before.
-    const m=t.olKey?docs.find(x=>x.key===t.olKey):docs.find(x=>x.cover_i)||docs[0],c=m?.cover_i?m:docs.find(x=>x.cover_i);
+    // Details are only taken from an entry whose title matches, so a near miss never claims this book.
+    const same=x=>{const a=normT(x.title),b=normT(t.title);return a&&b&&(a===b||a.startsWith(b)||b.startsWith(a))};
+    const m=t.olKey?docs.find(x=>x.key===t.olKey):docs.find(x=>x.cover_i&&same(x))||docs.find(same),c=m?.cover_i?m:docs.find(x=>x.cover_i);
     if(m||c)return {m,c};
   }
   return null;
@@ -3007,11 +3235,13 @@ document.addEventListener('input',e=>{
 /* ---------- views ---------- */
 let view='dashboard';
 /* The current page and its tab live in the address (for example #library/mybooks), so refresh, Back, and bookmarks return to it. */
-const ROUTES={dashboard:null,library:['family','mybooks','recs'],challenges:['mine','family','battle','trophies'],history:null};
+const ROUTES={dashboard:null,library:['family','mybooks'],discover:null,challenges:['mine','family','battle','trophies'],history:null};
 let routedView=null;
 function routeHash(){return view==='dashboard'?'':'#'+view+(view==='library'?'/'+lib.tab:view==='challenges'?'/'+chTab:'')}
 function readRoute(){
   const [v,t]=decodeURIComponent(location.hash.slice(1)).split('/');
+  // Recommendations moved from the Library to Discover; old #library/recs links still land on them.
+  if(v==='library'&&t==='recs'){view='discover';history.replaceState(null,'','#discover');setTimeout(()=>document.getElementById('recsH')?.scrollIntoView(),0);return}
   if(!Object.hasOwn(ROUTES,v)){view='dashboard';return}
   view=v;if(t&&ROUTES[v]?.includes(t)){if(v==='library')lib.tab=t;else chTab=t}
 }
@@ -3027,11 +3257,13 @@ function render(){
   document.querySelectorAll('[data-go]').forEach(b=>{if(b.closest('.nav,.bnav'))b.setAttribute('aria-current',b.dataset.go===view?'page':'false')});
   const m=document.getElementById('main');
   if(view==='dashboard'){
-    m.innerHTML=heroDash()+getStarted()+`<div class="dgrid"><div class="dmain">${readingCard()}<div class="pair">${pausedBlock()}${upNextRow()}</div><div class="pair">${challengesCard()}${trophiesCard()}</div></div><aside class="dside" aria-label="Activity and calendar">${S.settings.solo?'':activityCard()}${calCard()}</aside></div>`;
+    m.innerHTML=heroDash()+getStarted()+`<div class="dgrid"><div class="dmain">${readingCard()}<div class="pair">${pausedBlock()}${upNextRow()}</div>${nextReadStrip()}<div class="pair">${challengesCard()}${trophiesCard()}</div></div><aside class="dside" aria-label="Activity and calendar">${S.settings.solo?'':activityCard()}${calCard()}</aside></div>`;
   }else if(view==='challenges'){
     m.innerHTML=challengesView();
   }else if(view==='library'){
     m.innerHTML=libraryView();
+  }else if(view==='discover'){
+    m.innerHTML=discoverView();
   }else if(view==='history'){
     m.innerHTML=historyView();
   }else{
@@ -3281,7 +3513,7 @@ logForm.addEventListener('submit',e=>{
   if(S.timer&&S.timer.bookId===b.id&&S.timer.stop)S.timer=null;
   logForm.dataset.done='1';draftClear(logForm.dataset.dkey);save();logDlg.close();render();
   const after=goalState(f.date),sk=streak(),g=S.settings,isToday=f.date===today(),logged=range||minutes!=null;
-  if(finished)toast(`🎉 You finished ${b.title}!`,null,`That’s ${yearFinished()} book${yearFinished()===1?'':'s'} this year.`,true);
+  if(finished){if(!openNextDlg(b))toast(`🎉 You finished ${b.title}!`,null,`That’s ${yearFinished()} book${yearFinished()===1?'':'s'} this year.`,true)}
   else if(started){const g=S.settings,left=[];if(g.goalType!=='pages')left.push(`${Math.max(1,Math.ceil(g.goalMinutes-after.mins))} more minutes`);if(g.goalType!=='minutes')left.push(`${Math.max(1,g.goalPages-after.pages)} more pages`);
     const sub=!logged?'Happy reading!':!before.met&&after.met&&isToday?`Goal met for today, too. 🔥 ${sk} day streak`:after.met||!isToday?`🔥 ${sk} day streak. Happy reading!`:`${left.join(' or ')} to reach today’s goal.`;
     toast(`📖 You started ${b.title}!`,null,sub,true);if(!before.met&&after.met&&isToday)document.querySelector('.rings')?.classList.add('pop')}
@@ -3393,12 +3625,13 @@ document.addEventListener('change',async e=>{
 document.addEventListener('click',e=>{
   if(lpFired){lpFired=false;e.preventDefault();return}
   const go=e.target.closest('[data-go]');
-  if(go){view=go.dataset.go;if(go.dataset.ch)chTab=go.dataset.ch;if(chDlg.open)chDlg.close();closeMenus();render();window.scrollTo(0,0);return}
+  if(go){view=go.dataset.go;if(go.dataset.ch)chTab=go.dataset.ch;if(chDlg.open)chDlg.close();if(nextDlg.open)nextDlg.close();closeMenus();render();window.scrollTo(0,0);return}
   if(e.target.closest('#bellBtn')){const m=document.getElementById('bellMenu');const h=m.hidden;closeMenus();m.hidden=!h;return}
   if(e.target.closest('#grpBtn')){const m=document.getElementById('grpMenu');const h=m.hidden;closeMenus();m.hidden=!h;return}
   if(e.target.closest('#meBtn')){const m=document.getElementById('meMenu');const h=m.hidden;closeMenus();m.hidden=!h;return}
   const a=e.target.closest('[data-act]');
   if(a?.dataset.act!=='more'){const pop=document.getElementById('morePop');if(pop)pop.hidden=true}
+  document.querySelectorAll('details.dc-more[open]').forEach(d=>{if(!d.contains(e.target))d.open=false});
   if(!a){if(!e.target.closest('.menu'))closeMenus();return}
   const id=a.dataset.book;
   switch(a.dataset.act){
@@ -3533,7 +3766,15 @@ document.addEventListener('click',e=>{
     case 'libF':lib.f[a.dataset.k]=a.dataset.v;refreshLib();break;
     case 'libClear':lib.f={...LIB0};lib.q='';refreshLib();break;
     case 'libView':S.settings.libView=a.dataset.v;save();refreshLib();break;
-    case 'openTitle':openTitle(a.dataset.id);break;
+    case 'openTitle':if(nextDlg.open)nextDlg.close();openTitle(a.dataset.id);break;
+    case 'discWant':{const it=discIdx[a.dataset.k];if(!it)break;const snap=snapshot(),t=it.t||olTitleFrom(it.x),r=myReading(t.id);
+      if(!r||r.status==='finished'||r.status==='dnf')S.books.push({id:'r'+uid(),titleId:t.id,title:t.title,author:t.author,format:'print',total:t.pages||300,pos:0,status:'want',c:t.c,wantSince:today()});
+      save();refreshLib();toast(`Added ${t.title} to your To Read list.`,restoreTo(snap));break}
+    case 'discHide':{const it=discIdx[a.dataset.k];if(!it)break;const snap=snapshot();S.discHide=[...(S.discHide||[]),a.dataset.k];save();refreshLib();toast(`You won’t see ${(it.t||it.x).title} in your suggestions.`,restoreTo(snap),'Only you see this.');break}
+    case 'surprise':{const w=wantList().filter(b=>b.id!==surprise);if(w.length)surprise=w[Math.floor(Math.random()*w.length)].id;refreshLib();document.getElementById('dcSurprise')?.closest('.dc-row')?.querySelector('.lc-open')?.focus();break}
+    case 'getBorrow':{if(nextDlg.open)nextDlg.close();if(!bookDlg.open||bd.id!==a.dataset.id)openTitle(a.dataset.id);bd.tab='copies';bd.reqNote=a.dataset.c;renderBD();setTimeout(()=>document.getElementById('reqNoteTx')?.focus(),30);break}
+    case 'nextClose':nextDlg.close();break;
+    case 'nextUndo':{const u=nextDone?.undo;nextDlg.close();if(u){u();toast('Undone.')}break}
     case 'toggleWant':toggleWant(a.dataset.id);break;
     case 'dismissRec':{const snap=snapshot(),t=titleById(a.dataset.id);S.recs=S.recs.filter(r=>r.titleId!==a.dataset.id);save();refreshLib();toast(`Dismissed ${t.title}.`,restoreTo(snap));break}
     case 'addBook':openAdd();break;
@@ -3578,7 +3819,7 @@ document.addEventListener('click',e=>{
     case 'cpReturn':{const c=S.copies.find(x=>x.id===a.dataset.id),w=c.loanTo;c.loanTo=null;(S.loanReqs||[]).filter(r=>r.copyId===c.id&&r.status==='loaned').forEach(r=>{r.status='returned'});post('loan',`got ${titleById(c.titleId)?.title||'a book'} back from ${nameOf(w)}`);save();renderBD();toast(`Marked as returned by ${nameOf(w)}.`);break}
     case 'cpRemove':{const snap=snapshot();S.copies=S.copies.filter(x=>x.id!==a.dataset.id);save();renderBD();toast('Removed your copy.',restoreTo(snap));break}
     case 'rate':{const r=book(a.dataset.id),v=+a.dataset.v;r.rating=r.rating===v?0:v;save();renderBD();break}
-    case 'bdLog':{if(bookDlg.open)bookDlg.close();if(chDlg.open)chDlg.close();openLog(a.dataset.id);break}
+    case 'bdLog':{if(bookDlg.open)bookDlg.close();if(chDlg.open)chDlg.close();if(nextDlg.open)nextDlg.close();openLog(a.dataset.id);break}
     case 'startTimer':startTimer(id);break;
     case 'stopTimer':stopTimer();break;
     case 'discardTimer':{const snap=snapshot();S.timer=null;save();render();toast('Timer discarded.',restoreTo(snap));break}
@@ -3640,7 +3881,7 @@ document.addEventListener('click',e=>{
     case 'finish':{const snap=snapshot(),b=book(id);b.status='finished';b.finished=today();b.pos=b.total;selBook=null;
       if(S.settings.share)S.activity.push({id:uid(),who:'me',kind:'finished',text:'finished',book:b.title,ts:Date.now(),r:{}});
       S.trophies.push({id:uid(),name:'Finished!',desc:b.title,date:today(),tier:'badge',icon:'check',hue:'green'});
-      save();render();toast(`Finished ${b.title}. Nice work!`,restoreTo(snap));break}
+      save();render();if(!openNextDlg(b,restoreTo(snap)))toast(`Finished ${b.title}. Nice work!`,restoreTo(snap));break}
     case 'react':{const it=S.activity.find(x=>x.id===a.dataset.id);if(it.r.me===a.dataset.r)delete it.r.me;else it.r.me=a.dataset.r;save();render();break}
     case 'share':S.settings.share=!S.settings.share;save();render();if(!document.getElementById('meMenu').hidden||a.closest('.menu'))document.getElementById('meMenu').hidden=false;toast(S.settings.share?'Your activity is now shared with your groups.':'Your activity is now private.');break;
     case 'theme':S.settings.theme=a.dataset.v;save();renderHeader();document.getElementById('meMenu').hidden=false;break;
@@ -3648,7 +3889,7 @@ document.addEventListener('click',e=>{
       if(L.type==='ch'){view='challenges';chTab='family';render();window.scrollTo(0,0);openCh(L.id)}
       else if(L.type==='battle'){view='challenges';chTab='battle';render();window.scrollTo(0,0);openBattle(L.id)}
       else if(L.type==='title'){openTitle(L.id)}
-      else{view='library';lib.tab='recs';lib.rv='from';render();window.scrollTo(0,0)}
+      else{view='discover';lib.rv='from';render();document.getElementById('recsH')?.scrollIntoView()}
       break}
     case 'dismiss':S.notifs=S.notifs.filter(n=>n.id!==a.dataset.id);save();renderHeader();document.getElementById('bellMenu').hidden=false;break;
     case 'emptyDemo':{const keep=S.settings;S=seed();prepState();S.settings={...keep,gsHidden:false,protoView:'new'};S.copies=S.copies.filter(c=>c.owner!=='me');S.battles.forEach(b=>{delete b.readers.me;if(b.moderator==='me')b.moderator=null;if(b.winner==='me')delete b.winner});S.recsSent=[];S.upNext=[];S.books=[];S.sessions=[];S.challenges=[];S.trophies=[];S.activity=[];S.notifs=[];save();closeMenus();view='dashboard';render();toast('Showing the new-member view.');break}
@@ -3657,7 +3898,7 @@ document.addEventListener('click',e=>{
   }
 });
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){closeMenus();const pop=document.getElementById('morePop');if(pop)pop.hidden=true}
+  if(e.key==='Escape'){closeMenus();const pop=document.getElementById('morePop');if(pop)pop.hidden=true;const dm=document.querySelector('details.dc-more[open]');if(dm){dm.open=false;dm.querySelector('summary').focus()}}
   if((e.key==='ArrowLeft'||e.key==='ArrowRight')&&document.activeElement?.closest('#crCard')&&!document.activeElement.closest('input,select,textarea')){e.preventDefault();stepBook(e.key==='ArrowLeft'?-1:1,e.key==='ArrowLeft'?'prevBook':'nextBook')}
 });
 let tx=null;
