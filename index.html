@@ -989,7 +989,7 @@ main section.card .card-h .ico{display:none}
 .dc-find,.dc-have,.dc-recs{display:grid;gap:22px;min-width:0}
 .dc-sec-h{display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:22px}
 .dc-sec-h h2{font-size:24px;font-weight:600;display:flex;align-items:center;gap:8px}
-.dc-find .dc-row:first-child .dc-h{border-top:1px solid var(--border);padding-top:22px}
+.dc-find .dc-row:first-child .dc-rh{border-top:1px solid var(--border);padding-top:22px}
 .dc-row{min-width:0}
 .dc-h{font-size:17px;font-weight:600;margin:0 0 12px}
 .dc-rh{display:flex;align-items:baseline;gap:8px}
@@ -1969,7 +1969,8 @@ const nFilters=()=>Object.keys(LIB0).filter(k=>lib.f[k]!==LIB0[k]).length;
 function mbStatus(t){const r=myReading(t.id);if(r)return r.status;return copiesOf(t.id).some(c=>c.owner==='me')?'owned':null}
 function baseList(){
   if(lib.tab==='family')return S.titles.filter(t=>copiesOf(t.id).some(c=>!c.private));
-  return S.titles.filter(t=>mbStatus(t));
+  if(lib.tab==='mybooks')return S.titles.filter(t=>mbStatus(t));
+  return [...new Set(S.recs.map(r=>r.titleId))].map(titleById).filter(Boolean);
 }
 function libTitles(){
   let list=baseList();
@@ -2041,8 +2042,9 @@ function libEmpty(){
   if(lib.q.trim()||nFilters())return `<div class="empty">${ic('search')}<h3>No Books Found</h3><p>Try a different search or clear your filters.</p><button class="btn btn-ghost" data-act="libClear">Clear Filters</button></div>`;
   if(lib.tab==='mybooks'&&lib.mb!=='all')return `<div class="empty">${ic('book')}<h3>No Books Here Yet</h3><p>Books with this status will show up here.</p></div>`;
   const E={family:['library','Your Library Is Empty','Add your first book to get started. Search for it, add it yourself, or import a list.'],
-    mybooks:['book','Your Books Will Show Up Here','Everything you’ve read, are reading, want to read, or own appears here.']}[lib.tab];
-  return `<div class="empty">${ic(E[0])}<h3>${E[1]}</h3><p>${E[2]}</p><button class="btn btn-primary" data-act="addBook">${ic('plus')}Add a Book</button></div>`;
+    mybooks:['book','Your Books Will Show Up Here','Everything you’ve read, are reading, want to read, or own appears here.'],
+    recs:['send','No Recommendations Yet','When someone in your group recommends a book to you, it shows up here.']}[lib.tab];
+  return `<div class="empty">${ic(E[0])}<h3>${E[1]}</h3><p>${E[2]}</p>${lib.tab!=='recs'?`<button class="btn btn-primary" data-act="addBook">${ic('plus')}Add a Book</button>`:''}</div>`;
 }
 function recExtra(t){
   return `<div class="rec">${S.recs.filter(r=>r.titleId===t.id).map(r=>`<div><b>${esc(nameOf(r.from))}</b>${r.note?`: “${esc(r.note)}”`:''}</div>`).join('')}<div class="rec-acts"><button class="link-btn sm" data-act="dismissRec" data-id="${t.id}">Not for Me</button><span class="xs muted">Only you see this; ${esc([...new Set(S.recs.filter(r=>r.titleId===t.id).map(r=>nameOf(r.from)))].join(' and '))} won’t be told.</span></div></div>`;
@@ -2167,6 +2169,7 @@ function setShared(ids,on){
   let n=0;S.copies.forEach(c=>{if(c.owner==='me'&&ids.includes(c.titleId)){const was=!c.private;if(on){if(!was)n++;delete c.private}else{if(was)n++;c.private=true}}});return n;
 }
 function libResults(){
+  if(lib.tab==='recs'&&lib.rv==='from')return fromMe();
   const list=libTitles(),shelf=S.settings.libView==='shelf';
   const gs=(lib.tab==='mybooks'?[['status','Status'],['year','Year Finished'],['month','Month Finished'],['week','Week Finished']]:[]).concat([['alpha','Title'],['author','Author'],['genre','Genre']]);
   const fgrid=!shelf&&lib.tab==='mybooks'&&lib.sort==='finished';
@@ -2175,25 +2178,28 @@ function libResults(){
   const upTop=lib.tab==='mybooks'&&lib.mb==='want'&&!lib.q.trim()&&!nFilters()?upNextPanel():'';
   if(!list.length)return upTop+head+libEmpty();
   if(upTop&&!shelf)return upTop+head+`<div class="lib-grid">${list.map(mbCard).join('')}</div>`;
-  const card=lib.tab==='mybooks'?mbCard:t=>lcard(t);
+  const card=lib.tab==='mybooks'?mbCard:t=>lcard(t,lib.tab==='recs'?recExtra(t)+getLine(t):'');
   if(fgrid&&lib.fgroup!=='none')return head+periodGroups(list,lib.fgroup).map(([k,ts])=>`<section class="shelf-g"><h3 class="shelf-l">${esc(perLabel(lib.fgroup,k))} <span class="count">(${ts.length} book${ts.length===1?'':'s'})</span></h3><div class="lib-grid">${ts.map(card).join('')}</div></section>`).join('');
   return head+(shelf?shelfView(list):`<div class="lib-grid">${list.map(card).join('')}</div>`);
 }
 function libraryView(){
-  if(!ROUTES.library.includes(lib.tab)||S.settings.solo&&lib.tab==='family')lib.tab='mybooks';
-  const tabs=[['family',`${GN()} Library`],['mybooks','My Books']].filter(x=>!(S.settings.solo&&x[0]==='family'));
-  const n=nFilters(),shelf=S.settings.libView==='shelf';
+  if(S.settings.solo&&lib.tab==='family')lib.tab='mybooks';
+  if(S.settings.solo&&lib.tab==='recs')lib.tab='mybooks';
+  const tabs=[['family',`${GN()} Library`],['mybooks','My Books'],['recs','Recommendations']].filter(x=>!(S.settings.solo&&(x[0]==='family'||x[0]==='recs')));
+  const n=nFilters(),shelf=S.settings.libView==='shelf',toMe=new Set(S.recs.map(r=>r.titleId)).size,fromN=new Set(S.recsSent.map(r=>r.titleId)).size;
+  const tools=!(lib.tab==='recs'&&lib.rv==='from');
   return `<div class="lib">
-  <div class="lib-h" data-tour="library"><div><h1 class="page-h">${lib.tab==='family'?`${esc(GN())} Library`:'My Books'}</h1><p class="muted" style="margin:4px 0 0">${lib.tab==='family'?`Books everyone in ${esc(GN())} can borrow and read.`:'Every book connected to you, from To Read to Finished.'}</p></div><button class="btn btn-primary" data-act="addBook">${ic('plus')}Add a Book</button></div>
-  <div class="tabs" role="tablist" aria-label="Library sections">${tabs.map(([k,l])=>`<button class="tab" role="tab" data-tour="lib-${k}" aria-selected="${lib.tab===k}" data-act="libTab" data-v="${k}">${l}</button>`).join('')}</div>
+  <div class="lib-h" data-tour="library"><div><h1 class="page-h">${lib.tab==='family'?`${esc(GN())} Library`:lib.tab==='mybooks'?'My Books':'Recommendations'}</h1><p class="muted" style="margin:4px 0 0">${lib.tab==='family'?`Books everyone in ${esc(GN())} can borrow and read.`:lib.tab==='mybooks'?'Every book connected to you, from To Read to Finished.':'Books suggested to you, and the ones you’ve passed along.'}</p></div><button class="btn btn-primary" data-act="addBook">${ic('plus')}Add a Book</button></div>
+  <div class="tabs" role="tablist" aria-label="Library sections">${tabs.map(([k,l])=>`<button class="tab" role="tab" data-tour="lib-${k}" aria-selected="${lib.tab===k}" data-act="libTab" data-v="${k}">${l}${k==='recs'&&toMe?` <span class="tab-n">${toMe}</span>`:''}</button>`).join('')}</div>
   ${lib.tab==='mybooks'?mbChips():''}
-  <div class="lib-tools">
+  ${lib.tab==='recs'?`<div class="rv-row"><div class="vseg" role="group" aria-label="Recommendations"><button aria-pressed="${lib.rv==='to'}" data-act="recView" data-v="to">To Me (${toMe})</button><button aria-pressed="${lib.rv==='from'}" data-act="recView" data-v="from">From Me (${fromN})</button></div><span class="rv-acts">${lib.rv==='from'&&fromN?`<span class="vseg" role="group" aria-label="View"><button aria-pressed="${!shelf}" data-act="libView" data-v="grid">${ic('grid')}Grid</button><button aria-pressed="${shelf}" data-act="libView" data-v="shelf">${ic('shelf')}Shelf</button></span>`:''}<button class="btn btn-ghost" data-act="recPick">${ic('send')}Recommend a Book</button></span></div>`:''}
+  ${tools?`<div class="lib-tools">
     <label class="search">${ic('search')}<input id="libQ" type="search" placeholder="Search by title or author" value="${esc(lib.q)}" aria-label="Search the library" autocomplete="off"></label>
     <button class="btn btn-ghost" data-act="libFilters" aria-expanded="${lib.open}" aria-controls="libFilters">${ic('filter')}Filters${n?` (${n})`:''}</button>
     <label class="sortl"><span class="small muted">Sort</span><select class="inp sm" data-lsel="sort">${[['title','Title A–Z'],['author','Author'],['added','Recently Added'],['read','Recently Read']].concat(lib.tab==='mybooks'?[['finished','Date Finished']]:[]).map(([v,l])=>`<option value="${v}" ${lib.sort===v?'selected':''}>${l}</option>`).join('')}</select></label>
     <span class="vseg" role="group" aria-label="View"><button aria-pressed="${!shelf}" data-act="libView" data-v="grid">${ic('grid')}Grid</button><button aria-pressed="${shelf}" data-act="libView" data-v="shelf">${ic('shelf')}Shelf</button></span>
   </div>
-  ${lib.open?filtersPanel():''}
+  ${lib.open?filtersPanel():''}`:'<div style="height:14px"></div>'}
   <div id="libResults">${libResults()}</div></div>`;
 }
 function toggleWant(tid){
@@ -2327,39 +2333,35 @@ function dcard(it){
   const main=r&&r.status==='want'?`<button class="btn btn-primary sm" data-act="bdLog" data-id="${r.id}">${ic('play')}Start Reading</button>`
     :`<button class="btn btn-primary sm" data-act="discWant" data-k="${esc(k)}">${ic('plus')}Add to To Read</button>`;
   const open=t?`<button class="lc-open" data-act="openTitle" data-id="${t.id}">`:`<a class="lc-open" href="https://openlibrary.org${esc(x.key)}" target="_blank" rel="noopener" title="See this book on Open Library">`;
-  const menu=it.rule==='toread'?'':`<details class="dc-more"><summary class="icon-btn" aria-label="More for ${esc(look.title)}">${ic('dots')}</summary><div class="dc-menu"><button class="link" data-act="discHide" data-k="${esc(k)}">Not for Me<span class="xs muted">Hides it from your suggestions. Nobody is told.</span></button></div></details>`;
+  const nfm=it.rule==='rec'?`data-act="dismissRec" data-id="${t.id}">Not for Me<span class="xs muted">Takes it off your recommendations. Nobody is told.</span>`:`data-act="discHide" data-k="${esc(k)}">Not for Me<span class="xs muted">Hides it from your suggestions. Nobody is told.</span>`;
+  const menu=it.rule==='toread'?'':`<details class="dc-more"><summary class="icon-btn" aria-label="More for ${esc(look.title)}">${ic('dots')}</summary><div class="dc-menu"><button class="link" ${nfm}</button></div></details>`;
   return `<div class="dc-card"><div class="dc-top">${open}${libCover(look)}<span class="lc-t">${esc(look.title)}</span><span class="bk-a">${esc(look.author)}</span>${t?'</button>':'</a>'}
   <div class="dc-why">${esc(it.reason)}</div>${free?`<div class="dc-free">${ic('book')}Free to read online</div>`:''}</div>
   <div class="dc-acts">${main}${menu}</div>${getLine(t,x)||'<div></div>'}</div>`;
 }
 const dcRow=(id,h,items,extra='')=>items.length?`<section class="dc-row" aria-labelledby="${id}"><div class="dc-rh"><h3 class="dc-h" id="${id}">${h}</h3>${extra}</div><div class="dc-scroll">${items.map(dcard).join('')}</div></section>`:'';
-/* Recommendations, moved here from the Library: To Me and From Me, each with Grid and Shelf views. */
-function recsSection(){
-  const toMe=[...new Set(S.recs.map(r=>r.titleId))].map(titleById).filter(Boolean),fromN=new Set(S.recsSent.map(r=>r.titleId)).size,shelf=S.settings.libView==='shelf';
-  const latest=t=>Math.max(...S.recs.filter(r=>r.titleId===t.id).map(r=>r.ts||0));toMe.sort((a,b)=>latest(b)-latest(a));
-  const views=(lib.rv==='from'?fromN:toMe.length)?`<span class="vseg" role="group" aria-label="View"><button aria-pressed="${!shelf}" data-act="libView" data-v="grid">${ic('grid')}Grid</button><button aria-pressed="${shelf}" data-act="libView" data-v="shelf">${ic('shelf')}Shelf</button></span>`:'';
-  let body;
-  if(lib.rv==='from')body=fromMe();
-  else if(!toMe.length)body=`<div class="empty">${ic('send')}<h3>No Recommendations Yet</h3><p>When someone in your group recommends a book to you, it shows up here.</p></div>`;
-  else if(shelf){const who={};S.recs.forEach(r=>{if(titleById(r.titleId))(who[r.from]=who[r.from]||new Set()).add(r.titleId)});
-    body=`<div class="lib-count"><span class="small muted">${toMe.length} book${toMe.length===1?'':'s'} · grouped by who recommended them</span></div>`+shelfView([],Object.keys(who).sort((a,b)=>nameOf(a).localeCompare(nameOf(b))).map(w=>[nameOf(w),[...who[w]].map(titleById)]))}
-  else body=`<div class="lib-grid">${toMe.map(t=>lcard(t,recExtra(t)+getLine(t))).join('')}</div>`;
-  return `<section class="dc-recs" aria-labelledby="recsH"><div class="dc-sec-h"><h2 id="recsH">Recommendations${toMe.length?` <span class="tab-n" aria-label="${toMe.length} recommended to you">${toMe.length}</span>`:''}</h2></div>
-  <div class="rv-row"><div class="vseg" role="group" aria-label="Recommendations"><button aria-pressed="${lib.rv==='to'}" data-act="recView" data-v="to">To Me (${toMe.length})</button><button aria-pressed="${lib.rv==='from'}" data-act="recView" data-v="from">From Me (${fromN})</button></div><span class="rv-acts">${views}<button class="btn btn-ghost" data-act="recPick">${ic('send')}Recommend a Book</button></span></div>
-  <div class="dc-recs-b">${body}</div></section>`;
+/* Recommended to You: up to six books people in your group suggested, each with who and their note.
+   The full list, From Me, and Recommend a Book live in the Library. */
+function ruleRecs(){
+  if(S.settings.solo)return [];
+  const by={};S.recs.forEach(r=>{(by[r.titleId]=by[r.titleId]||[]).push(r)});
+  return Object.keys(by).map(id=>({t:titleById(id),rs:by[id].sort((a,b)=>(b.ts||0)-(a.ts||0))})).filter(x=>x.t)
+    .sort((a,b)=>(b.rs[0].ts||0)-(a.rs[0].ts||0)).slice(0,6)
+    .map(({t,rs})=>{const r=rs[0],more=rs.length>1?` and ${rs.length-1} other${rs.length>2?'s':''}`:'';
+      return {rule:'rec',reason:r.note?`${nameOf(r.from)}${more}: “${r.note}”`:`Recommended by ${nameOf(r.from)}${more}`,t}});
 }
 function discoverView(){
   discLoad();discIdx={};
-  const author=ruleAuthor(),series=ruleSeries(),toRead=ruleToRead(),want=wantList();
+  const recs=ruleRecs(),nRecs=new Set(S.settings.solo?[]:S.recs.map(r=>r.titleId)).size,author=ruleAuthor(),series=ruleSeries(),toRead=ruleToRead(),want=wantList();
   if(surprise&&!want.some(b=>b.id===surprise))surprise=null;
   const loading=!author.length&&discBusy?`<p class="xs muted" role="status">Looking for more books by authors you rated highly…</p>`:'';
   const sb=surprise&&book(surprise),sp=sb?[{rule:'toread',reason:'Picked at random from your To Read',t:titleById(sb.titleId)}]:[];
   const have=series.length||want.length?`<section class="dc-have" aria-labelledby="haveH"><div class="dc-sec-h"><h2 id="haveH">Choose From What You Have</h2>${want.length?`<button class="btn btn-ghost sm" data-act="surprise">${ic('compass')}${sb?'Surprise Me Again':'Surprise Me'}</button>`:''}</div>
     ${dcRow('dcSurprise','Surprise Me',sp,`<button class="link-btn sm" data-act="surpriseClear">${ic('x')}Clear</button>`)}${dcRow('dcSeries','Continue a Series',series)}${dcRow('dcToRead','From Your To Read',toRead)}</section>`:'';
-  const rows=dcRow('dcAuthor','More by This Author',author);
+  const rows=dcRow('dcRecs','Recommended to You',recs,nRecs>recs.length?`<button class="link-btn sm" data-act="goRecs">See All ${nRecs}</button>`:'')+dcRow('dcAuthor','More by This Author',author);
   const none=!rows&&!have&&!loading?`<div class="empty">${ic('compass')}<h3>Suggestions Will Show Up Here</h3><p>Rate the books you finish and add a few to To Read. Discover uses them to suggest what to read next.</p><button class="btn btn-primary" data-act="addBook">${ic('plus')}Add a Book</button></div>`:'';
   return `<div class="disc"><div class="lib-h" data-tour="discover"><div><h1 class="page-h">Discover</h1><p class="muted" style="margin:4px 0 0">Books you might like, why each one is here, and where to get it.</p></div></div>
-  ${rows||loading?`<section class="dc-find" aria-label="Suggestions">${rows}${loading}</section>`:''}${have}${none}${S.settings.solo?'':recsSection()}</div>`;
+  ${rows||loading?`<section class="dc-find" aria-label="Suggestions">${rows}${loading}</section>`:''}${have}${none}</div>`;
 }
 /* Your Next Read: three picks, each from a different rule, while nothing is being read or for a week after finishing a book. */
 const nextPicks=()=>[ruleAuthor()[0],ruleSeries()[0],ruleToRead()[0]].filter(Boolean);
@@ -3247,13 +3249,11 @@ document.addEventListener('input',e=>{
 /* ---------- views ---------- */
 let view='dashboard';
 /* The current page and its tab live in the address (for example #library/mybooks), so refresh, Back, and bookmarks return to it. */
-const ROUTES={dashboard:null,library:['family','mybooks'],discover:null,challenges:['mine','family','battle','trophies'],history:null};
+const ROUTES={dashboard:null,library:['family','mybooks','recs'],discover:null,challenges:['mine','family','battle','trophies'],history:null};
 let routedView=null;
 function routeHash(){return view==='dashboard'?'':'#'+view+(view==='library'?'/'+lib.tab:view==='challenges'?'/'+chTab:'')}
 function readRoute(){
   const [v,t]=decodeURIComponent(location.hash.slice(1)).split('/');
-  // Recommendations moved from the Library to Discover; old #library/recs links still land on them.
-  if(v==='library'&&t==='recs'){view='discover';history.replaceState(null,'','#discover');setTimeout(()=>document.getElementById('recsH')?.scrollIntoView(),0);return}
   if(!Object.hasOwn(ROUTES,v)){view='dashboard';return}
   view=v;if(t&&ROUTES[v]?.includes(t)){if(v==='library')lib.tab=t;else chTab=t}
 }
@@ -3785,6 +3785,7 @@ document.addEventListener('click',e=>{
     case 'discHide':{const it=discIdx[a.dataset.k];if(!it)break;const snap=snapshot();S.discHide=[...(S.discHide||[]),a.dataset.k];save();refreshLib();toast(`You won’t see ${(it.t||it.x).title} in your suggestions.`,restoreTo(snap),'Only you see this.');break}
     case 'surprise':{const w=wantList().filter(b=>b.id!==surprise);if(w.length)surprise=w[Math.floor(Math.random()*w.length)].id;refreshLib();document.getElementById('dcSurprise')?.closest('.dc-row')?.querySelector('.lc-open')?.focus();break}
     case 'getBorrow':{if(nextDlg.open)nextDlg.close();if(!bookDlg.open||bd.id!==a.dataset.id)openTitle(a.dataset.id);bd.tab='copies';bd.reqNote=a.dataset.c;renderBD();setTimeout(()=>document.getElementById('reqNoteTx')?.focus(),30);break}
+    case 'goRecs':view='library';lib.tab='recs';lib.rv='to';render();window.scrollTo(0,0);break;
     case 'surpriseClear':surprise=null;refreshLib();document.querySelector('[data-act=surprise]')?.focus();break;
     case 'nextClose':nextDlg.close();break;
     case 'nextUndo':{const u=nextDone?.undo;nextDlg.close();if(u){u();toast('Undone.')}break}
@@ -3902,7 +3903,7 @@ document.addEventListener('click',e=>{
       if(L.type==='ch'){view='challenges';chTab='family';render();window.scrollTo(0,0);openCh(L.id)}
       else if(L.type==='battle'){view='challenges';chTab='battle';render();window.scrollTo(0,0);openBattle(L.id)}
       else if(L.type==='title'){openTitle(L.id)}
-      else{view='discover';lib.rv='from';render();document.getElementById('recsH')?.scrollIntoView()}
+      else{view='library';lib.tab='recs';lib.rv='from';render();window.scrollTo(0,0)}
       break}
     case 'dismiss':S.notifs=S.notifs.filter(n=>n.id!==a.dataset.id);save();renderHeader();document.getElementById('bellMenu').hidden=false;break;
     case 'emptyDemo':{const keep=S.settings;S=seed();prepState();S.settings={...keep,gsHidden:false,protoView:'new'};S.copies=S.copies.filter(c=>c.owner!=='me');S.battles.forEach(b=>{delete b.readers.me;if(b.moderator==='me')b.moderator=null;if(b.winner==='me')delete b.winner});S.recsSent=[];S.upNext=[];S.books=[];S.sessions=[];S.challenges=[];S.trophies=[];S.activity=[];S.notifs=[];save();closeMenus();view='dashboard';render();toast('Showing the new-member view.');break}
