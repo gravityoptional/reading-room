@@ -1034,6 +1034,23 @@ a.btn{text-decoration:none}
 .lcard .get .btn{width:100%}
 #nextDlg{width:min(720px,calc(100vw - 24px))}
 #nextDlg .dc-h{margin-top:4px}
+/* What's Next? with a queue: one grid so all three cards share rows and their buttons line up. */
+.nx-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:auto auto auto auto;column-gap:14px}
+.nx-grid .nx-h1{grid-column:1;grid-row:1}
+.nx-grid .nx-h2{grid-column:2/-1;grid-row:1}
+.nx-grid>.dc-card{grid-row:2/span 3;display:grid;grid-template-rows:subgrid;row-gap:8px;align-content:start}
+.nx-grid>.nx-qc{grid-column:1;border-color:var(--primary);box-shadow:inset 0 0 0 1px var(--primary)}
+.nx-grid.nx-solo{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+@media (max-width:720px){
+  .nx-grid{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(8,auto)}
+  .nx-grid .nx-h1{grid-column:1/-1}
+  .nx-grid>.nx-qc{grid-column:1/-1;grid-row:2/span 3;margin-bottom:16px}
+  .nx-grid .nx-h2{grid-column:1/-1;grid-row:5}
+  .nx-grid>.dc-card:not(.nx-qc){grid-row:6/span 3}
+  .nx-qc .lc-open{grid-template-columns:auto 1fr;column-gap:12px;align-items:start}
+  .nx-qc .lc-open .cover{grid-row:1/4;margin-bottom:0}
+  .nx-qc .lc-open .lc-t{align-self:end}
+}
 #nextDlg .dlg-f{margin-top:16px;flex-wrap:wrap}
 @media (max-width:720px){#nextDlg .dlg-f .btn{flex:1 1 40%}#nextDlg .dlg-f [data-act=nextUndo]{flex-basis:100%;margin:0}}
 .get .btn{white-space:normal;text-align:center}
@@ -2372,17 +2389,34 @@ function nextReadStrip(){
   const picks=nextPicks();if(!picks.length)return '';
   return `<section class="card" aria-labelledby="nrH"><div class="card-h"><h2 id="nrH">Your Next Read</h2><button class="more" data-go="discover">See More</button></div><div class="dc-scroll dc-three">${picks.map(dcard).join('')}</div></section>`;
 }
-/* After Mark Finished: celebrate, then offer the same three picks under What's Next? */
+/* After Mark Finished: celebrate, then What's Next? The first book in the Reading Queue comes first, with two
+   Discover More picks beside it (the next book in the finished book's series leads, when it isn't queued).
+   With an empty queue, three picks as on the dashboard. */
 const nextDlg=document.getElementById('nextDlg'),nextBody=document.getElementById('nextBody');
 let nextDone=null;
+function nextMore(tid){
+  const queued=new Set(upList().map(b=>b.titleId)),out=[],seen=new Set();
+  const add=it=>{if(!it||out.length>=2)return;const k=discKey(it);if(seen.has(k)||it.t&&queued.has(it.t.id))return;seen.add(k);out.push(it)};
+  const ft=titleById(tid),fin=new Set(S.books.filter(b=>b.status==='finished'||b.status==='reading'||b.status==='paused').map(b=>b.titleId));
+  if(ft?.series&&ft.seriesNo!=null){const nx=S.titles.filter(t=>t.series===ft.series&&t.seriesNo>ft.seriesNo).sort((a,b)=>a.seriesNo-b.seriesNo)[0];
+    if(nx&&!fin.has(nx.id)&&!discHidden(nx.olKey||'t:'+nx.id))add({rule:'series',reason:`Next in ${ft.series}, after ${ft.title}`,t:nx})}
+  const lists=[ruleAuthor(),ruleSeries(),ruleToRead()];
+  for(let i=0;out.length<2&&lists.some(l=>l[i]);i++)lists.forEach(l=>add(l[i]));
+  return out;
+}
 function openNextDlg(b,undo){
-  const picks=nextPicks();if(!picks.length)return false;
-  nextDone={title:b.title,undo};renderNextDlg();if(!nextDlg.open)nextDlg.showModal();return true;
+  if(!upList().length&&!nextPicks().length)return false;
+  nextDone={title:b.title,tid:b.titleId,undo};renderNextDlg();if(!nextDlg.open)nextDlg.showModal();return true;
 }
 function renderNextDlg(){
-  if(!nextDone)return;const picks=nextPicks(),n=yearFinished();
+  if(!nextDone)return;const n=yearFinished(),q=upList()[0],qt=q&&titleById(q.titleId);
+  let body;
+  if(qt){const more=nextMore(nextDone.tid);
+    body=`<div class="nx-grid${more.length?'':' nx-solo'}"><h3 class="dc-h nx-h1">What’s Next?</h3>${dcard({rule:'toread',reason:'First in your Reading Queue',t:qt}).replace('class="dc-card"','class="dc-card nx-qc"')}
+      ${more.length?`<h3 class="dc-h nx-h2">Discover More</h3>${more.map(dcard).join('')}`:''}</div>`}
+  else{const picks=nextPicks();body=picks.length?`<h3 class="dc-h">What’s Next?</h3><div class="dc-scroll dc-three">${picks.map(dcard).join('')}</div>`:''}
   nextBody.innerHTML=`<div class="dlg-h"><div style="flex:1;min-width:0"><h2 id="nxTitle">🎉 You finished ${esc(nextDone.title)}!</h2><div class="muted small">That’s ${n} book${n===1?'':'s'} this year.</div></div><button type="button" class="icon-btn x" data-act="nextClose" aria-label="Close">${ic('x')}</button></div>
-  ${picks.length?`<h3 class="dc-h">What’s Next?</h3><div class="dc-scroll dc-three">${picks.map(dcard).join('')}</div>`:''}
+  ${body}
   <div class="dlg-f">${nextDone.undo?'<button class="link-btn" data-act="nextUndo" style="margin-right:auto">Undo</button>':''}<button class="btn btn-ghost" data-go="discover">See More in Discover</button><button class="btn btn-primary" data-act="nextClose">Done</button></div>`;
 }
 
