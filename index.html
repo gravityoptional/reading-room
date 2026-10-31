@@ -845,6 +845,7 @@ main section.card .card-h .ico{display:none}
 @media (max-width:720px){.sel-bar{bottom:calc(72px + env(safe-area-inset-bottom,0px))}}
 .req-st{font-size:12px;color:var(--text-2)}.req-st.ok{color:var(--primary);font-weight:600}
 .req-msg{display:block;margin-top:3px;font-style:italic;color:var(--text-2)}.notif p.req-msg{margin:2px 0 0;font-size:13px}
+.next-tag{font:600 11px/1 Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:var(--accent,#F97316);border-radius:999px;padding:4px 8px;vertical-align:middle}
 .req-back{font-size:13px;color:var(--text);font-style:italic}
 .notif-req .req-compose{margin-top:8px}.req-reply{flex-basis:100%}
 .req-mine{flex-basis:100%;overflow-wrap:anywhere;min-width:0}
@@ -1139,7 +1140,10 @@ function seed(){
     ]
   };
 }
-const KEY='rr-editorial-proto-v1';
+/* The test-bed copy published at /next/ keeps its own saved data, so it never reads or overwrites the main prototype's. */
+const NEXT=/\/next\//.test(location.pathname);
+if(NEXT){document.title=document.title.replace('Reading Room','Reading Room Next');document.querySelector('.brand').insertAdjacentHTML('beforeend',' <span class="next-tag">Next</span>')}
+const KEY=NEXT?'rr-next-v1':'rr-editorial-proto-v1';
 let S;
 try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){S=null}
 if(!S||S.v!==6)S=seed();
@@ -1659,7 +1663,7 @@ function upNextRow(){
     :`<p class="small muted" style="margin:0">Line up the next few books you want to read from your To Read list.</p>`;
   return `<section class="card" aria-labelledby="unH" data-tour="queue"><div class="card-h"><h2 id="unH">Reading Queue</h2>${L.length?`<span class="count">${L.length} of 10</span>`:''}<button class="more" data-act="goToRead">${L.length?'View All':'Open To Read'}</button></div>${body}</section>`;
 }
-const HERO_KEY='rr_editorial_hero_v1';
+const HERO_KEY=NEXT?'rr_next_hero_v1':'rr_editorial_hero_v1';
 function heroPhoto(){try{const v=localStorage.getItem(HERO_KEY);return v&&/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(v)?v:''}catch(e){return ''}}
 function calCard(){
   const m=hist.m,[Y,M]=m.split('-').map(Number),days=new Date(Y,M,0).getDate(),lead=(new Date(Y,M-1,1).getDay()+6)%7,t=today(),{rest}=streakInfo();
@@ -2481,7 +2485,7 @@ const sessDlg=document.getElementById('sessDlg'),sessForm=document.getElementByI
 /* Drafts: Log Reading, calendar notes, and Edit Session keep what you're typing in this browser, about a second after
    you stop and again whenever the form closes without saving (the close button, Esc). Reopening the form fills it back
    in, with Discard. Save clears the draft; Cancel clears it too, with Undo. Drafts older than a week are dropped. */
-const DRAFT_KEY='rr_drafts_v1',DRAFT_TTL=7*864e5;
+const DRAFT_KEY=NEXT?'rr_next_drafts_v1':'rr_drafts_v1',DRAFT_TTL=7*864e5;
 const draftsAll=()=>{try{const d=JSON.parse(localStorage.getItem(DRAFT_KEY))||{},now=Date.now();let gone=false;for(const k in d)if(now-d[k].ts>DRAFT_TTL){delete d[k];gone=true}if(gone)localStorage.setItem(DRAFT_KEY,JSON.stringify(d));return d}catch(e){return {}}};
 const draftsPut=d=>{try{localStorage.setItem(DRAFT_KEY,JSON.stringify(d))}catch(e){}};
 function formFields(form){

@@ -1,0 +1,38 @@
+# Publishes the main prototype at the site address and the next branch (the test bed) at /next/.
+name: Publish site
+on:
+  push:
+    branches: [main, next]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main
+      - uses: actions/checkout@v4
+        with:
+          ref: next
+          path: next
+        continue-on-error: true
+      - name: Assemble the site
+        run: |
+          mkdir -p _site/next
+          cp main/index.html _site/
+          if [ -f next/index.html ]; then cp next/index.html _site/next/; else rm -rf _site/next; fi
+          touch _site/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+      - id: deploy
+        uses: actions/deploy-pages@v4
