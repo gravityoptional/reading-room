@@ -2331,7 +2331,18 @@ function adLocalRow(t){const r=myReading(t.id),own=copiesOf(t.id).some(c=>c.owne
       :`<button class="btn btn-ghost sm" data-act="adOwn" data-id="${t.id}" ${own?'disabled':''}>${own?'You Own It':'I Own It'}</button>`}
     ${r&&r.status==='want'?`<span class="xs muted">On To Read</span>`:r&&r.status!=='finished'&&r.status!=='dnf'?`<span class="xs muted">${STATUS[r.status]}</span>`:`<button class="btn btn-ghost sm" data-act="toggleWant" data-id="${t.id}">Add to To Read</button>`}</span></div>`}
 /* Open Library search. Runs in the reader's browser; no account or key needed. */
-const OL_FIELDS='key,title,author_name,first_publish_year,number_of_pages_median,cover_i';
+const OL_FIELDS='key,title,author_name,author_key,first_publish_year,number_of_pages_median,cover_i,ebook_access,lending_edition_s,lending_identifier_s';
+/* What Open Library says about reading a book online: ebook_access is public (free to read), borrowable (free loan),
+   printdisabled, or no_ebook. ed and ia name the edition and Internet Archive scan to open. */
+const olEbook=d=>d.ebook_access?Object.assign({access:d.ebook_access},d.lending_edition_s?{ed:d.lending_edition_s}:{},d.lending_identifier_s?{ia:d.lending_identifier_s}:{}):undefined;
+/* Saves the work key, author keys, and ebook availability on a title. */
+function olSave(t,x){
+  if(!t.olKey)t.olKey=x.key;
+  if(t.olKey!==x.key)return;
+  if(x.authorKeys?.length)t.olAuthor=x.authorKeys;
+  if(x.ebook)t.ebook=x.ebook;else delete t.ebook;
+  t.olAt=Date.now();
+}
 let olTimer,olCtl;
 const olKey=raw=>raw.trim().toLowerCase().replace(/\s+/g,' ');
 const olIsbn=raw=>{const d=raw.replace(/[-\s]/g,'');return /^(\d{9}[\dXx]|\d{13})$/.test(d)?d.toUpperCase():''};
@@ -2348,7 +2359,7 @@ async function olSearch(raw,signal){
   const r=await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(isbn?'isbn:'+isbn:k)}&fields=${OL_FIELDS}&limit=12`,{signal,headers:{Accept:'application/json'}});
   if(!r.ok)throw new Error('Open Library '+r.status);
   const j=await r.json();
-  return (j.docs||[]).filter(d=>d.title).map(d=>({key:d.key,title:d.title,author:(d.author_name||[]).slice(0,2).join(', ')||'Unknown author',year:d.first_publish_year||'',pages:d.number_of_pages_median||0,coverId:d.cover_i||0,isbn}));
+  return (j.docs||[]).filter(d=>d.title).map(d=>({key:d.key,title:d.title,author:(d.author_name||[]).slice(0,2).join(', ')||'Unknown author',authorKeys:(d.author_key||[]).slice(0,2),ebook:olEbook(d),year:d.first_publish_year||'',pages:d.number_of_pages_median||0,coverId:d.cover_i||0,isbn}));
 }
 async function olFetch(raw){
   const k=olKey(raw),isbn=olIsbn(raw);
@@ -2376,20 +2387,25 @@ function olSection(res){
     ${r&&r.status==='want'?`<span class="xs muted">On To Read</span>`:r&&r.status!=='finished'&&r.status!=='dnf'?`<span class="xs muted">${STATUS[r.status]}</span>`:`<button class="btn btn-ghost sm" data-act="adOLWant" data-i="${i}">Add to To Read</button>`}</span></div>`}).join('')}</div>
   <p class="xs muted">Not the book you want? ${manual}</p><p class="xs muted" style="margin:0">Book details and covers from <a href="https://openlibrary.org" target="_blank" rel="noopener">Open Library</a>.</p>`;
 }
-/* Finds covers for books added before Find a Book, or added by hand. Works through them one at a
-   time in the background, saves each cover on the title so it's only looked up once, and tries
-   books with no match again after 30 days. */
+/* Finds covers and Open Library details (work key, author keys, ebook availability) for books added before
+   Find a Book saved them, or added by hand. Works through them one at a time in the background, saves what it
+   finds on the title so each is only looked up once, and tries books with no match again after 30 days.
+   Books you rated 4 or more go first, since Discover uses their authors. */
 const COVER_RETRY=30*864e5;
 let coverBusy=false,coverDraw;
+const needCover=t=>!t.cover&&!t.noAutoCover&&!(t.coverTried>Date.now()-COVER_RETRY);
+const needInfo=t=>!t.olAt&&!(t.olTried>Date.now()-COVER_RETRY);
 async function olCoverFor(t){
-  const base=`https://openlibrary.org/search.json?fields=key,cover_i&limit=5&`;
+  const base=`https://openlibrary.org/search.json?fields=key,cover_i,author_key,ebook_access,lending_edition_s,lending_identifier_s&limit=5&`;
   const au=t.author&&t.author!=='Unknown author'?t.author:'';
   const tries=[`title=${encodeURIComponent(t.title)}${au?`&author=${encodeURIComponent(au)}`:''}`,`q=${encodeURIComponent(t.title+(au?' '+au:''))}`];
   for(const qs of tries){
     const r=await fetch(base+qs,{headers:{Accept:'application/json'}});
     if(!r.ok)throw new Error('Open Library '+r.status);
-    const d=((await r.json()).docs||[]).find(x=>x.cover_i);
-    if(d)return d;
+    const docs=(await r.json()).docs||[];
+    // m: this book's own entry, for its details. c: an entry with a cover, as before.
+    const m=t.olKey?docs.find(x=>x.key===t.olKey):docs.find(x=>x.cover_i)||docs[0],c=m?.cover_i?m:docs.find(x=>x.cover_i);
+    if(m||c)return {m,c};
   }
   return null;
 }
@@ -2403,12 +2419,17 @@ function coverRedraw(){
 async function coverFill(){
   if(coverBusy||navigator.onLine===false)return;coverBusy=true;
   try{
-    const todo=S.titles.filter(t=>!t.cover&&!t.noAutoCover&&!(t.coverTried>Date.now()-COVER_RETRY));
+    const loved=new Set(S.books.filter(b=>b.rating>=4).map(b=>b.titleId));
+    const todo=S.titles.filter(t=>needCover(t)||needInfo(t)).sort((a,b)=>loved.has(b.id)-loved.has(a.id));
     for(const t of todo){
-      if(t.cover||!S.titles.includes(t))continue;
+      if(!S.titles.includes(t)||!needCover(t)&&!needInfo(t))continue;
+      const wantCover=needCover(t);
       let d;try{d=await olCoverFor(t)}catch(e){break}
-      t.coverTried=Date.now();
-      if(d){t.cover=`https://covers.openlibrary.org/b/id/${d.cover_i}-M.jpg`;if(!t.olKey)t.olKey=d.key;coverRedraw()}
+      if(wantCover)t.coverTried=Date.now();
+      t.olTried=Date.now();
+      if(d?.c&&wantCover){t.cover=`https://covers.openlibrary.org/b/id/${d.c.cover_i}-M.jpg`;coverRedraw()}
+      const m=d?.m||(!t.olKey&&d?.c);
+      if(m)olSave(t,{key:m.key,authorKeys:(m.author_key||[]).slice(0,2),ebook:olEbook(m)});
       save();
       await new Promise(r=>setTimeout(r,1000));
     }
@@ -2417,10 +2438,11 @@ async function coverFill(){
 /* Turns an Open Library result into a Reading Room title, reusing the existing one if it's already here. */
 function olTitle(i){return olTitleFrom(ad.ol.items[i])}
 function olTitleFrom(x){
-  const ex=olExisting(x);if(ex)return ex;
+  const ex=olExisting(x);if(ex){if(!ex.olAt&&(!ex.olKey||ex.olKey===x.key))olSave(ex,x);return ex}
   const t={id:'t'+uid(),title:x.title,author:x.author,pages:x.pages||undefined,genre:'',c:hashStr(x.title)%COVERS.length,added:Date.now(),olKey:x.key};
   if(x.coverId)t.cover=`https://covers.openlibrary.org/b/id/${x.coverId}-M.jpg`;
   if(x.isbn)t.isbn=x.isbn;if(x.year)t.year=x.year;
+  olSave(t,x);
   S.titles.push(t);return t;
 }
 function addCopy(tid,f){const t=titleById(tid);const sh=!S.settings.solo&&ad.share!==false,had=copiesOf(t.id).some(c=>!c.private);S.copies.push({id:'c'+uid(),titleId:t.id,owner:'me',format:f,where:'',loanTo:null,private:!sh||undefined});if(sh)post('library',had?`added a${f==='physical'?'':'n'} ${FMT[f].toLowerCase()} copy of`:'added a book to the group library:',t.title);ad.own=null;ad.olOwn=null;save();refreshLib();toast(`Added your ${FMT[f].toLowerCase()} copy of ${t.title}.`)}
