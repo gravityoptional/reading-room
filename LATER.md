@@ -4,8 +4,8 @@ Known issues and follow-ups for the next prototype. Not published; the site only
 
 ## Test on /next/ after the push
 
-- ~~Undo in the finish window~~: tested by James Nov 1, 2026, working.
-- ~~More by This Author with real data~~: tested by James Nov 1, 2026, working.
+- ~~Undo in the finish window~~: tested by James Oct 31, 2026, working.
+- ~~More by This Author with real data~~: tested by James Oct 31, 2026, working.
 - **Borrow Free on Open Library** now opens the book's main Open Library page and asks for English editions (the
   Judy Moody link opened a Dutch edition). Recheck Judy Moody, M.D.
 - **Read Free Online**: not yet tested with a real free book. The This Side of Paradise cover and scan were a
