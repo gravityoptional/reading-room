@@ -1003,6 +1003,9 @@ main section.card .card-h .ico{display:none}
 .dc-why{font-size:12.5px;color:var(--text-2);line-height:1.35}
 /* Discover as a Library tab */
 .lib .disc{margin-top:22px}
+.lib-acts{display:flex;gap:10px;flex-wrap:wrap}
+@media (max-width:720px){.lib-acts{flex-wrap:nowrap;gap:8px}.lib-acts .btn{padding:8px 12px;font-size:13px;white-space:nowrap}}
+@media (max-width:400px){.lib-acts .btn svg.i{display:none}}
 .lib .dc-find .dc-row:first-child .dc-rh,.lib .dc-find>.dc-rh-only{border-top:0;padding-top:0}
 .dc-rh{flex-wrap:wrap}
 .dc-rtools{margin-left:auto;display:flex;align-items:center;gap:10px}
@@ -1018,7 +1021,6 @@ main section.card .card-h .ico{display:none}
 .nx-q-acts{display:flex;flex-direction:column;align-items:flex-start;gap:6px}
 .nx-start{margin:0}
 @media (max-width:720px){
-  .dc-recpick{display:none}
   .dc-scroll.dc-wrap{grid-auto-flow:row;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-columns:auto;overflow:visible;margin:0;padding:0}
 }
 /* Lean card pieces */
@@ -2239,7 +2241,7 @@ function libraryView(){
   const disc=lib.tab==='discover',tools=!disc;
   const H={family:[`${esc(GN())} Library`,`Books everyone in ${esc(GN())} can borrow and read.`],mybooks:['My Books','Every book connected to you, from To Read to Finished.'],discover:['Discover','Books you might like, why each one is here, and where to get it.']}[lib.tab];
   return `<div class="lib">
-  <div class="lib-h" data-tour="library"><div><h1 class="page-h">${H[0]}</h1><p class="muted" style="margin:4px 0 0">${H[1]}</p></div><button class="btn btn-primary" data-act="addBook">${ic('plus')}Add a Book</button></div>
+  <div class="lib-h" data-tour="library"><div><h1 class="page-h">${H[0]}</h1><p class="muted" style="margin:4px 0 0">${H[1]}</p></div><span class="lib-acts">${S.settings.solo?'':`<button class="btn btn-ghost" data-act="recPick">${ic('send')}Recommend a Book</button>`}<button class="btn btn-primary" data-act="addBook">${ic('plus')}Add a Book</button></span></div>
   <div class="tabs" role="tablist" aria-label="Library sections">${tabs.map(([k,l])=>`<button class="tab" role="tab" data-tour="lib-${k}" aria-selected="${lib.tab===k}" data-act="libTab" data-v="${k}">${l}${k==='discover'&&toMe?` <span class="tab-n" aria-label="${toMe} recommended to you">${toMe}</span>`:''}</button>`).join('')}</div>
   ${disc?discoverBody():''}
   ${lib.tab==='mybooks'?mbChips():''}
@@ -2434,12 +2436,12 @@ function ruleRecs(max=6){
 /* Recommendations to you that you haven't hidden. Hiding is private: the recommendation itself is kept, so the
    person who sent it sees no change. */
 const myRecs=()=>S.recs.filter(r=>{const t=titleById(r.titleId);return t&&!hiddenT(t)});
-const recTools=(n)=>S.settings.solo?'':`<span class="dc-rtools"><button class="link-btn sm dc-sent" data-act="recView" data-v="from">Sent by Me (${n})</button><button class="btn btn-ghost sm dc-recpick" data-act="recPick">${ic('send')}Recommend a Book</button></span>`;
+const recTools=(n)=>S.settings.solo?'':`<span class="dc-rtools"><button class="link-btn sm dc-sent" data-act="recView" data-v="from">Sent by Me (${n})</button></span>`;
 function discoverBody(){
   discLoad();discIdx={};
   const fromN=new Set(S.recsSent.map(r=>r.titleId)).size,back=`<button class="link-btn sm dc-back" data-act="recView" data-v="disc">${ic('chevL')}Back to Discover</button>`;
   if(lib.rv==='from'&&!S.settings.solo){const shelf=S.settings.libView==='shelf';
-    return `<div class="disc dc-sub">${back}<div class="dc-sec-h dc-sub-h"><h2>Sent by Me</h2><span class="dc-rtools">${fromN?`<span class="vseg" role="group" aria-label="View"><button aria-pressed="${!shelf}" data-act="libView" data-v="grid">${ic('grid')}Grid</button><button aria-pressed="${shelf}" data-act="libView" data-v="shelf">${ic('shelf')}Shelf</button></span>`:''}<button class="btn btn-ghost sm" data-act="recPick">${ic('send')}Recommend a Book</button></span></div>${fromMe()}</div>`}
+    return `<div class="disc dc-sub">${back}<div class="dc-sec-h dc-sub-h"><h2>Sent by Me</h2><span class="dc-rtools">${fromN?`<span class="vseg" role="group" aria-label="View"><button aria-pressed="${!shelf}" data-act="libView" data-v="grid">${ic('grid')}Grid</button><button aria-pressed="${shelf}" data-act="libView" data-v="shelf">${ic('shelf')}Shelf</button></span>`:''}</span></div>${fromMe()}</div>`}
   if(lib.rv==='to'&&!S.settings.solo){const ids=[...new Set(myRecs().map(r=>r.titleId))],items=ruleRecs(99);
     return `<div class="disc dc-sub">${back}<div class="dc-sec-h dc-sub-h"><h2>Recommended to You</h2>${recTools(fromN)}</div>${items.length?`<div class="dc-scroll dc-wrap">${items.map(dcard).join('')}</div>`:`<div class="empty">${ic('send')}<h3>No Recommendations Yet</h3><p>When someone in your group recommends a book to you, it shows up here.</p></div>`}</div>`}
   const recs=ruleRecs(),nRecs=S.settings.solo?0:new Set(myRecs().map(r=>r.titleId)).size,author=ruleAuthor(),series=ruleSeries(),toRead=ruleToRead(),want=wantList().filter(b=>!hiddenT(titleById(b.titleId)));
@@ -2486,7 +2488,7 @@ function openNextDlg(b,undo){
    readers see only the rating. */
 function nxShare(){
   const b=book(nextDone.bookId),t=titleById(nextDone.tid),solo=!!S.settings.solo;if(!b||!t)return '';
-  const rate=`<div class="nx-rate">${starsFor(b)}<span class="xs muted">Your rating, optional · only you see it</span></div>`;
+  const rate=`<div class="nx-rate">${starsFor(b)}<span class="xs muted">Your rating, optional · ${rateWho()}</span></div>`;
   const froms=solo?[]:[...new Set(S.recs.filter(r=>r.titleId===t.id).map(r=>r.from))];
   const thanked=w=>(S.thanks||[]).some(x=>x.titleId===t.id&&x.to===w);
   const thank=froms.map(w=>`<div class="nx-line">${thanked(w)?`<span class="small muted nx-thanked" tabindex="-1">${ic('check')}Thanks sent to ${esc(nameOf(w))}</span>`:`<span class="small">${esc(nameOf(w))} recommended this.</span><button class="link-btn sm" data-act="nxThank" data-w="${w}">${ic('heart')}Thank ${esc(nameOf(w))}</button>`}</div>`).join('');
@@ -2547,6 +2549,8 @@ function sendRec(t,to,note){
   if(S.settings.share)S.activity.push({id:uid(),who:'me',kind:'rec',text:'recommended',book:t.title,extra:`to ${names}`,ts:Date.now(),r:{}});
   return names;
 }
+/* Ratings follow the Share with My Groups switch; book notes stay private either way. */
+const rateWho=()=>!S.settings.solo&&S.settings.share?'shared with your group':'only you see it';
 /* Half-star rating control, used in book details and the finish window. */
 const starsFor=r=>`<span class="hstars">${[1,2,3,4,5].map(n=>{const rt=r.rating||0,f=rt>=n?100:rt>=n-.5?50:0;return `<span class="hstar" style="--f:${f}%">★<button class="hs-l" data-act="rate" data-id="${r.id}" data-v="${n-.5}" aria-label="${n-.5} stars" aria-pressed="${rt===n-.5}"></button><button class="hs-r" data-act="rate" data-id="${r.id}" data-v="${n}" aria-label="${n} star${n>1?'s':''}" aria-pressed="${rt===n}"></button></span>`}).join('')}<span class="small muted rate-n">${r.rating?r.rating:''}</span></span>`;
 /* Under Get This Book: Not for Me and Already Read It, for books you haven't read and don't own. */
@@ -2583,7 +2587,7 @@ function renderBD(){
       body=`<div class="st st-${r.status}">${STATUS[r.status]}</div> <button class="link-btn sm" data-act="editBook" data-book="${r.id}">${ic('pencil')}Change Status or Details</button>
       ${r.status!=='want'?`<div class="bar" style="margin-top:12px"><span style="width:${pct(r)}%"></span></div><div class="xs muted">${prog} · ${pct(r)}%</div>`:''}
       <div class="xs muted" style="margin-top:6px">${[r.started?`Started ${fmtDateY(r.started)}`:'',r.finished?`Finished ${fmtDateY(r.finished)}`:'',r.dnfOn?`Set aside ${fmtDateY(r.dnfOn)}`:''].filter(Boolean).join(' · ')}</div>
-      ${r.status!=='want'?`<div class="rate"><span class="small">Your Rating <span class="muted">(only you see it)</span></span>${starsFor(r)}</div>`:''}`;
+      ${r.status!=='want'?`<div class="rate"><span class="small">Your Rating <span class="muted">(${rateWho()})</span></span>${starsFor(r)}</div>`:''}`;
     }
   }else if(bd.tab==='activity'){
     const items=S.activity.filter(a=>a.book===t.title&&(a.who!=='me'||S.settings.share)).sort((a,b)=>b.ts-a.ts);
