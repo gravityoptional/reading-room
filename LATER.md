@@ -4,10 +4,12 @@ Known issues and follow-ups for the next prototype. Not published; the site only
 
 ## Test on /next/ after the push
 
-- **Undo in the finish window** (beside "That's N books this year"): James asked to test this specifically. Mark a
-  book finished, tap Undo, and confirm the book is back in Currently Reading with nothing else changed.
-- Discover with real Open Library data: More by This Author picks for the family's top authors, and that Read Free
-  Online and Borrow Free on Open Library open the right book.
+- ~~Undo in the finish window~~: tested by James Nov 1, 2026, working.
+- ~~More by This Author with real data~~: tested by James Nov 1, 2026, working.
+- **Borrow Free on Open Library** now opens the book's main Open Library page and asks for English editions (the
+  Judy Moody link opened a Dutch edition). Recheck Judy Moody, M.D.
+- **Read Free Online**: not yet tested with a real free book. The This Side of Paradise cover and scan were a
+  wrong match (an American Film magazine scan); matching is fixed and old matches are re-checked once. Recheck it.
 
 ## Issues
 
@@ -17,3 +19,5 @@ Known issues and follow-ups for the next prototype. Not published; the site only
   the full title in book details, and size rows to what's visible.
 - **WorldCat "Error 1015" on the first Find at Your Library click** (seen Oct 31, 2026; the same link worked on
   retry). WorldCat's traffic protection, not Reading Room. If it recurs, switch the link target.
+- **Not for Me mis-taps leave no trace** on site suggestions (quiet hide by design). Recovery is through the book's
+  details. If testers report it, add a short "Hidden · Undo" in the card's place for a few seconds.
