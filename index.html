@@ -1280,6 +1280,7 @@ if(!S.actSeeded2){S.actSeeded2=true;const n=Date.now(),H=3600e3,ms=Object.keys(S
   {id:uid(),who:m(0),kind:'session',text:'logged a reading session',book:'Dune',ts:n-4*H,r:{}},
   {id:uid(),who:m(0),kind:'session',text:'logged a reading session',book:'Dune',ts:n-5*H,r:{}})}}
 if(!S.group)S.group={name:'Emberton Family'};
+if(!S.recRateSeeded){S.recRateSeeded=true;const r=(S.recs||[]).find(x=>x.id==='r1');if(r)r.rating=4.5}
 if(S.titles?.some(t=>t.fromDisc))pruneDisc();
 (S.titles||[]).forEach(t=>{if(t.olTried&&!t.olV){t.olRedo=true;delete t.olAt;delete t.olTried}});
 S.loanReqs=S.loanReqs||[];
@@ -2075,8 +2076,8 @@ function fromMe(){
   return `<div class="lib-count"><span class="small muted">${ids.length} book${ids.length===1?'':'s'} recommended</span></div><div class="from-list">${ids.map(id=>{const t=titleById(id);if(!t)return '';
     return `<div class="from card"><button class="lc-open from-b" data-act="openTitle" data-id="${id}">${libCover(t,56)}<span><span class="lc-t" style="display:block">${esc(t.title)}</span><span class="bk-a">${esc(t.author)}</span></span></button>
     <div class="from-rows">${byT[id].map(r=>{const vis=S.members[r.to]?.share!==false,st=vis?(r.status||'sent'):'sent';
-      if(recEdit===r.id)return `<div class="from-row rec-edit"><span class="avatar" style="background:${colorOf(r.to)}">${initOf(r.to)}</span><input class="inp sm" id="recEditIn" maxlength="140" value="${esc(r.note||'')}" placeholder="Add a note (optional)" aria-label="Note for ${esc(nameOf(r.to))}"><button class="btn btn-primary sm" data-act="recEditSave" data-id="${r.id}">Save</button><button class="link-btn sm" data-act="recEditCancel">Cancel</button></div>`;
-      return `<div class="from-row"><span class="avatar" style="background:${colorOf(r.to)}">${initOf(r.to)}</span><span class="small fr-txt"><b>${esc(nameOf(r.to))}</b>${r.note?` <span class="muted">“${esc(r.note)}”</span>`:''} <span class="xs muted">· ${ago(r.ts)}</span></span><span class="st ${st==='finished'?'st-finished':st==='reading'?'st-reading':st==='want'?'st-want':''}">${REC_ST[st]}</span><span class="fr-acts"><button class="link-btn sm" data-act="recEdit" data-id="${r.id}">${r.note?'Edit Note':'Add Note'}</button><button class="link-btn sm" data-act="recWithdraw" data-id="${r.id}">Withdraw</button></span></div>`}).join('')}</div></div>`}).join('')}</div>
+      if(recEdit===r.id)return `<div class="from-row rec-edit"><span class="avatar" style="background:${colorOf(r.to)}">${initOf(r.to)}</span><input class="inp sm" id="recEditIn" maxlength="140" value="${esc(r.note||'')}" placeholder="Add a note (optional)" aria-label="Note for ${esc(nameOf(r.to))}">${(()=>{const rt=r.rating||myRating(r.titleId);return rt?`<label class="chk xs"><input type="checkbox" id="recEditRate" ${r.rating?'checked':''}> Include my rating ★${rt}</label>`:''})()}<button class="btn btn-primary sm" data-act="recEditSave" data-id="${r.id}">Save</button><button class="link-btn sm" data-act="recEditCancel">Cancel</button></div>`;
+      return `<div class="from-row"><span class="avatar" style="background:${colorOf(r.to)}">${initOf(r.to)}</span><span class="small fr-txt"><b>${esc(nameOf(r.to))}</b>${r.note?` <span class="muted">“${esc(r.note)}”</span>`:''}${r.rating?` <span class="xs muted">· your rating ★${r.rating} included</span>`:''} <span class="xs muted">· ${ago(r.ts)}</span></span><span class="st ${st==='finished'?'st-finished':st==='reading'?'st-reading':st==='want'?'st-want':''}">${REC_ST[st]}</span><span class="fr-acts"><button class="link-btn sm" data-act="recEdit" data-id="${r.id}">${r.note?'Edit Note':'Add Note'}</button><button class="link-btn sm" data-act="recWithdraw" data-id="${r.id}">Withdraw</button></span></div>`}).join('')}</div></div>`}).join('')}</div>
     <p class="xs muted" style="margin-top:12px">Progress shows only for group members who share their activity; otherwise it stays at Sent. Withdrawing a recommendation takes it off their list without notifying them.</p>`;
 }
 function filtersPanel(){
@@ -2099,7 +2100,7 @@ function libEmpty(){
   return `<div class="empty">${ic(E[0])}<h3>${E[1]}</h3><p>${E[2]}</p>${lib.tab!=='recs'?`<button class="btn btn-primary" data-act="addBook">${ic('plus')}Add a Book</button>`:''}</div>`;
 }
 function recExtra(t){
-  return `<div class="rec">${myRecs().filter(r=>r.titleId===t.id).map(r=>`<div><b>${esc(nameOf(r.from))}</b>${r.note?`: “${esc(r.note)}”`:''}</div>`).join('')}<div class="rec-acts"><button class="link-btn sm" data-act="dismissRec" data-id="${t.id}">Not for Me</button><span class="xs muted">Only you see this; ${esc([...new Set(S.recs.filter(r=>r.titleId===t.id).map(r=>nameOf(r.from)))].join(' and '))} won’t be told.</span></div></div>`;
+  return `<div class="rec">${myRecs().filter(r=>r.titleId===t.id).map(r=>`<div><b>${esc(recWho(r))}</b>${r.note?`: “${esc(r.note)}”`:''}</div>`).join('')}<div class="rec-acts"><button class="link-btn sm" data-act="dismissRec" data-id="${t.id}">Not for Me</button><span class="xs muted">Only you see this; ${esc([...new Set(S.recs.filter(r=>r.titleId===t.id).map(r=>nameOf(r.from)))].join(' and '))} won’t be told.</span></div></div>`;
 }
 /* Bookshelf looks. Every choice comes from the book's title, so a book looks the same each visit.
    Hashes and shifts are unsigned (>>>), so every pick is a valid, non-negative index.
@@ -2453,7 +2454,7 @@ function ruleRecs(max=6){
   return Object.keys(by).map(id=>({t:titleById(id),rs:by[id].sort((a,b)=>(b.ts||0)-(a.ts||0))})).filter(x=>x.t&&!readIt(x.t.id))
     .sort((a,b)=>(b.rs[0].ts||0)-(a.rs[0].ts||0)).slice(0,max)
     .map(({t,rs})=>{const r=rs[0],more=rs.length>1?` and ${rs.length-1} other${rs.length>2?'s':''}`:'';
-      return {rule:'rec',reason:esc(r.note?`${nameOf(r.from)}${more}: “${r.note}”`:`Recommended by ${nameOf(r.from)}${more}`),t}});
+      return {rule:'rec',reason:esc(r.note?`${recWho(r)}${more}: “${r.note}”`:`Recommended by ${recWho(r)}${more}`),t}});
 }
 /* Recommendations to you that you haven't hidden. Hiding is private: the recommendation itself is kept, so the
    person who sent it sees no change. */
@@ -2516,7 +2517,7 @@ function nxShare(){
   const thank=froms.map(w=>`<div class="nx-line">${thanked(w)?`<span class="small muted nx-thanked" tabindex="-1">${ic('check')}Thanks sent to ${esc(nameOf(w))}</span>`:`<span class="small">${esc(nameOf(w))} recommended this.</span><button class="link-btn sm" data-act="nxThank" data-w="${w}">${ic('heart')}Thank ${esc(nameOf(w))}</button>`}</div>`).join('');
   let rec='';
   if(!solo){
-    if(nextDone.rec)rec=`<div class="recf nx-recf"><div class="small" style="font-weight:600">Recommend To</div><div class="chips">${Object.entries(S.members).map(([k,m])=>{const done=S.recsSent.some(r=>r.titleId===t.id&&r.to===k);return `<label class="chk ${done?'dim':''}"><input type="checkbox" name="nxRecTo" value="${k}" ${done?'disabled':''}> ${esc(m.name)}${done?' <span class="xs muted">(already recommended)</span>':''}</label>`}).join('')}</div><input class="inp sm" id="nxRecNote" maxlength="140" placeholder="Add a note (optional)" aria-label="Note"><div class="err" id="nxRecErr" role="alert"></div><div class="dlg-f"><button class="btn btn-ghost sm" data-act="nxRec">Cancel</button><button class="btn btn-primary sm" data-act="nxRecGo">Send Recommendation</button></div></div>`;
+    if(nextDone.rec)rec=`<div class="recf nx-recf"><div class="small" style="font-weight:600">Recommend To</div><div class="chips">${Object.entries(S.members).map(([k,m])=>{const done=S.recsSent.some(r=>r.titleId===t.id&&r.to===k);return `<label class="chk ${done?'dim':''}"><input type="checkbox" name="nxRecTo" value="${k}" ${done?'disabled':''}> ${esc(m.name)}${done?' <span class="xs muted">(already recommended)</span>':''}</label>`}).join('')}</div><input class="inp sm" id="nxRecNote" maxlength="140" placeholder="Add a note (optional)" aria-label="Note">${recRateOpt(t,'nxRecRate')}<div class="err" id="nxRecErr" role="alert"></div><div class="dlg-f"><button class="btn btn-ghost sm" data-act="nxRec">Cancel</button><button class="btn btn-primary sm" data-act="nxRecGo">Send Recommendation</button></div></div>`;
     else if(nextDone.sent.length)rec=`<div class="nx-line"><span class="small muted nx-sent" tabindex="-1">${ic('check')}Recommended to ${esc(nextDone.sent.map(nameOf).join(', '))}</span><button class="link-btn sm" data-act="nxRec">Recommend to Someone Else</button></div>`;
     else rec=`<div class="nx-line"><button class="btn btn-ghost sm" data-act="nxRec">${ic('send')}Recommend to Someone</button></div>`;
   }
@@ -2564,10 +2565,23 @@ function copyRow(c){
   <span class="avail ${ph?(c.loanTo||hold?'loan':'ok'):''}">${ph?(c.loanTo?(c.loanTo==='me'?'On loan to you':`On loan to ${nameOf(c.loanTo)}`):hold?(hold.from==='me'?'On hold for you':`On hold for ${nameOf(hold.from)} — awaiting pickup`):'Available'):'Digital'}</span>
   <span class="cp-act">${act}${mine&&!S.settings.solo?`<button class="link-btn sm cp-share" data-act="cpShare" data-id="${c.id}" aria-pressed="${!c.private}" title="Show this copy in the ${esc(GN())} Library">${c.private?`${ic('lock')}Only Me`:`${ic('users')}Shared`}</button>`:''}${mine?`<button class="link-btn sm" data-act="cpRemove" data-id="${c.id}">Remove</button>`:''}</span></div>${bd.reqNote===c.id&&!mine&&!mr?`<div class="req-in req-compose"><label class="f"><span>Note to ${esc(nameOf(c.owner))} <span class="sub">(optional)</span></span><textarea class="inp" id="reqNoteTx" rows="3" maxlength="200" data-count="200" aria-describedby="reqNoteCount" placeholder="When you could pick it up, or why you'd like to read it"></textarea>${charCount('reqNoteCount',0,200)}</label><span class="req-btns"><button class="btn btn-ghost sm" data-act="reqNoteOpen" data-id="">Cancel</button><button class="btn btn-primary sm" data-act="reqBorrow" data-id="${c.id}">${free?'Send Request':'Join the Waiting Line'}</button></span></div>`:''}${incoming.map((r,i)=>`<div class="req-in"><span class="small">${free?'':`<span class="xs muted">${ordinal(i+1)} in line · </span>`}<b>${esc(nameOf(r.from))}</b> asked to borrow this ${ago(r.ts)}.${r.note?`<span class="req-msg">“${esc(r.note)}”</span>`:''}</span>${replyBtns(r,free)}</div>`).join('')}`;
 }
-/* Sends a recommendation to each chosen member who doesn't already have it; returns their names. */
-function sendRec(t,to,note){
-  const names=to.map(nameOf).join(', ');
-  to.filter(w=>!S.recsSent.some(r=>r.titleId===t.id&&r.to===w)).forEach(w=>S.recsSent.push({id:uid(),titleId:t.id,to:w,note,ts:Date.now()}));
+/* Your latest rating of a book, if any. */
+const myRating=tid=>S.books.filter(b=>b.titleId===tid&&b.rating).map(b=>b.rating).pop()||0;
+/* In the recommend forms: include your rating. When you share your activity it's already visible, so it's
+   included; when you don't, it's an opt-in for just these people, off by default. */
+function recRateOpt(t,id){
+  const rt=myRating(t.id);if(!rt)return '';
+  return S.settings.share?`<div class="xs muted" id="${id}" data-on="1">Your rating (★${rt}) is included, since you share your activity.</div>`
+    :`<label class="chk xs"><input type="checkbox" id="${id}"> Include my rating ★${rt} <span class="muted">(only the people you choose see it)</span></label>`;
+}
+const recRateOn=id=>{const el=document.getElementById(id);return !!el&&(el.dataset.on==='1'||el.checked)};
+/* How a recommendation's sender and rating read to the person receiving it. */
+const recWho=r=>`${nameOf(r.from)}${r.rating?` ★${r.rating}`:''}`;
+/* Sends a recommendation to each chosen member who doesn't already have it; returns their names. The rating, when
+   included, is a snapshot: changing it later doesn't change what was sent. */
+function sendRec(t,to,note,withRating){
+  const names=to.map(nameOf).join(', '),rating=withRating?myRating(t.id):0;
+  to.filter(w=>!S.recsSent.some(r=>r.titleId===t.id&&r.to===w)).forEach(w=>S.recsSent.push({id:uid(),titleId:t.id,to:w,note,ts:Date.now(),...(rating?{rating}:{})}));
   if(S.settings.share)S.activity.push({id:uid(),who:'me',kind:'rec',text:'recommended',book:t.title,extra:`to ${names}`,ts:Date.now(),r:{}});
   return names;
 }
@@ -2620,8 +2634,8 @@ function renderBD(){
   }
   bookBody.innerHTML=`<div class="dlg-h bd-h">${libCover(t,84)}<div style="flex:1;min-width:0"><h2 id="bdTitle">${esc(t.title)}</h2><div class="muted">${esc(t.author)}</div><div class="xs muted" style="margin-top:4px">${[t.series?`${esc(t.series)} #${t.seriesNo??'?'}`:'',t.genre,t.pages?`${t.pages} pages`:''].filter(Boolean).join(' · ')}</div>
  <div class="bd-acts">${prim}</div>${getLine(t)}${bdQuiet(t,r)}</div><button type="button" class="icon-btn x" data-act="closeBD" aria-label="Close">${ic('x')}</button></div>
-    ${(()=>{const rs=myRecs().filter(r=>r.titleId===t.id);return rs.length?`<div class="rec-box">${rs.map(r=>`<div class="small"><b>${esc(nameOf(r.from))}</b> recommended this to you${r.note?`: “${esc(r.note)}”`:'.'}</div>`).join('')}<div class="rec-acts"><button class="link-btn sm" data-act="dismissRec" data-id="${t.id}">Not for Me</button><span class="xs muted">Only you see this; ${esc([...new Set(rs.map(r=>nameOf(r.from)))].join(' and '))} won’t be told.</span></div></div>`:''})()}
-    ${bd.rec?`<div class="recf"><div class="small" style="font-weight:600">Recommend To</div><div class="chips">${Object.entries(S.members).map(([k,m])=>{const done=S.recsSent.some(r=>r.titleId===t.id&&r.to===k);return `<label class="chk ${done?'dim':''}"><input type="checkbox" name="recTo" value="${k}" ${done?'disabled':''}> ${esc(m.name)}${done?' <span class="xs muted">(already recommended)</span>':''}</label>`}).join('')}</div><input class="inp sm" id="recNote" maxlength="140" placeholder="Add a note (optional)" aria-label="Note"><div class="err" id="recErr" role="alert"></div><div class="dlg-f"><button class="btn btn-ghost sm" data-act="bdRec">Cancel</button><button class="btn btn-primary sm" data-act="bdRecGo">Send Recommendation</button></div></div>`:''}
+    ${(()=>{const rs=myRecs().filter(r=>r.titleId===t.id);return rs.length?`<div class="rec-box">${rs.map(r=>`<div class="small"><b>${esc(nameOf(r.from))}</b>${r.rating?` (★${r.rating})`:''} recommended this to you${r.note?`: “${esc(r.note)}”`:'.'}</div>`).join('')}<div class="rec-acts"><button class="link-btn sm" data-act="dismissRec" data-id="${t.id}">Not for Me</button><span class="xs muted">Only you see this; ${esc([...new Set(rs.map(r=>nameOf(r.from)))].join(' and '))} won’t be told.</span></div></div>`:''})()}
+    ${bd.rec?`<div class="recf"><div class="small" style="font-weight:600">Recommend To</div><div class="chips">${Object.entries(S.members).map(([k,m])=>{const done=S.recsSent.some(r=>r.titleId===t.id&&r.to===k);return `<label class="chk ${done?'dim':''}"><input type="checkbox" name="recTo" value="${k}" ${done?'disabled':''}> ${esc(m.name)}${done?' <span class="xs muted">(already recommended)</span>':''}</label>`}).join('')}</div><input class="inp sm" id="recNote" maxlength="140" placeholder="Add a note (optional)" aria-label="Note">${recRateOpt(t,'recRate')}<div class="err" id="recErr" role="alert"></div><div class="dlg-f"><button class="btn btn-ghost sm" data-act="bdRec">Cancel</button><button class="btn btn-primary sm" data-act="bdRecGo">Send Recommendation</button></div></div>`:''}
     <div class="bd-tabs" role="tablist">${tabs.map(([k,l])=>`<button class="bd-tab" role="tab" aria-selected="${bd.tab===k}" data-act="bdTab" data-v="${k}">${l}</button>`).join('')}</div>
     <div class="bd-body">${body}</div>`;
 }
@@ -3850,7 +3864,9 @@ document.addEventListener('click',e=>{
     case 'actCat':{const h=S.settings.hideAct=S.settings.hideAct||[],k=a.dataset.v;S.settings.hideAct=h.includes(k)?h.filter(x=>x!==k):[...h,k];save();const y=window.scrollY;render();window.scrollTo(0,y);break}
     case 'recEdit':recEdit=a.dataset.id;refreshLib();setTimeout(()=>{const i=document.getElementById('recEditIn');if(i){i.focus();i.select()}},30);break;
     case 'recEditCancel':recEdit=null;refreshLib();break;
-    case 'recEditSave':{const r=S.recsSent.find(x=>x.id===a.dataset.id);r.note=document.getElementById('recEditIn').value.trim();recEdit=null;save();refreshLib();toast(r.note?'Note saved.':'Note removed.');break}
+    case 'recEditSave':{const r=S.recsSent.find(x=>x.id===a.dataset.id);r.note=document.getElementById('recEditIn').value.trim();
+      const cb=document.getElementById('recEditRate');if(cb){if(!cb.checked)delete r.rating;else if(!r.rating&&myRating(r.titleId))r.rating=myRating(r.titleId)}
+      recEdit=null;save();refreshLib();toast('Saved.');break}
     case 'recWithdraw':{const snap=snapshot(),r=S.recsSent.find(x=>x.id===a.dataset.id);S.recsSent=S.recsSent.filter(x=>x!==r);save();refreshLib();toast(`Withdrew your recommendation to ${nameOf(r.to)}.`,restoreTo(snap),'They aren’t notified.');break}
     case 'cpShare':{const c=S.copies.find(x=>x.id===a.dataset.id);c.private=!c.private||undefined;if(!c.private)post('library','added a book to the group library:',titleById(c.titleId)?.title);save();renderBD();refreshLib();toast(c.private?`Only you can see this copy now. It’s hidden from the ${GN()} Library.`:`This copy now shows in the ${GN()} Library.`);break}
     case 'chDecline':{const c=S.challenges.find(x=>x.id===a.dataset.id);c.declined=[...(c.declined||[]),'me'];save();if(chDlg.open&&chMode==='ch')renderCh();else{const y=window.scrollY;render();window.scrollTo(0,y)}toast(`Declined ${c.name}.`,null,'You can still join later from Group Challenges.');break}
@@ -4000,11 +4016,11 @@ document.addEventListener('click',e=>{
     case 'bdTab':bd.tab=a.dataset.v;renderBD();break;
     case 'bdRec':bd.rec=!bd.rec;renderBD();if(bd.rec)setTimeout(()=>bookBody.querySelector('[name=recTo]')?.focus(),30);break;
     case 'bdRecGo':{const to=[...bookBody.querySelectorAll('[name=recTo]:checked')].map(x=>x.value);if(!to.length){document.getElementById('recErr').textContent='Choose at least one person.';break}
-      const t=titleById(bd.id),names=sendRec(t,to,document.getElementById('recNote').value.trim());
+      const t=titleById(bd.id),names=sendRec(t,to,document.getElementById('recNote').value.trim(),recRateOn('recRate'));
       bd.rec=false;save();renderBD();toast(`Recommended ${t.title} to ${names}.`);break}
     case 'nxRec':nextDone.rec=!nextDone.rec;renderNextDlg();if(nextDone.rec)setTimeout(()=>nextBody.querySelector('[name=nxRecTo]:not([disabled])')?.focus(),30);break;
     case 'nxRecGo':{const to=[...nextBody.querySelectorAll('[name=nxRecTo]:checked')].map(x=>x.value);if(!to.length){document.getElementById('nxRecErr').textContent='Choose at least one person.';break}
-      const t=titleById(nextDone.tid);sendRec(t,to,document.getElementById('nxRecNote').value.trim());nextDone.rec=false;nextDone.sent=to;save();renderNextDlg();nextBody.querySelector('.nx-sent')?.focus();break}
+      const t=titleById(nextDone.tid);sendRec(t,to,document.getElementById('nxRecNote').value.trim(),recRateOn('nxRecRate'));nextDone.rec=false;nextDone.sent=to;save();renderNextDlg();nextBody.querySelector('.nx-sent')?.focus();break}
     case 'nxThank':{const w=a.dataset.w;(S.thanks=S.thanks||[]).push({id:uid(),titleId:nextDone.tid,to:w,ts:Date.now()});save();renderNextDlg();nextBody.querySelector('.nx-thanked')?.focus();break}
     case 'bdAddCopy':bd.addCopy=!bd.addCopy;renderBD();break;
     case 'bdAddCopyGo':{const f=document.getElementById('acFmt').value,w=document.getElementById('acWhere').value.trim();const sh=!S.settings.solo&&document.getElementById('acShare')?.checked!==false,had=copiesOf(bd.id).some(c=>!c.private);S.copies.push({id:'c'+uid(),titleId:bd.id,owner:'me',format:f,where:w,loanTo:null,private:!sh||undefined});if(sh)post('library',had?`added a${f==='audio'||f==='ebook'?'n':''} ${FMT[f].toLowerCase()} copy of`:'added a book to the group library:',titleById(bd.id).title);bd.addCopy=false;save();renderBD();toast(`Added your ${FMT[f].toLowerCase()} copy.`);break}
