@@ -12,6 +12,14 @@ Known issues and follow-ups for the next prototype. Not published; the site only
 - **Read Free Online**: not yet tested with a real free book (James couldn't find one, Oct 31). The This Side of Paradise cover and scan were a
   wrong match (an American Film magazine scan); matching is fixed and old matches are re-checked once. Recheck it.
 
+## Planned
+
+- **Book descriptions** (plan: `plans/Book_Descriptions.md`, added Nov 1, 2026). An About tab in book details,
+  a two-line preview under the title, descriptions from a member (Edit Book), then Open Library (saved), then
+  Google Books (on demand, never saved). Depends on 2a (done). Before building: confirm the Open Library
+  description format, read Google Books' terms, run the 20-book coverage test (needs openlibrary.org and
+  googleapis.com reachable), and James's two open items (Google Books from the start; title capitalization).
+
 ## Issues
 
 - **Tall card rows on phones (Discover).** Cards in a row share row heights so their buttons line up. In a
