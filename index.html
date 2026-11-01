@@ -1053,6 +1053,9 @@ main section.card .card-h .ico{display:none}
 .nx-q{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:center;border:2px solid var(--primary);border-radius:14px;padding:12px 14px;margin-bottom:20px}
 .nx-q .dc-why{margin:2px 0 10px}
 .nx-undo{padding:0 4px}
+.dnf-why{display:flex;align-items:center;gap:6px 10px;flex-wrap:wrap}
+#dnfDlg{width:min(480px,calc(100vw - 24px))}
+#dnfDlg .chips{flex-wrap:wrap}
 .nx-share{display:grid;gap:10px;margin:-2px 0 20px;padding-bottom:18px;border-bottom:1px solid var(--border)}
 .nx-rate{display:flex;align-items:center;gap:6px 12px;flex-wrap:wrap}
 .nx-line{display:flex;align-items:center;gap:4px 8px;flex-wrap:wrap}
@@ -1142,6 +1145,7 @@ a.btn{text-decoration:none}
 <dialog id="chDlg" aria-labelledby="chTitle"><div class="dlg" id="chBody"></div></dialog>
 <dialog id="recDlg" aria-labelledby="rpTitle"><div class="dlg" id="recBody"></div></dialog>
 <dialog id="nextDlg" aria-labelledby="nxTitle"><div class="dlg" id="nextBody"></div></dialog>
+<dialog id="dnfDlg" aria-labelledby="dnfT"><div class="dlg" id="dnfBody"></div></dialog>
 <dialog id="sessDlg" aria-labelledby="seTitle"><form class="dlg" id="sessForm" method="dialog" novalidate></form></dialog>
 <div id="pill"></div>
 <div class="toast" id="toast" role="status" popover="manual"></div>
@@ -1585,7 +1589,7 @@ function trophiesCard(){
 }
 const REACTS=[['like','👍','Like'],['love','❤️','Love'],['celebrate','🎉','Celebrate'],['applaud','👏','Applaud']];
 function person(who){return who==='me'?{name:'You',color:S.me.color,init:S.me.name[0]}:{...S.members[who],init:S.members[who].name[0]}}
-const ACT_CAT={started:'reading',finished:'reading',reread:'reading',resumed:'reading',halfway:'reading',session:'reading',together:'reading',library:'library',loan:'library',rec:'library',goal:'goals',streak:'goals',record:'goals',challenge:'challenges',invite:'challenges',completed:'challenges',battle:'battle',earned:'trophies',award:'trophies',member:'group'};
+const ACT_CAT={started:'reading',finished:'reading',dnf:'reading',reread:'reading',resumed:'reading',halfway:'reading',session:'reading',together:'reading',library:'library',loan:'library',rec:'library',goal:'goals',streak:'goals',record:'goals',challenge:'challenges',invite:'challenges',completed:'challenges',battle:'battle',earned:'trophies',award:'trophies',member:'group'};
 const ACT_LBL=[['reading','Reading'],['library','Library'],['goals','Goals and Streaks'],['challenges','Challenges'],['battle','Battle of the Books'],['trophies','Trophies and Awards'],['group','Group']];
 let actOpen=false,actLimit=6;
 function activityCard(){
@@ -2057,9 +2061,9 @@ function mbCard(t){
   else if(st==='owned')act=`<button class="btn btn-ghost sm" data-act="startTitle" data-id="${t.id}">${ic('play')}Start Reading</button>`;
   else if(st==='finished')act=`<button class="btn btn-ghost sm" data-act="startTitle" data-id="${t.id}">Read Again</button>`;
   else if(st==='dnf')act=`<div class="two"><button class="btn btn-ghost sm" data-act="pickup" data-book="${r.id}">Pick Up Again</button><button class="btn btn-ghost sm" data-act="startTitle" data-id="${t.id}">Start Over</button></div>`;
-  const when=st==='finished'&&r.finished?`Finished ${fmtDateY(r.finished)}`:st==='dnf'?`Stopped at ${r.format==='audio'?fmtPos(r.pos):'page '+r.pos}${r.dnfOn?` · ${fmtDateY(r.dnfOn)}`:''}`:'';
+  const when=st==='finished'&&r.finished?`Finished ${fmtDateY(r.finished)}`:st==='dnf'?`Stopped at ${r.format==='audio'?fmtPos(r.pos):'page '+r.pos}${r.dnfOn?` · ${fmtDateY(r.dnfOn)}`:''}${r.dnfWhy?` · ${dnfWhyL(r.dnfWhy)}`:''}`:'';
   return `<div class="lcard"><button class="lc-open" data-act="openTitle" data-id="${t.id}">${libCover(t)}<span class="lc-t">${esc(t.title)}</span><span class="bk-a">${esc(t.author)}</span></button>
-  <div>${chip}${r&&r.rating?` <span class="xs" style="color:var(--orange);font-weight:600">★ ${r.rating}</span>`:''}</div>${when?`<div class="xs muted">${when}</div>`:''}${fin>1?`<div class="xs muted">Read ${fin}×</div>`:fin===1&&st!=='finished'?`<div class="xs muted">Read once before</div>`:''}<div class="xs ${mine?'own-me':'muted'}">${own}</div>
+  <div>${chip}${r&&r.status==='finished'&&r.rating?` <span class="xs" style="color:var(--orange);font-weight:600">★ ${r.rating}</span>`:''}</div>${when?`<div class="xs muted">${when}</div>`:''}${fin>1?`<div class="xs muted">Read ${fin}×</div>`:fin===1&&st!=='finished'?`<div class="xs muted">Read once before</div>`:''}<div class="xs ${mine?'own-me':'muted'}">${own}</div>
   <div class="lc-act">${act}</div></div>`;
 }
 let recEdit=null;
@@ -2287,7 +2291,7 @@ const ti=x=>`<i>${esc(x)}</i>`;
 const fmtMonY=d=>`${MONF[+d.slice(5,7)-1]} ${d.slice(0,4)}`;
 /* Books you've finished more than once and never rated count as loved too: a reread says as much as a rating. */
 function rereads(){
-  const n={},rated=new Set(S.books.filter(b=>b.rating).map(b=>b.titleId));
+  const n={},rated=new Set(S.books.filter(b=>b.status==='finished'&&b.rating).map(b=>b.titleId));
   S.books.forEach(b=>{if(b.status==='finished')n[b.titleId]=(n[b.titleId]||0)+1});
   return Object.keys(n).filter(id=>n[id]>1&&!rated.has(id)).map(id=>({id,times:n[id],fin:S.books.filter(b=>b.titleId===id&&b.finished).map(b=>b.finished).sort().pop()||''}));
 }
@@ -2295,7 +2299,7 @@ function rereads(){
    (ranked with 4-star books). Ties go to the most recent finish. */
 function lovedAuthors(){
   const by={},put=(k,e)=>{const cur=by[k];if(!cur||e.score>cur.score||e.score===cur.score&&e.fin>cur.fin)by[k]=e};
-  S.books.filter(b=>b.rating>=4).forEach(b=>{const t=titleById(b.titleId),k=t?.olAuthor?.[0];if(k)put(k,{key:k,score:b.rating,why:`You gave ${ti(t.title)} ${fmtStars(b.rating)}`,fin:b.finished||''})});
+  S.books.filter(b=>b.status==='finished'&&b.rating>=4).forEach(b=>{const t=titleById(b.titleId),k=t?.olAuthor?.[0];if(k)put(k,{key:k,score:b.rating,why:`You gave ${ti(t.title)} ${fmtStars(b.rating)}`,fin:b.finished||''})});
   rereads().forEach(r=>{const t=titleById(r.id),k=t?.olAuthor?.[0];if(k)put(k,{key:k,score:4,why:`You’ve read ${ti(t.title)} ${r.times===2?'twice':r.times+' times'}`,fin:r.fin})});
   return Object.values(by).sort((a,b)=>b.score-a.score||b.fin.localeCompare(a.fin)).slice(0,DISC_AUTHORS);
 }
@@ -2542,6 +2546,27 @@ function pruneDisc(){
   if(S.titles.length!==n)save();
 }
 
+/* ---------- did not finish ----------
+   Books you stop don't get a rating; instead, an optional reason and note. When you share your activity, your group
+   sees it with the book, which helps someone deciding whether to borrow it. */
+const DNF_WHY=[['notforme','Not for me'],['slow','Too slow'],['time','Not the right time'],['content','Content I didn’t want'],['returned','Had to return it']];
+const dnfWhyL=k=>(DNF_WHY.find(x=>x[0]===k)||[])[1]||'';
+const dnfDlg=document.getElementById('dnfDlg'),dnfBody=document.getElementById('dnfBody');
+const stopAt=b=>b.format==='audio'?fmtPos(b.pos):'page '+b.pos;
+let dnfSel=null;
+function openDnf(b,undo){
+  dnfSel={id:b.id,undo,why:b.dnfWhy||'',note:b.dnfNote||'',edit:!!(b.dnfWhy||b.dnfNote)};renderDnf();if(!dnfDlg.open)dnfDlg.showModal();
+  dnfBody.querySelector('[data-act=dnfWhy]')?.focus();
+}
+function renderDnf(){
+  const b=book(dnfSel.id);if(!b)return;const shared=S.settings.share&&!S.settings.solo;
+  dnfBody.innerHTML=`<div class="dlg-h"><div style="flex:1;min-width:0"><h2 id="dnfT">${dnfSel.edit?`Why You Stopped ${ti(b.title)}`:`Moved ${ti(b.title)} to Did Not Finish`}</h2><div class="muted small">Your place is saved at ${stopAt(b)}.${dnfSel.undo?' <button class="link-btn sm nx-undo" data-act="dnfUndo">Undo</button>':''}</div></div><button type="button" class="icon-btn x" data-act="dnfClose" aria-label="Close">${ic('x')}</button></div>
+  <div class="f"><span class="fl" id="dnfWhyL">Why did you stop? <span class="sub">(optional)</span></span><div class="chips" role="radiogroup" aria-labelledby="dnfWhyL">${DNF_WHY.map(([k,l])=>`<button type="button" class="tab sm" role="radio" aria-checked="${dnfSel.why===k}" data-act="dnfWhy" data-v="${k}">${l}</button>`).join('')}</div></div>
+  <label class="f"><span>Note <span class="sub">(optional)</span></span><input class="inp" id="dnfNote" maxlength="140" value="${esc(dnfSel.note)}" placeholder="For example, where it lost you"></label>
+  <p class="xs muted" style="margin:0">${shared?'Your group sees this with the book, since you share your activity.':'Only you see this.'}</p>
+  <div class="dlg-f"><button class="btn btn-ghost" data-act="dnfClose">${dnfSel.edit?'Cancel':'Skip'}</button><button class="btn btn-primary" data-act="dnfSave">Save</button></div>`;
+}
+
 /* ---------- book detail ---------- */
 const bookDlg=document.getElementById('bookDlg'),bookBody=document.getElementById('bookBody');
 bookDlg.addEventListener('close',()=>pruneDisc());
@@ -2566,7 +2591,7 @@ function copyRow(c){
   <span class="cp-act">${act}${mine&&!S.settings.solo?`<button class="link-btn sm cp-share" data-act="cpShare" data-id="${c.id}" aria-pressed="${!c.private}" title="Show this copy in the ${esc(GN())} Library">${c.private?`${ic('lock')}Only Me`:`${ic('users')}Shared`}</button>`:''}${mine?`<button class="link-btn sm" data-act="cpRemove" data-id="${c.id}">Remove</button>`:''}</span></div>${bd.reqNote===c.id&&!mine&&!mr?`<div class="req-in req-compose"><label class="f"><span>Note to ${esc(nameOf(c.owner))} <span class="sub">(optional)</span></span><textarea class="inp" id="reqNoteTx" rows="3" maxlength="200" data-count="200" aria-describedby="reqNoteCount" placeholder="When you could pick it up, or why you'd like to read it"></textarea>${charCount('reqNoteCount',0,200)}</label><span class="req-btns"><button class="btn btn-ghost sm" data-act="reqNoteOpen" data-id="">Cancel</button><button class="btn btn-primary sm" data-act="reqBorrow" data-id="${c.id}">${free?'Send Request':'Join the Waiting Line'}</button></span></div>`:''}${incoming.map((r,i)=>`<div class="req-in"><span class="small">${free?'':`<span class="xs muted">${ordinal(i+1)} in line · </span>`}<b>${esc(nameOf(r.from))}</b> asked to borrow this ${ago(r.ts)}.${r.note?`<span class="req-msg">“${esc(r.note)}”</span>`:''}</span>${replyBtns(r,free)}</div>`).join('')}`;
 }
 /* Your latest rating of a book, if any. */
-const myRating=tid=>S.books.filter(b=>b.titleId===tid&&b.rating).map(b=>b.rating).pop()||0;
+const myRating=tid=>S.books.filter(b=>b.titleId===tid&&b.status==='finished'&&b.rating).map(b=>b.rating).pop()||0;
 /* In the recommend forms: include your rating. When you share your activity it's already visible, so it's
    included; when you don't, it's an opt-in for just these people, off by default. */
 function recRateOpt(t,id){
@@ -2623,7 +2648,8 @@ function renderBD(){
       body=`<div class="st st-${r.status}">${STATUS[r.status]}</div> <button class="link-btn sm" data-act="editBook" data-book="${r.id}">${ic('pencil')}Change Status or Details</button>
       ${r.status!=='want'?`<div class="bar" style="margin-top:12px"><span style="width:${pct(r)}%"></span></div><div class="xs muted">${prog} · ${pct(r)}%</div>`:''}
       <div class="xs muted" style="margin-top:6px">${[r.started?`Started ${fmtDateY(r.started)}`:'',r.finished?`Finished ${fmtDateY(r.finished)}`:'',r.dnfOn?`Set aside ${fmtDateY(r.dnfOn)}`:''].filter(Boolean).join(' · ')}</div>
-      ${r.status!=='want'?`<div class="rate"><span class="small">Your Rating <span class="muted">(${rateWho()})</span></span>${starsFor(r)}</div>`:''}`;
+      ${r.status==='finished'?`<div class="rate"><span class="small">Your Rating <span class="muted">(${rateWho()})</span></span>${starsFor(r)}</div>`
+        :r.status==='dnf'?`<div class="rate dnf-why"><span class="small">${r.dnfWhy||r.dnfNote?`Why you stopped: <b>${esc(dnfWhyL(r.dnfWhy)||'')}</b>${r.dnfNote?` “${esc(r.dnfNote)}”`:''}`:'<span class="muted">No reason given for stopping.</span>'}</span><button class="link-btn sm" data-act="dnfEdit" data-book="${r.id}">${r.dnfWhy||r.dnfNote?'Change':'Add a Reason'}</button></div>`:''}`;
     }
   }else if(bd.tab==='activity'){
     const items=S.activity.filter(a=>a.book===t.title&&(a.who!=='me'||S.settings.share)).sort((a,b)=>b.ts-a.ts);
@@ -2857,7 +2883,7 @@ function coverRedraw(){
 async function coverFill(){
   if(coverBusy||navigator.onLine===false)return;coverBusy=true;
   try{
-    const loved=new Set([...S.books.filter(b=>b.rating>=4).map(b=>b.titleId),...rereads().map(r=>r.id)]);
+    const loved=new Set([...S.books.filter(b=>b.status==='finished'&&b.rating>=4).map(b=>b.titleId),...rereads().map(r=>r.id)]);
     const todo=S.titles.filter(t=>needCover(t)||needInfo(t)).sort((a,b)=>loved.has(b.id)-loved.has(a.id));
     for(const t of todo){
       if(!S.titles.includes(t)||!needCover(t)&&!needInfo(t))continue;
@@ -3730,7 +3756,7 @@ logForm.addEventListener('submit',e=>{
   else if(started){const g=S.settings,left=[];if(g.goalType!=='pages')left.push(`${Math.max(1,Math.ceil(g.goalMinutes-after.mins))} more minutes`);if(g.goalType!=='minutes')left.push(`${Math.max(1,g.goalPages-after.pages)} more pages`);
     const sub=!logged?'Happy reading!':!before.met&&after.met&&isToday?`Goal met for today, too. 🔥 ${sk} day streak`:after.met||!isToday?`🔥 ${sk} day streak. Happy reading!`:`${left.join(' or ')} to reach today’s goal.`;
     toast(`📖 You started ${b.title}!`,null,sub,true);if(!before.met&&after.met&&isToday)document.querySelector('.rings')?.classList.add('pop')}
-  else if(f.status==='dnf')toast(`Moved ${b.title} to Did Not Finish. Your place is saved.`);
+  else if(f.status==='dnf')openDnf(b);
   else if(!logged)toast('Saved.');
   else if(!isToday)toast(`Saved for ${fmtDate(f.date)}.`,null,sk>skBefore?`🔥 Your streak is now ${sk} days.`:'');
   else if(!before.met&&after.met){toast(after.both?'🎉 Both goals met today!':'🎉 Goal met for today!',null,`🔥 ${sk} day streak. Keep it going!`,true);document.querySelector('.rings')?.classList.add('pop')}
@@ -3859,6 +3885,7 @@ document.addEventListener('click',e=>{
       else if(v==='dnf'){b.status='dnf';b.dnfOn=today()}
       if(selBook===b.id)selBook=null;
       save();if(editDlg.open)editDlg.close();render();if(bookDlg.open)renderBD();
+      if(v==='dnf'&&prev!=='dnf'){openDnf(b,restoreTo(snap));break}
       toast(`Moved ${b.title} to ${{reading:'Currently Reading',paused:'Paused',want:'To Read',queue:'your Reading Queue',finished:'Finished',dnf:'Did Not Finish'}[v]}.`,restoreTo(snap));break}
     case 'actFilter':actOpen=!actOpen;{const y=window.scrollY;render();window.scrollTo(0,y)}break;
     case 'actCat':{const h=S.settings.hideAct=S.settings.hideAct||[],k=a.dataset.v;S.settings.hideAct=h.includes(k)?h.filter(x=>x!==k):[...h,k];save();const y=window.scrollY;render();window.scrollTo(0,y);break}
@@ -3997,6 +4024,14 @@ document.addEventListener('click',e=>{
     case 'goRecs':view='library';lib.tab='discover';lib.rv='to';render();window.scrollTo(0,0);break;
     case 'surpriseClear':surprise=null;refreshLib();document.querySelector('[data-act=surprise]')?.focus();break;
     case 'nextClose':nextDlg.close();break;
+    case 'dnfWhy':{dnfSel.note=document.getElementById('dnfNote').value;dnfSel.why=dnfSel.why===a.dataset.v?'':a.dataset.v;renderDnf();dnfBody.querySelector(`[data-act=dnfWhy][data-v="${a.dataset.v}"]`)?.focus();break}
+    case 'dnfSave':{const b=book(dnfSel.id),note=document.getElementById('dnfNote').value.trim(),had=!!(b.dnfWhy||b.dnfNote);
+      if(dnfSel.why)b.dnfWhy=dnfSel.why;else delete b.dnfWhy;if(note)b.dnfNote=note;else delete b.dnfNote;
+      if(!had&&(b.dnfWhy||b.dnfNote))post('dnf','stopped reading',b.title,`at ${stopAt(b)}${b.dnfWhy?` · ${dnfWhyL(b.dnfWhy).toLowerCase()}`:''}${b.dnfNote?`: “${b.dnfNote}”`:''}`);
+      save();dnfDlg.close();render();if(bookDlg.open)renderBD();toast(b.dnfWhy||b.dnfNote?'Reason saved.':'Saved.');break}
+    case 'dnfClose':dnfDlg.close();break;
+    case 'dnfUndo':{const u=dnfSel?.undo;dnfDlg.close();if(u){u();toast('Undone.')}break}
+    case 'dnfEdit':{const b=book(a.dataset.book);if(b)openDnf(b);break}
     case 'nextUndo':{const u=nextDone?.undo;nextDlg.close();if(u){u();toast('Undone.')}break}
     case 'toggleWant':toggleWant(a.dataset.id);break;
     case 'dismissRec':{const snap=snapshot(),t=titleById(a.dataset.id),who=[...new Set(S.recs.filter(r=>r.titleId===a.dataset.id).map(r=>nameOf(r.from)))].join(' and ');
@@ -4094,7 +4129,7 @@ document.addEventListener('click',e=>{
     case 'editGoal':openGoal();break;
     case 'closeGoal':goalDlg.close();break;
     case 'pause':{const snap=snapshot(),b=book(id);b.status='paused';b.pausedOn=today();if(selBook===id)selBook=null;save();render();toast(`Paused ${b.title}. Your place is saved.`,restoreTo(snap));break}
-    case 'dnf':{const snap=snapshot(),b=book(id);b.status='dnf';b.dnfOn=today();selBook=null;save();render();toast(`Moved ${b.title} to Did Not Finish. Your place is saved.`,restoreTo(snap));break}
+    case 'dnf':{const snap=snapshot(),b=book(id);b.status='dnf';b.dnfOn=today();selBook=null;save();render();openDnf(b,restoreTo(snap));break}
     case 'pickup':{const b=book(id);b.status='reading';delete b.dnfOn;save();render();toast(`${b.title} is back in Currently Reading at ${b.format==='audio'?fmtPos(b.pos):'page '+b.pos}.`);break}
     case 'restart':{const b=book(id);b.status='reading';b.pos=0;b.started=today();delete b.dnfOn;save();render();toast(`Starting ${b.title} over from the beginning.`);break}
     case 'undo':{const t=document.getElementById('toast');if(undoFn){undoFn();undoFn=null}hideT(t);break}

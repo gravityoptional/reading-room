@@ -24,3 +24,6 @@ Known issues and follow-ups for the next prototype. Not published; the site only
   details. If testers report it, add a short "Hidden · Undo" in the card's place for a few seconds.
 - **Language setting** (James agreed Oct 31): Open Library lookups prefer English editions, fixed in code. Add a
   member setting (for example Spanish) that sets the preferred edition language.
+- **Did Not Finish reasons** (James, Oct 31): the list is fine for now (Not for me, Too slow, Not the right time,
+  Content I didn't want, Had to return it); revisit later. Possible later use: "Not for me" as a soft Not for Me
+  for that author in Discover.
