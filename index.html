@@ -1029,8 +1029,10 @@ main section.card .card-h .ico{display:none}
 /* Ghost card after Not for Me: faded in place, with Hidden · Undo, until the row closes up. */
 .dc-ghost{border-style:dashed;background:transparent;box-shadow:none}
 .dc-ghost>:not(.dc-ghost-bar){opacity:.22;filter:grayscale(1)}
-.dc-ghost-bar{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);display:flex;align-items:center;gap:6px;white-space:nowrap;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:4px 6px 4px 12px;font-size:13px;font-weight:600;color:var(--text);box-shadow:0 6px 18px rgba(15,23,42,.12)}
+.dc-ghost-bar{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:0;white-space:nowrap;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 6px 4px 12px;font-size:13px;font-weight:600;color:var(--text);box-shadow:0 6px 18px rgba(15,23,42,.12)}
 .dc-ghost-bar .link-btn{padding:2px 6px}
+.dg-main{display:flex;align-items:center;gap:6px}
+.dg-sub{font-size:11px;font-weight:500;color:var(--text-2);padding:0 6px 3px 0;white-space:normal;text-align:center;max-width:150px}
 @media (prefers-reduced-motion:no-preference){.dc-ghost>:not(.dc-ghost-bar){transition:opacity .2s}}
 /* Narrow phones: no room beside the cover, so Not for Me sits under the reason line instead. */
 @media (max-width:400px){.dc-nfm{position:static;align-self:flex-start;margin-top:2px}}
@@ -1637,7 +1639,7 @@ function tourSteps(mode){
     final:()=>S.books.length?{act:'tourLog',label:'Log Your Reading'}:{act:'tourFind',label:'Add Your First Book'}};
   if(mode==='group')return [
     {id:'gwelcome',page:'dashboard',title:`Welcome to ${G}`,text:()=>'You’re reading with a group now. Here’s what’s new, in a few quick stops. Your reading stays yours and counts in every group you join.'},
-    {id:'glib',page:'library',sel:'[data-tour=lib-family]',title:`The ${G} Library`,text:()=>'Books members own, in one place. See who has a copy and ask to borrow it.'},
+    {id:'glib',page:'library',tab:'family',sel:'[data-tour=lib-family]',title:`The ${G} Library`,text:()=>'Books members own, in one place. See who has a copy and ask to borrow it.'},
     {id:'gact',page:'dashboard',sel:'[data-tour=activity]',title:'Group Activity',text:()=>'What your group is reading and finishing. Cheer people on with a reaction. Only members who share appear here.'},
     {id:'gch',page:'challenges',sel:'[data-tour=ch-family]',title:'Group Challenges and Battle of the Books',text:()=>'Join a challenge your group started, or organize a Battle of the Books, where everyone adds books to a shared list, reads them all, and then meets for an in-person quiz.'},
     {id:'gpriv',page:'dashboard',sel:'[data-tour=account]',title:'Your Privacy',text:()=>'Choose what your group sees. You can change this anytime in your account menu.',extra:privacyExtra,final:()=>({act:'tourEnd',label:'Done'})}];
@@ -1648,10 +1650,10 @@ function tourSteps(mode){
     {id:'log',page:'dashboard',sel:'[data-tour=log]',title:'Log Reading and the Timer',text:()=>'Log Reading records pages or minutes in a few seconds. Start Timer counts the minutes while you read, then logs them for you.'},
     {id:'current',page:'dashboard',sel:'[data-tour=current]',title:'Currently Reading',text:()=>noBooks()?'Books you’re reading will show up here, each with its progress, finish estimate, and its own Log Reading button.':'Each book you’re reading shows its progress, finish estimate, and its own Log Reading button.'},
     {id:'queue',page:'dashboard',sel:'[data-tour=queue]',title:'Reading Queue',text:()=>`${upList().length?'Your next few books, in order.':'Your next few books will line up here, in order.'} Add up to 10 from your To Read list with Add to Reading Queue, and use the arrows there to put them in order. The first one also appears in Currently Reading, so you always know what’s next.`},
-    {id:'nextread',page:'dashboard',sel:'[data-tour=nextread]',soft:true,title:'Your Next Read',text:()=>`${document.querySelector('[data-tour=nextread]')?.offsetParent?'When you’re between books, or just finished one, three picks show up here, each with why it’s here and where to get it.':'When you’re between books, or just finished one, three picks show up on your dashboard, each with why it’s here and where to get it.'} Finish a book and What’s Next? shows the next book in your Reading Queue first.`},
+    {id:'nextread',page:'dashboard',sel:'[data-tour=nextread]',soft:true,title:'Your Next Read',text:()=>`${document.querySelector('[data-tour=nextread]')?.offsetParent?'When you’re between books, or just finished one, up to three picks show up here, each with why it’s here and where to get it.':'When you’re between books, or just finished one, up to three picks show up on your dashboard, each with why it’s here and where to get it.'} Finish a book and What’s Next? shows the next book in your Reading Queue first.`},
     {id:'activity',cond:!solo,page:'dashboard',sel:'[data-tour=activity]',title:'Group Activity',text:()=>'What your group is reading and finishing. Cheer people on with a reaction. Only members who share appear here.'},
-    {id:'library',page:'library',sel:'[data-tour=library]',title:'Your Library',text:()=>`${solo?'My Books holds every book connected to you, from To Read to Finished.':`My Books holds every book connected to you, and the ${G} Library shows what everyone owns.`} Add a Book searches by title, author, or ISBN.${S.books.length?'':' Books you add will show up here.'} Tap any book, wherever you see it, to open it: from there you can start or log reading, change its status, rate it, add notes, add your copy${solo?', or edit its details':', edit its details, recommend it to someone, or ask to borrow it'}.`},
-    {id:'discover',page:'library',sel:'[data-tour=lib-discover]',title:'Discover',text:()=>'Discover, a tab in your Library, suggests books you might like, says why, and shows where to get each one.'},
+    {id:'library',page:'library',tab:solo?'mybooks':'family',sel:'[data-tour=library]',title:'Your Library',text:()=>`${solo?'My Books holds every book connected to you, from To Read to Finished.':`My Books holds every book connected to you, and the ${G} Library shows what everyone owns.`} Add a Book searches by title, author, or ISBN.${S.books.length?'':' Books you add will show up here.'} Tap any book, wherever you see it, to open it: from there you can start or log reading, change its status, rate it, add notes, add your copy${solo?', or edit its details':', edit its details, recommend it to someone, or ask to borrow it'}.`},
+    {id:'discover',page:'library',tab:'discover',sel:'[data-tour=lib-discover]',title:'Discover',text:()=>'Discover, a tab in your Library, suggests books you might like, says why, and shows where to get each one.'},
     {id:'challenges',page:'challenges',sel:'[data-tour=challenge-tabs]',title:'Challenges and Trophies',text:()=>solo?'Set personal challenges, like 12 books this year. Trophies you earn collect on the Trophy Wall.':'Join group challenges, set personal goals, or organize a Battle of the Books, where everyone adds books to a shared list, reads them all, and then meets for an in-person quiz. Trophies you earn collect on the Trophy Wall, where you can also give awards to each other, like Read-Aloud Star or Most Improved.'},
     {id:'admin',cond:!solo&&admin,page:'challenges',sel:'[data-tour=groups]',title:'For Group Admins',text:()=>`You’re an admin of ${G}. That means you can also correct shared book details with Edit Book on any book, and record the winner when a Battle of the Books ends. Everyone can join and start battles and challenges.`},
     {id:'history',page:'history',sel:'[data-tour=calendar]',title:'History',text:()=>S.sessions.length?'Your reading over time. Darker days mean more reading; tap a day to see what you read. Records and yearly totals are below.':'Each day you read will fill in here, darker for more reading. Tap a day to see what you read; records and yearly totals are below.'},
@@ -1689,6 +1691,8 @@ async function tourShow(i,dir){
     if(nb){tourRender({title:`Next: ${PAGE_L[st.page]}`,text:()=>'',hint:true},nb);await new Promise(r=>setTimeout(r,reducedMotion()?600:900));if(!tour)return}
     view=st.page;if(st.page==='library'&&S.settings.solo&&lib.tab!=='mybooks')lib.tab='mybooks';render();
   }
+  // Library stops open on their own tab (the Library otherwise reopens on the last tab used).
+  if(st.tab&&view==='library'&&lib.tab!==st.tab){lib.tab=st.tab;lib.rv='disc';render()}
   let el=st.sel?document.querySelector(st.sel):null;
   if(st.sel&&(!el||!el.offsetParent)){if(!st.soft){tour.i=i;return tourShow(i+dir,dir)}el=null}
   tour.i=i;
@@ -2552,6 +2556,16 @@ function pruneDisc(){
   if(S.titles.length!==n)save();
 }
 
+/* Ghost card after Not for Me: the card stays in place, faded, with Hidden · Undo (and, for a recommendation, who
+   won't be told) for a few seconds; then the row closes up and focus moves to the card that took its place. */
+function ghostCard(card,k,sub){
+  const rowId=card.closest('.dc-row')?.querySelector('.dc-h')?.id,idx=[...card.parentNode.children].indexOf(card);
+  [...card.children].forEach(c=>c.inert=true);card.classList.add('dc-ghost');
+  card.insertAdjacentHTML('beforeend',`<div class="dc-ghost-bar" role="status"><span class="dg-main"><span>Hidden</span><span aria-hidden="true">·</span><button class="link-btn sm" data-act="ghostUndo" data-k="${esc(k)}">Undo</button></span>${sub?`<span class="dg-sub">${esc(sub)}</span>`:''}</div>`);
+  card.querySelector('[data-act=ghostUndo]').focus({preventScroll:true});
+  clearTimeout(ghostT);ghostT=setTimeout(()=>{const had=document.activeElement?.closest('.dc-ghost');refreshLib();
+    if(had&&rowId){const cs=document.getElementById(rowId)?.closest('.dc-row')?.querySelectorAll('.dc-card');const c=cs?.[Math.min(idx,cs.length-1)];(c?.querySelector('.dc-nfm')||c?.querySelector('.lc-open'))?.focus({preventScroll:true})}},GHOST_MS);
+}
 /* ---------- did not finish ----------
    Books you stop don't get a rating; instead, an optional reason and note. When you share your activity, your group
    sees it with the book, which helps someone deciding whether to borrow it. */
@@ -4020,14 +4034,7 @@ document.addEventListener('click',e=>{
     case 'discHide':{const card=a.closest('.dc-card'),k=a.dataset.k;
       S.discHide=[...(S.discHide||[]),k];save();
       if(!card||bookDlg.open){refreshLib();break}
-      // Ghost card: the card stays in place, faded, with Hidden · Undo for a few seconds, then the row closes up.
-      const rowId=card.closest('.dc-row')?.querySelector('.dc-h')?.id,idx=[...card.parentNode.children].indexOf(card);
-      [...card.children].forEach(c=>c.inert=true);card.classList.add('dc-ghost');
-      card.insertAdjacentHTML('beforeend',`<div class="dc-ghost-bar" role="status"><span>Hidden</span><span aria-hidden="true">·</span><button class="link-btn sm" data-act="ghostUndo" data-k="${esc(k)}">Undo</button></div>`);
-      card.querySelector('[data-act=ghostUndo]').focus({preventScroll:true});
-      clearTimeout(ghostT);ghostT=setTimeout(()=>{const had=document.activeElement?.closest('.dc-ghost');refreshLib();
-        // Keep keyboard focus on the card that took its place in the same row.
-        if(had&&rowId){const cs=document.getElementById(rowId)?.closest('.dc-row')?.querySelectorAll('.dc-card');const c=cs?.[Math.min(idx,cs.length-1)];(c?.querySelector('.dc-nfm')||c?.querySelector('.lc-open'))?.focus({preventScroll:true})}},GHOST_MS);break}
+      ghostCard(card,k);break}
     case 'ghostUndo':{clearTimeout(ghostT);S.discHide=(S.discHide||[]).filter(x=>x!==a.dataset.k);save();refreshLib();break}
     case 'discUnhide':{const t=titleById(a.dataset.id),ks=[t&&'t:'+t.id,t?.olKey].filter(Boolean);S.discHide=(S.discHide||[]).filter(k=>!ks.includes(k));save();refreshLib();break}
     case 'discOpen':{const it=discIdx[a.dataset.k];if(!it)break;let t=it.t;if(!t){const n=S.titles.length;t=olTitleFrom(it.x);if(S.titles.length>n)t.fromDisc=true}if(nextDlg.open)nextDlg.close();openTitle(t.id);break}
@@ -4050,7 +4057,8 @@ document.addEventListener('click',e=>{
     case 'toggleWant':toggleWant(a.dataset.id);break;
     case 'dismissRec':{const snap=snapshot(),t=titleById(a.dataset.id),who=[...new Set(S.recs.filter(r=>r.titleId===a.dataset.id).map(r=>nameOf(r.from)))].join(' and ');
       // Kept private: the recommendation stays as sent; only this member's hidden list changes.
-      S.discHide=[...(S.discHide||[]),t.olKey||'t:'+t.id];save();refreshLib();toast(`Removed ${t.title} from your recommendations.`,restoreTo(snap),`${who} won’t be told.`);break}
+      const hk=t.olKey||'t:'+t.id;S.discHide=[...(S.discHide||[]),hk];save();
+      const gc=a.closest('.dc-card');if(gc&&!bookDlg.open){ghostCard(gc,hk,`${who} won’t be told`);break}refreshLib();toast(`Removed ${t.title} from your recommendations.`,restoreTo(snap),`${who} won’t be told.`);break}
     case 'addBook':openAdd();break;
     case 'closeAdd':addDlg.close();refreshLib();break;
     case 'adTab':ad.tab=a.dataset.v;ad.own=null;renderAdd();if(ad.tab==='search')setTimeout(()=>document.getElementById('adQ')?.focus(),30);if(ad.tab==='manual')setTimeout(()=>document.getElementById('amTitle')?.focus(),30);break;
