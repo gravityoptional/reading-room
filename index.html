@@ -2276,7 +2276,7 @@ function refreshLib(){
    Choose From What You Have (Continue a Series, From Your To Read, Surprise Me), and Recommendations. */
 const DISC_KEY=NEXT?'rr-next-disc-v1':'rr-disc-v1',DISC_TTL=14*864e5,DISC_AUTHORS=8;
 let discCache;try{discCache=JSON.parse(localStorage.getItem(DISC_KEY))||{}}catch(e){discCache={}}
-discCache.a=discCache.a||{};
+discCache.a=discCache.a||{};discCache.e=discCache.e||{};
 let discBusy=false,discTimer,surprise=null,discIdx={};
 /* Compare titles loosely: no leading article, subtitle, punctuation, or case. */
 const normT=x=>sortKey(String(x||'').split(/[:(]/)[0]).replace(/[^a-z0-9 ]/g,'').replace(/\s+/g,' ').trim();
@@ -2327,6 +2327,27 @@ async function discLoad(){
     if(view==='discover'||view==='dashboard')coverRedraw();
     await new Promise(r=>setTimeout(r,1000));
   }}finally{discBusy=false}
+}
+/* English edition to read or borrow. Open Library's own pick of edition can be in any language (a Dutch Judy
+   Moody, a French Martian), so for books shown with a free or borrowable ebook, look through the work's editions
+   once for the first English one with a scan. One lookup per second; remembered for two weeks. */
+let enBusy=false;const enTodo=new Set();
+function enEdition(key){
+  if(!key)return null;const c=discCache.e[key];
+  if(c&&c.ts>Date.now()-DISC_TTL)return c;
+  enTodo.add(key);if(!enBusy)setTimeout(enFill,300);return null;
+}
+async function enFill(){
+  if(enBusy||navigator.onLine===false)return;enBusy=true;
+  try{while(enTodo.size){const key=enTodo.values().next().value;enTodo.delete(key);
+    let r;try{r=await fetch(`https://openlibrary.org${key}/editions.json?limit=100`,{headers:{Accept:'application/json'}})}catch(e){break}
+    if(!r.ok)break;
+    const e=((await r.json()).entries||[]).find(x=>x.ocaid&&(x.languages||[]).some(l=>l.key==='/languages/eng'));
+    discCache.e[key]=e?{ts:Date.now(),ed:e.key.split('/').pop(),ia:e.ocaid}:{ts:Date.now()};
+    try{localStorage.setItem(DISC_KEY,JSON.stringify(discCache))}catch(err){}
+    if(e)coverRedraw();
+    await new Promise(z=>setTimeout(z,1000));
+  }}finally{enBusy=false}
 }
 /* Called when the background lookup finds the author of a book you rated highly. */
 function discRefresh(){clearTimeout(discTimer);discTimer=setTimeout(discLoad,1500)}
@@ -2379,8 +2400,9 @@ function getOpts(t,x){
   const opts=[];
   const lend=!S.settings.solo&&t&&copiesOf(t.id).find(c=>c.owner!=='me'&&!c.private&&c.format==='physical'&&copyFree(c));
   if(lend)opts.push({act:`data-act="getBorrow" data-id="${t.id}" data-c="${lend.id}"`,l:`Borrow from ${esc(nameOf(lend.owner))}`,i:'users'});
-  if(eb?.access==='public')opts.push({url:eb.ia?`https://archive.org/details/${encodeURIComponent(eb.ia)}`:`https://openlibrary.org${key}`,l:'Read Free Online',i:'book'});
-  else if(eb?.access==='borrowable')opts.push({url:`https://openlibrary.org${key}`,l:'Borrow Free on Open Library',i:'book'});
+  const en=(eb?.access==='public'||eb?.access==='borrowable')?enEdition(key):null;
+  if(eb?.access==='public')opts.push({url:en?.ia?`https://archive.org/details/${encodeURIComponent(en.ia)}`:eb.ia?`https://archive.org/details/${encodeURIComponent(eb.ia)}`:`https://openlibrary.org${key}`,l:'Read Free Online',i:'book'});
+  else if(eb?.access==='borrowable')opts.push({url:en?.ed?`https://openlibrary.org/books/${encodeURIComponent(en.ed)}`:`https://openlibrary.org${key}`,l:'Borrow Free on Open Library',i:'book'});
   opts.push({url:t?.isbn?`https://search.worldcat.org/search?q=bn:${encodeURIComponent(t.isbn)}`:`https://search.worldcat.org/search?q=${encodeURIComponent(`ti:${look.title}${au?` au:${au}`:''}`)}`,l:'Find at Your Library',i:'pin'});
   opts.buy={url:`https://bookshop.org/search?keywords=${encodeURIComponent(t?.isbn||`${look.title} ${au}`.trim())}`,l:'Buy'};
   return opts;

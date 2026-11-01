@@ -6,9 +6,10 @@ Known issues and follow-ups for the next prototype. Not published; the site only
 
 - ~~Undo in the finish window~~: tested by James Oct 31, 2026, working.
 - ~~More by This Author with real data~~: tested by James Oct 31, 2026, working.
-- **Borrow Free on Open Library** now opens the book's main Open Library page and asks for English editions (the
-  Judy Moody link opened a Dutch edition). Recheck Judy Moody, M.D.
-- **Read Free Online**: not yet tested with a real free book. The This Side of Paradise cover and scan were a
+- **Borrow Free on Open Library / Read Free Online** now link to the first English edition with a scan, found in
+  the background (the main page still chose foreign editions: a Dutch Judy Moody, a French Martian). Recheck
+  Judy Moody, M.D. and The Martian; the link updates a moment after the card first appears.
+- **Read Free Online**: not yet tested with a real free book (James couldn't find one, Oct 31). The This Side of Paradise cover and scan were a
   wrong match (an American Film magazine scan); matching is fixed and old matches are re-checked once. Recheck it.
 
 ## Issues
