@@ -22,3 +22,5 @@ Known issues and follow-ups for the next prototype. Not published; the site only
   retry). WorldCat's traffic protection, not Reading Room. If it recurs, switch the link target.
 - **Not for Me mis-taps leave no trace** on site suggestions (quiet hide by design). Recovery is through the book's
   details. If testers report it, add a short "Hidden · Undo" in the card's place for a few seconds.
+- **Language setting** (James agreed Oct 31): Open Library lookups prefer English editions, fixed in code. Add a
+  member setting (for example Spanish) that sets the preferred edition language.
