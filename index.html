@@ -1026,6 +1026,12 @@ main section.card .card-h .ico{display:none}
 /* Lean card pieces */
 .dc-nfm{position:absolute;top:10px;right:10px;z-index:1;border:0;background:none;padding:2px 0;font-size:12px;color:var(--text-2);text-decoration:underline;text-underline-offset:3px;text-decoration-color:color-mix(in srgb,var(--text-2) 50%,transparent)}
 .dc-nfm:hover{color:var(--text)}
+/* Ghost card after Not for Me: faded in place, with Hidden · Undo, until the row closes up. */
+.dc-ghost{border-style:dashed;background:transparent;box-shadow:none}
+.dc-ghost>:not(.dc-ghost-bar){opacity:.22;filter:grayscale(1)}
+.dc-ghost-bar{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);display:flex;align-items:center;gap:6px;white-space:nowrap;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:4px 6px 4px 12px;font-size:13px;font-weight:600;color:var(--text);box-shadow:0 6px 18px rgba(15,23,42,.12)}
+.dc-ghost-bar .link-btn{padding:2px 6px}
+@media (prefers-reduced-motion:no-preference){.dc-ghost>:not(.dc-ghost-bar){transition:opacity .2s}}
 /* Narrow phones: no room beside the cover, so Not for Me sits under the reason line instead. */
 @media (max-width:400px){.dc-nfm{position:static;align-self:flex-start;margin-top:2px}}
 .dc-why i,.nx-q i{font-style:italic}
@@ -2876,7 +2882,7 @@ async function olCoverFor(t,redo){
 function coverRedraw(){
   clearTimeout(coverDraw);
   coverDraw=setTimeout(()=>{
-    if(document.activeElement?.closest('input,select,textarea')||document.querySelector('.menu:not([hidden])'))return coverRedraw();
+    if(document.activeElement?.closest('input,select,textarea')||document.querySelector('.menu:not([hidden]),.dc-ghost'))return coverRedraw();
     const y=window.scrollY;render();window.scrollTo(0,y);if(bookDlg.open)renderBD();if(addDlg.open)renderAdd(true);
   },2500);
 }
@@ -3841,7 +3847,7 @@ document.addEventListener('touchstart',e=>{clearTimeout(lp);lpFired=false;const 
 setInterval(()=>{if(S.timer&&!S.timer.stop){const v=fmtClock(tElapsed());document.querySelectorAll('[data-timer]').forEach(x=>x.textContent=v)}},1000);
 
 /* ---------- events ---------- */
-let toastT;
+let toastT,ghostT;const GHOST_MS=5000;
 let undoFn=null;
 const snapshot=()=>JSON.stringify(S);
 const restoreTo=snap=>()=>{S=JSON.parse(snap);save();render()};
@@ -4011,10 +4017,18 @@ document.addEventListener('click',e=>{
     case 'discWant':{const it=discIdx[a.dataset.k];if(!it)break;const snap=snapshot(),t=it.t||olTitleFrom(it.x),r=myReading(t.id);
       if(!r||r.status==='finished'||r.status==='dnf')S.books.push({id:'r'+uid(),titleId:t.id,title:t.title,author:t.author,format:'print',total:t.pages||300,pos:0,status:'want',c:t.c,wantSince:today()});
       save();refreshLib();toast(`Added ${t.title} to your To Read list.`,restoreTo(snap));break}
-    case 'discHide':{const card=a.closest('.dc-card'),rowId=card?.closest('.dc-row')?.querySelector('.dc-h')?.id,idx=card?[...card.parentNode.children].indexOf(card):-1;
-      S.discHide=[...(S.discHide||[]),a.dataset.k];save();refreshLib();
-      // Quiet hide: no message. Keep keyboard focus on the card that took its place in the same row.
-      if(rowId){const cs=document.getElementById(rowId)?.closest('.dc-row')?.querySelectorAll('.dc-card');const c=cs?.[Math.min(idx,cs.length-1)];(c?.querySelector('.dc-nfm')||c?.querySelector('.lc-open'))?.focus({preventScroll:true})}break}
+    case 'discHide':{const card=a.closest('.dc-card'),k=a.dataset.k;
+      S.discHide=[...(S.discHide||[]),k];save();
+      if(!card||bookDlg.open){refreshLib();break}
+      // Ghost card: the card stays in place, faded, with Hidden · Undo for a few seconds, then the row closes up.
+      const rowId=card.closest('.dc-row')?.querySelector('.dc-h')?.id,idx=[...card.parentNode.children].indexOf(card);
+      [...card.children].forEach(c=>c.inert=true);card.classList.add('dc-ghost');
+      card.insertAdjacentHTML('beforeend',`<div class="dc-ghost-bar" role="status"><span>Hidden</span><span aria-hidden="true">·</span><button class="link-btn sm" data-act="ghostUndo" data-k="${esc(k)}">Undo</button></div>`);
+      card.querySelector('[data-act=ghostUndo]').focus({preventScroll:true});
+      clearTimeout(ghostT);ghostT=setTimeout(()=>{const had=document.activeElement?.closest('.dc-ghost');refreshLib();
+        // Keep keyboard focus on the card that took its place in the same row.
+        if(had&&rowId){const cs=document.getElementById(rowId)?.closest('.dc-row')?.querySelectorAll('.dc-card');const c=cs?.[Math.min(idx,cs.length-1)];(c?.querySelector('.dc-nfm')||c?.querySelector('.lc-open'))?.focus({preventScroll:true})}},GHOST_MS);break}
+    case 'ghostUndo':{clearTimeout(ghostT);S.discHide=(S.discHide||[]).filter(x=>x!==a.dataset.k);save();refreshLib();break}
     case 'discUnhide':{const t=titleById(a.dataset.id),ks=[t&&'t:'+t.id,t?.olKey].filter(Boolean);S.discHide=(S.discHide||[]).filter(k=>!ks.includes(k));save();refreshLib();break}
     case 'discOpen':{const it=discIdx[a.dataset.k];if(!it)break;let t=it.t;if(!t){const n=S.titles.length;t=olTitleFrom(it.x);if(S.titles.length>n)t.fromDisc=true}if(nextDlg.open)nextDlg.close();openTitle(t.id);break}
     case 'readIt':{const t=titleById(a.dataset.id);if(!t)break;const snap=snapshot();(S.readIt=S.readIt||{})[t.id]=today();save();refreshLib();toast(`Marked ${t.title} as already read.`,restoreTo(snap),'It won’t be suggested, and it isn’t counted in your stats.');break}
