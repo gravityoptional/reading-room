@@ -553,7 +553,12 @@ button.cal-d{border:0;font:inherit;color:inherit;cursor:pointer;position:relativ
 .timer-pill{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:8;display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:6px 6px 6px 14px;box-shadow:0 10px 30px rgba(15,23,42,.18);font-variant-numeric:tabular-nums;font-weight:600}
 .timer-pill .tp-t{font-weight:400;color:var(--text-2);max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .timer-pill .btn{padding:6px 12px;border-radius:999px}
-[data-edit]{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.d-cover.cover-btn{border:0;background:none;padding:0;display:block}
+.d-tlink,.bk-tlink{border:0;background:none;padding:0;color:inherit;text-align:left;cursor:pointer}
+.d-tlink{font:inherit}
+.bk-tlink{font-family:inherit}
+.d-tlink:hover,.bk-tlink:hover{color:var(--primary);text-decoration:underline;text-underline-offset:3px}
+.bk-tlink{display:block}
 @media (max-width:720px){.timer-pill{left:12px;right:12px;bottom:calc(70px + env(safe-area-inset-bottom,0px))}.quick button{font-size:11px}}
 @media (prefers-reduced-motion:reduce){.rings.pop{animation:none}}
 .pick-h{font-size:13px;font-weight:600;margin:2px 0 6px}
@@ -1539,13 +1544,15 @@ function bookStats(b){
   const started=b.started||ss.map(s=>s.date).sort()[0]||null;
   return {left,per,toGo,finish,started};
 }
+/* Opens a reading book's details on My Reading; books without a Reading Room title open Edit instead. */
+const openRead=b=>b.titleId&&titleById(b.titleId)?`data-act="openTitle" data-id="${b.titleId}" data-tab="mine"`:`data-act="editBook" data-book="${b.id}"`;
 function detailPanel(b,list){
   const audio=b.format==='audio',st=bookStats(b),ms=milestone(b),n=list.length;
   const stat=(l,v,cls='')=>`<div class="d-stat"><div class="l">${l}</div><div class="n ${cls}">${v}</div></div>`;
   return `<div class="carousel">
   ${n>1?`<button class="arrow prev" data-act="prevBook" aria-label="Previous book">${ic('chevL')}</button>`:''}
-  <div class="detail" id="detail" aria-live="polite"><div class="d-left"><div class="d-cover" data-edit="${b.id}" title="Double-click to edit">${cover(b,140)}</div>${sideActs(b,'side-acts')}</div><div style="min-width:0">
-    <div class="d-kicker">Reading Now</div><h3 class="d-title" data-edit="${b.id}" title="Double-click to edit">${esc(b.title)}</h3><div class="muted small">${esc(b.author)}${st.started?`, started ${fmtDateY(st.started)}`:''}${audio?' · audiobook':''}</div>
+  <div class="detail" id="detail" aria-live="polite"><div class="d-left"><button class="d-cover cover-btn" ${openRead(b)} aria-label="${esc(b.title)} details">${cover(b,140)}</button>${sideActs(b,'side-acts')}</div><div style="min-width:0">
+    <div class="d-kicker">Reading Now</div><h3 class="d-title"><button class="d-tlink" ${openRead(b)}>${esc(b.title)}</button></h3><div class="muted small">${esc(b.author)}${st.started?`, started ${fmtDateY(st.started)}`:''}${audio?' · audiobook':''}</div>
     ${sideActs(b,'side-acts-m')}
     <div class="d-prog"><span>${audio?`${fmtPos(b.pos)} of ${fmtPos(b.total)}`:`Page ${b.pos} of ${b.total}`}</span><b>${pct(b)}%</b></div>
     <div class="bar"><span style="width:${pct(b)}%"></span></div>
@@ -1566,7 +1573,7 @@ function sideActs(b,cls){
   return `<div class="${cls}" role="group" aria-label="More for ${esc(b.title)}"><button class="sa" data-act="finish" data-book="${b.id}">${ic('check')}Mark Finished</button><button class="sa" data-act="pause" data-book="${b.id}">${ic('pause')}Pause</button><button class="sa" data-act="dnf" data-book="${b.id}">${ic('x')}Did Not Finish</button><button class="sa" data-act="editBook" data-book="${b.id}">${ic('pencil')}Edit</button></div>`;
 }
 function miniCard(b,sel){
-  return `<button class="mini ${sel?'sel':''}" data-act="select" data-book="${b.id}" data-edit="${b.id}" title="Double-click to edit" aria-pressed="${sel}" aria-label="Show ${esc(b.title)}">${cover(b)}<span class="mini-t">${esc(b.title)}</span><span class="bar"><span style="width:${pct(b)}%"></span></span><span class="bk-meta">${pct(b)}%</span></button>`;
+  return `<button class="mini ${sel?'sel':''}" data-act="select" data-book="${b.id}" aria-pressed="${sel}" aria-label="Show ${esc(b.title)}">${cover(b)}<span class="mini-t">${esc(b.title)}</span><span class="bar"><span style="width:${pct(b)}%"></span></span><span class="bk-meta">${pct(b)}%</span></button>`;
 }
 function readingCard(){
   const list=readingList(),b=currentSel(),n=list.length;
@@ -1586,7 +1593,7 @@ function stepBook(d,refocus){
 }
 function pausedBlock(){
   const list=S.books.filter(b=>b.status==='paused');
-  const body=list.length?`<div class="paused">${(showPaused?list:list.slice(0,2)).map(b=>`<div class="bk" data-edit="${b.id}" title="Double-click to edit">${cover(b)}<div><div class="bk-t">${esc(b.title)}</div><div class="bk-a">${esc(b.author)}</div><div class="bk-meta" style="margin-top:6px">Paused at ${b.format==='audio'?fmtPos(b.pos):b.pos} of ${b.format==='audio'?fmtPos(b.total):b.total}</div>${b.pausedOn?`<div class="bk-meta">Paused on ${fmtDate(b.pausedOn)}</div>`:''}</div><div class="bk-actions"><button class="btn btn-ghost" data-act="resume" data-book="${b.id}">Resume</button></div></div>`).join('')}</div>`
+  const body=list.length?`<div class="paused">${(showPaused?list:list.slice(0,2)).map(b=>`<div class="bk"><button class="cover-btn" ${openRead(b)} tabindex="-1" aria-hidden="true">${cover(b)}</button><div><button class="bk-t bk-tlink" ${openRead(b)}>${esc(b.title)}</button><div class="bk-a">${esc(b.author)}</div><div class="bk-meta" style="margin-top:6px">Paused at ${b.format==='audio'?fmtPos(b.pos):b.pos} of ${b.format==='audio'?fmtPos(b.total):b.total}</div>${b.pausedOn?`<div class="bk-meta">Paused on ${fmtDate(b.pausedOn)}</div>`:''}</div><div class="bk-actions"><button class="btn btn-ghost" data-act="resume" data-book="${b.id}">Resume</button></div></div>`).join('')}</div>`
     :`<p class="muted small" style="margin:0">No paused books. Pausing keeps your place without cluttering Currently Reading.</p>`;
   return `<section class="card" aria-labelledby="pbH"><div class="card-h"><span class="ico">${ic('pause')}</span><h2 id="pbH">Paused Books <span class="count">(${list.length})</span></h2>${list.length>2?`<button class="more" data-act="togglePaused">${showPaused?'Show Fewer':'View All'}</button>`:''}</div>${body}</section>`;
 }
@@ -3943,10 +3950,6 @@ editForm.addEventListener('submit',e=>{
   const tt=titleById(b.titleId);if(tt){tt.title=b.title;tt.author=b.author;if(b.format!=='audio')tt.pages=b.total;const sn=(f.series||'').trim();tt.series=sn||undefined;tt.seriesNo=sn&&String(f.seriesNo||'').trim()!==''&&!isNaN(+f.seriesNo)?+f.seriesNo:undefined;if(sn&&/^\d+$/.test(String(f.seriesLen||'').trim()))(S.seriesLen=S.seriesLen||{})[sn]=+f.seriesLen}
   save();editDlg.close();render();toast(`Saved changes to ${b.title}.`);
 });
-let lp=null,lpFired=false;
-document.addEventListener('dblclick',e=>{const el=e.target.closest('[data-edit]');if(!el)return;const btn=e.target.closest('button');if(btn&&btn!==el)return;e.preventDefault();openEdit(el.dataset.edit)});
-document.addEventListener('touchstart',e=>{clearTimeout(lp);lpFired=false;const el=e.target.closest('[data-edit]');if(!el)return;const btn=e.target.closest('button');if(btn&&btn!==el)return;lp=setTimeout(()=>{lpFired=true;openEdit(el.dataset.edit)},550)},{passive:true});
-['touchend','touchmove','touchcancel'].forEach(t=>document.addEventListener(t,()=>clearTimeout(lp),{passive:true}));
 setInterval(()=>{if(S.timer&&!S.timer.stop){const v=fmtClock(tElapsed());document.querySelectorAll('[data-timer]').forEach(x=>x.textContent=v)}},1000);
 
 /* ---------- events ---------- */
@@ -3971,7 +3974,6 @@ document.addEventListener('change',async e=>{
   }catch(err){toast('That photo couldn’t be saved. Try a smaller image.')}
 });
 document.addEventListener('click',e=>{
-  if(lpFired){lpFired=false;e.preventDefault();return}
   const go=e.target.closest('[data-go]');
   if(go){view=go.dataset.go;if(view==='discover'){view='library';lib.tab='discover';lib.rv='disc'}if(go.dataset.ch)chTab=go.dataset.ch;if(chDlg.open)chDlg.close();if(nextDlg.open)nextDlg.close();closeMenus();render();window.scrollTo(0,0);return}
   if(e.target.closest('#bellBtn')){const m=document.getElementById('bellMenu');const h=m.hidden;closeMenus();m.hidden=!h;return}

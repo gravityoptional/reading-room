@@ -18,6 +18,11 @@ tab, lean cards, ghost card, finish window (queue, rate, thank, recommend), fini
 reasons, include my rating, rating label follows sharing, Recommend a Book on every tab, English editions and
 Open Library matching, book descriptions (2i). When merging next into main, next's version wins everywhere.
 
+**Changes on next that fix main behavior too** (come over with the merge; James chose next first):
+- One click opens book details from Currently Reading (large cover and title) and Paused Books, on My Reading;
+  double-click and press-and-hold to edit are removed; small covers in Currently Reading still switch books
+  (Nov 2). Main still uses double-click there.
+
 ## Test on /next/ after the push
 
 - ~~Undo in the finish window~~: tested by James Oct 31, 2026, working.
