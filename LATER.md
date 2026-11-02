@@ -22,6 +22,9 @@ Open Library matching, book descriptions (2i). When merging next into main, next
 - One click opens book details from Currently Reading (large cover and title) and Paused Books, on My Reading;
   double-click and press-and-hold to edit are removed; small covers in Currently Reading still switch books
   (Nov 2). Main still uses double-click there.
+- Mouse or trackpad clicks outside book, challenge, and Battle of the Books details close them (a text box in use
+  takes the first click; an unsent borrow or reply note blocks it); forms never close that way; finger taps never
+  close any window (Nov 2). Main windows don't close on outside clicks.
 
 ## Test on /next/ after the push
 
