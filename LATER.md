@@ -45,8 +45,9 @@ Open Library matching, book descriptions (2i). When merging next into main, next
 - **Book descriptions (2i)**: built Nov 2, 2026 (plan: `plans/Book_Descriptions.md`): member-written, Open Library
   (saved), and Google Books (fetched when a book opens and no other description exists, never saved, shown as given
   with the "powered by Google" image and a link to the book's Google Books page; no preview of Google text away from
-  that attribution). Google's Books API terms and branding guidelines read Nov 2. Test on /next/: a book with no
-  Open Library description (A Whale of the Wild) should show a Google Books description.
+  that attribution). Google's Books API terms and branding guidelines read Nov 2. Google Books key published Nov 2 at
+  James's instruction; Google restricts it to gravityoptional.github.io and the Books API (checked: other sites
+  are refused).
 - **Before the live beta (Google Books terms):** rights holders must be able to ask for content removal, so the
   live site needs a contact for that (the Send Feedback address could serve). No fees may be charged for the app.
 
@@ -61,7 +62,8 @@ Open Library matching, book descriptions (2i). When merging next into main, next
 - **Ghost card after Not for Me** (trying it, Oct 31): faded in place with "Hidden · Undo" for 5 seconds, paused
   while the pointer rests on it or the keyboard is on Undo (Nov 2). Also on group recommendation cards. Judge on /next/.
 - **Language setting** (James agreed Oct 31): Open Library lookups prefer English editions, fixed in code. Add a
-  member setting (for example Spanish) that sets the preferred edition language.
+  member setting (for example Spanish) that sets the preferred edition language. The same setting should set Google Books' country
+  (`GB_COUNTRY`, fixed to US for now).
 - **Did Not Finish reasons** (James, Oct 31): the list is fine for now (Not for me, Too slow, Not the right time,
   Content I didn't want, Had to return it); revisit later. Possible later use: "Not for me" as a soft Not for Me
   for that author in Discover.

@@ -2660,6 +2660,9 @@ const descWaiting=t=>!descOf(t)&&(!!t.olKey&&t.desc===undefined&&!(t.descTried>D
    book's details open, and never saved (Google's terms). Shown unaltered apart from formatting, with the
    "powered by Google" image and a prominent link to the book's Google Books page. */
 const gbDesc={};let gbBusy=null;
+/* Reading Room's Google Books API key. It's visible in the page by design (browser keys always are); Google only
+   accepts it from gravityoptional.github.io and only for the Books API. country: Google needs it to answer. */
+const GB_KEY='AIzaSyA7zEScGktN2WltXh6C_79xoJEipsRt67c',GB_COUNTRY='US';
 function gbSafe(raw){
   // Keep Google's own formatting tags (paragraphs, line breaks, bold, italics); show everything else as text.
   const doc=new DOMParser().parseFromString(`<div>${raw}</div>`,'text/html'),ok={P:'p',BR:'br',B:'b',STRONG:'b',I:'i',EM:'i'};
@@ -2672,7 +2675,7 @@ async function gbWant(t){
   const q=t.isbn?`isbn:${t.isbn}`:`intitle:${qt}${au?` inauthor:${au}`:''}`;
   gbBusy=t.id;if(bookDlg.open&&bd.id===t.id)renderBD();
   try{
-    const r=await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=5&printType=books&fields=items(volumeInfo(title,authors,description,infoLink,canonicalVolumeLink))`);
+    const r=await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=5&printType=books&country=${GB_COUNTRY}&key=${GB_KEY}&fields=items(volumeInfo(title,authors,description,infoLink,canonicalVolumeLink))`);
     if(r.ok){
       const same=x=>{const a=normT(x),b=normT(qt);return a&&b&&(a===b||a.startsWith(b)||b.startsWith(a))};
       const v=((await r.json()).items||[]).map(i=>i.volumeInfo||{}).find(v=>v.description&&same(v.title)&&(!au||(v.authors||[]).some(n=>lastName(n).toLowerCase()===au.toLowerCase())));
