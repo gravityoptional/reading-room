@@ -1086,6 +1086,16 @@ main section.card .card-h .ico{display:none}
 .fin-date{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:4px}
 .fin-date .inp{width:auto}
 .fin-add{padding:0 4px}
+.tab-wrap{position:relative;--fade:var(--bg)}
+.tab-wrap.in-dlg{--fade:var(--surface)}
+.tab-wrap::before,.tab-wrap::after{content:'';position:absolute;top:0;bottom:2px;width:44px;pointer-events:none;opacity:0;transition:opacity .15s;z-index:1}
+.tab-wrap::before{left:0;background:linear-gradient(90deg,var(--fade) 30%,transparent)}
+.tab-wrap::after{right:0;background:linear-gradient(270deg,var(--fade) 30%,transparent)}
+.tab-wrap.more-l::before,.tab-wrap.more-r::after{opacity:1}
+.tab-more{position:absolute;top:50%;transform:translateY(-50%);z-index:2;width:28px;height:28px;border-radius:50%;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:20px;line-height:1;display:none;align-items:center;justify-content:center;padding:0 0 3px;box-shadow:0 2px 6px rgba(15,23,42,.12);cursor:pointer}
+.tab-more.l{left:0}.tab-more.r{right:0}
+.tab-wrap.more-l .tab-more.l,.tab-wrap.more-r .tab-more.r{display:flex}
+.bd-act-h{margin:2px 0 6px}
 .dnf-why{display:flex;align-items:center;gap:6px 10px;flex-wrap:wrap}
 #dnfDlg{width:min(480px,calc(100vw - 24px))}
 #dnfDlg .chips{flex-wrap:wrap}
@@ -2628,6 +2638,29 @@ document.addEventListener('click',e=>{
   o.d.close();
 },true);
 
+/* Tab rows that don't fit (book details on phones, the Library's tabs on small phones) show a soft fade and a
+   chevron on the side where more tabs are hidden; tapping it scrolls that way. Nothing shows when everything fits.
+   The selected tab is kept in view. */
+function tabEdges(root=document){
+  root.querySelectorAll('.bd-tabs,.tabs[role=tablist]').forEach(row=>{
+    let w=row.parentElement;
+    if(!w.classList.contains('tab-wrap')){w=document.createElement('div');w.className='tab-wrap'+(row.closest('dialog')?' in-dlg':'');row.replaceWith(w);w.appendChild(row);
+      w.insertAdjacentHTML('beforeend','<button type="button" class="tab-more l" tabindex="-1" aria-hidden="true">‹</button><button type="button" class="tab-more r" tabindex="-1" aria-hidden="true">›</button>');
+      w.querySelectorAll('.tab-more').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();row.scrollBy({left:(b.classList.contains('r')?1:-1)*row.clientWidth*.7,behavior:reducedMotion()?'auto':'smooth'})}));
+      row.addEventListener('scroll',()=>edgeState(w,row),{passive:true});
+      const sel=row.querySelector('[aria-selected=true]');
+      if(sel&&(sel.offsetLeft+sel.offsetWidth>row.scrollLeft+row.clientWidth||sel.offsetLeft<row.scrollLeft))row.scrollLeft=sel.offsetLeft-24;
+    }
+    edgeState(w,row);
+  });
+}
+function edgeState(w,row){
+  const max=row.scrollWidth-row.clientWidth;
+  w.classList.toggle('more-r',max>2&&row.scrollLeft<max-2);
+  w.classList.toggle('more-l',max>2&&row.scrollLeft>2);
+}
+addEventListener('resize',()=>tabEdges());
+
 /* ---------- did not finish ----------
    Books you stop don't get a rating; instead, an optional reason and note. When you share your activity, your group
    sees it with the book, which helps someone deciding whether to borrow it. */
@@ -2801,7 +2834,7 @@ function renderBD(){
   else prim=`<button class="btn btn-primary" data-act="toggleWant" data-id="${t.id}">${ic('plus')}Add to To Read</button>`;
   if(!S.settings.solo)prim+=`<button class="btn btn-ghost" data-act="bdRec" aria-expanded="${bd.rec}">${ic('send')}Recommend</button>`;
   if(canEditTitle(t))prim+=`<button class="btn btn-ghost" data-act="teOpen" data-id="${t.id}">${ic('pencil')}Edit Book</button>`;
-  const tabs=[['about','About'],['copies',`Copies (${cs.length})`],['mine','My Reading'],['activity',`${GN()} Activity`],['notes','Notes']].filter(x=>!(S.settings.solo&&x[0]==='activity'));
+  const tabs=[['about','About'],['copies',`Copies (${cs.length})`],['mine','My Reading'],['activity','Activity'],['notes','Notes']].filter(x=>!(S.settings.solo&&x[0]==='activity'));
   let body='';
   const dsc=descOf(t);
   if(bd.tab==='about'){
@@ -2828,8 +2861,8 @@ function renderBD(){
     }
   }else if(bd.tab==='activity'){
     const items=S.activity.filter(a=>a.book===t.title&&(a.who!=='me'||S.settings.share)).sort((a,b)=>b.ts-a.ts);
-    body=items.length?items.map(a=>{const p=person(a.who);return `<div class="act-top" style="padding:8px 0"><span class="avatar" style="background:${p.color}">${p.init}</span><div class="act-txt"><b>${esc(p.name)}</b> ${esc(a.text)}${a.extra?` <span class="muted">(${esc(a.extra)})</span>`:''}</div><span class="act-when">${ago(a.ts)}</span></div>`}).join('')
-      :`<p class="small muted">No group activity for this book yet. Only members who share their reading appear here.</p>`;
+    body=`<div class="xs muted bd-act-h">${esc(GN())} activity for this book</div>`+(items.length?items.map(a=>{const p=person(a.who);return `<div class="act-top" style="padding:8px 0"><span class="avatar" style="background:${p.color}">${p.init}</span><div class="act-txt"><b>${esc(p.name)}</b> ${esc(a.text)}${a.extra?` <span class="muted">(${esc(a.extra)})</span>`:''}</div><span class="act-when">${ago(a.ts)}</span></div>`}).join('')
+      :`<p class="small muted">No group activity for this book yet. Only members who share their reading appear here.</p>`);
   }else{
     body=`<label class="f"><span>Notes <span class="sub">(only you see these)</span></span><textarea class="inp" id="bdNotes" rows="5" maxlength="5000" data-count="5000" aria-describedby="bdNoteCount" placeholder="Thoughts, favorite quotes, where you left off…">${esc(S.notes[t.id]||'')}</textarea>${charCount('bdNoteCount',(S.notes[t.id]||'').length,5000)}</label><div class="xs muted" style="margin-top:6px">Saved as you type.</div>`;
   }
@@ -2841,6 +2874,7 @@ function renderBD(){
     <div class="bd-tabs" role="tablist">${tabs.map(([k,l])=>`<button class="bd-tab" role="tab" aria-selected="${bd.tab===k}" data-act="bdTab" data-v="${k}">${l}</button>`).join('')}</div>
     <div class="bd-body">${body}</div>`;
   if(bookDlg.open)descFit();
+  tabEdges(bookBody);
 }
 
 /* ---------- edit a library entry ---------- */
@@ -3676,7 +3710,7 @@ function syncRoute(){
 window.addEventListener('popstate',()=>{readRoute();closeMenus();render();window.scrollTo(0,0)});
 function render(){
   if(view==='discover'){view='library';lib.tab='discover'}// Discover is a Library tab
-  syncRoute();
+  syncRoute();queueMicrotask(()=>tabEdges());
   if(!S.seen){try{S.seen=evSnap()}catch(e){}}
   document.querySelectorAll('[data-go]').forEach(b=>{if(b.closest('.nav,.bnav'))b.setAttribute('aria-current',b.dataset.go===view?'page':'false')});
   const m=document.getElementById('main');

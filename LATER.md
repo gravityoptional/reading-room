@@ -29,6 +29,8 @@ Open Library matching, book descriptions (2i). When merging next into main, next
 - Mouse or trackpad clicks outside book, challenge, and Battle of the Books details close them (a text box in use
   takes the first click; an unsent borrow or reply note blocks it); forms never close that way; finger taps never
   close any window (Nov 2). Main windows don't close on outside clicks.
+- Tab rows that don't fit (book details, Library, Challenges) show a fade and a chevron on the side with hidden
+  tabs; the book details tab reads "Activity", with the group name inside the tab (Nov 2). Main has peek only.
 
 ## Test on /next/ after the push
 
