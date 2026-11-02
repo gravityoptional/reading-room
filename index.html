@@ -829,7 +829,10 @@ main section.card .card-h .ico{display:none}
 .tabs[role=tablist]>.tab-gap{flex-basis:26px;min-width:9px}
 /* Inside windows the tabs spread across the row when there's room (equal gaps, first tab at the left edge, last at
    the right); on narrow screens the gaps shrink to the minimum as on pages. Pages stay left-aligned. */
-.tab-wrap.in-dlg .tab-gap{flex-grow:1}
+.tab-wrap.in-dlg .tab-gap{flex-grow:1;max-width:64px}
+/* Gaps stop growing at 64 px and the group centers; auto margins collapse to 0 when the row scrolls. */
+.tab-wrap.in-dlg>.bd-tabs>:first-child{margin-left:auto}
+.tab-wrap.in-dlg>.bd-tabs>:last-child{margin-right:auto}
 /* status picker, activity filter, recommendation edits, invites */
 .st-btns{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .st-btns .tab[disabled]{opacity:1;cursor:default}
@@ -1034,6 +1037,9 @@ main section.card .card-h .ico{display:none}
 .dc-card .lc-open{color:inherit;text-decoration:none}
 .dc-card .lc-open .cover{width:88px}
 .dc-card .lc-t{overflow-wrap:anywhere}
+/* Card titles and reasons stop at three lines (the full title is in the book's details), so one long title can't
+   stretch every card in its row. */
+.dc-card .lc-t,.dc-card .dc-why{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
 .dc-why{font-size:12.5px;color:var(--text-2);line-height:1.35}
 /* Discover as a Library tab */
 .lib .disc{margin-top:22px}
@@ -1148,7 +1154,10 @@ a.btn{text-decoration:none}
 #nextDlg .dc-h{margin-top:4px}
 @media (max-width:1060px){.dc-scroll:not(.dc-three){grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media (max-width:720px){
-  .disc{gap:28px}
+  .disc{gap:20px}
+  .dc-find,.dc-have,.dc-recs{gap:12px}
+  .dc-sec-h{padding-top:14px}
+  .dc-h{margin-bottom:10px}
   .dc-scroll,.dc-scroll:not(.dc-three){grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:min(46vw,200px);overflow-x:auto;scroll-snap-type:x mandatory;column-gap:10px;margin:0 -14px;padding:0 14px 6px;scrollbar-width:thin}
   .dc-scroll>.dc-card{scroll-snap-align:start}
   .dc-sec-h h2{font-size:21px}
@@ -1343,7 +1352,7 @@ if(!S.descV2){S.descV2=true;(S.titles||[]).forEach(t=>{if(t.desc){const c=cleanD
 if(!S.recRateSeeded){S.recRateSeeded=true;const r=(S.recs||[]).find(x=>x.id==='r1');if(r)r.rating=4.5}
 if(S.titles?.some(t=>t.fromDisc))pruneDisc();
 if(S.readIt){Object.entries(S.readIt).forEach(([tid,on])=>{const t=(S.titles||[]).find(x=>x.id===tid);if(t&&!S.books.some(b=>b.titleId===tid&&b.status==='finished'))S.books.push({id:'r'+uid(),titleId:tid,title:t.title,author:t.author,format:'print',total:t.pages||300,pos:t.pages||300,status:'finished',c:t.c,readIt:true,markedOn:on})});delete S.readIt}
-(S.titles||[]).forEach(t=>{if(t.olTried&&!t.olV){t.olRedo=true;delete t.olAt;delete t.olTried}});
+(S.titles||[]).forEach(t=>{if(t.olTried&&!t.olV){t.olRedo=true;delete t.olAt;delete t.olTried}else if(t.olAt&&t.olV===2){delete t.olAt;delete t.olTried}});
 S.loanReqs=S.loanReqs||[];
 S.journal=S.journal||[];
 if(!S.upNext){const pk=n=>S.books.find(b=>b.status==='want'&&b.title===n)?.id;S.upNext=['Wool','Project Hail Mary','Shift'].map(pk).filter(Boolean)}
@@ -2366,7 +2375,7 @@ function lovedAuthors(){
 }
 /* An author's works on Open Library, most-published first, without collections, study guides, translations,
    books where they aren't the main author, and duplicate entries. */
-const DISC_FIELDS='key,title,author_name,author_key,first_publish_year,number_of_pages_median,cover_i,ebook_access,lending_edition_s,lending_identifier_s,language';
+const DISC_FIELDS='key,title,author_name,author_key,first_publish_year,number_of_pages_median,cover_i,ebook_access,lending_edition_s,lending_identifier_s,id_project_gutenberg,id_librivox,language';
 const DISC_JUNK=/\b(collection|collected|complete|works|omnibus|box(ed)? ?set|set of|trilogy|quartet|novels|selected|anthology|study guide|sparknotes|cliffs ?notes|summary|analysis|teacher'?s?|workbook|coloring|calendar|sampler|excerpts?|abridged|graphic novel|adaptation|edition|books? \d+\s*(-|–|&|and|to)\s*\d+)\b/i;
 async function discAuthor(k){
   const r=await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent('author_key:'+k)}&fields=${DISC_FIELDS}&sort=editions&limit=40&lang=en`,{headers:{Accept:'application/json'}});
@@ -2377,7 +2386,7 @@ async function discAuthor(k){
     if(!d.title||!nt||ak[0]!==k||ak.length>3||seen.has(nt)||DISC_JUNK.test(d.title)||/[\/;]/.test(d.title))continue;
     if(d.language?.length&&!d.language.includes('eng'))continue;
     seen.add(nt);
-    items.push({key:d.key,title:d.title,author:(d.author_name||[]).slice(0,2).join(', ')||'Unknown author',authorKeys:ak.slice(0,2),ebook:olEbook(d),year:d.first_publish_year||'',pages:d.number_of_pages_median||0,coverId:d.cover_i||0});
+    items.push({key:d.key,title:d.title,author:(d.author_name||[]).slice(0,2).join(', ')||'Unknown author',authorKeys:ak.slice(0,2),ebook:olEbook(d),...olFree(d),year:d.first_publish_year||'',pages:d.number_of_pages_median||0,coverId:d.cover_i||0});
     if(items.length>=24)break;
   }
   return items;
@@ -2475,8 +2484,12 @@ function getOpts(t,x){
   const lend=!S.settings.solo&&t&&copiesOf(t.id).find(c=>c.owner!=='me'&&!c.private&&c.format==='physical'&&copyFree(c));
   if(lend)opts.push({act:`data-act="getBorrow" data-id="${t.id}" data-c="${lend.id}"`,l:`Borrow from ${esc(nameOf(lend.owner))}`,i:'users'});
   const en=(eb?.access==='public'||eb?.access==='borrowable')?enEdition(key):null;
-  if(eb?.access==='public')opts.push({url:en?.ia?`https://archive.org/details/${encodeURIComponent(en.ia)}`:eb.ia?`https://archive.org/details/${encodeURIComponent(eb.ia)}`:`https://openlibrary.org${key}`,l:'Read Free Online',i:'book'});
-  else if(eb?.access==='borrowable')opts.push({url:en?.ed?`https://openlibrary.org/books/${encodeURIComponent(en.ed)}`:`https://openlibrary.org${key}`,l:'Borrow Free on Open Library',i:'book'});
+  // Free to read: Project Gutenberg first (a clean e-book), then Open Library's scan; LibriVox audio; then a loan.
+  const gut=t?.gut||x?.gut,lvx=t?.lvx||x?.lvx;
+  if(gut)opts.push({url:`https://www.gutenberg.org/ebooks/${gut}.html.images`,l:'Read Free Online',i:'book'});
+  else if(eb?.access==='public')opts.push({url:en?.ia?`https://archive.org/details/${encodeURIComponent(en.ia)}`:eb.ia?`https://archive.org/details/${encodeURIComponent(eb.ia)}`:`https://openlibrary.org${key}`,l:'Read Free Online',i:'book'});
+  if(lvx)opts.push({url:`https://archive.org/search?query=${encodeURIComponent(`${look.title.split(':')[0]} ${au}`.trim())}&and[]=collection%3A%22librivoxaudio%22`,l:'Listen Free',i:'head'});
+  if(!gut&&eb?.access==='borrowable')opts.push({url:en?.ed?`https://openlibrary.org/books/${encodeURIComponent(en.ed)}`:`https://openlibrary.org${key}`,l:'Borrow Free on Open Library',i:'book'});
   opts.push({url:t?.isbn?`https://search.worldcat.org/search?q=bn:${encodeURIComponent(t.isbn)}`:`https://search.worldcat.org/search?q=${encodeURIComponent(`ti:${look.title}${au?` au:${au}`:''}`)}`,l:'Find at Your Library',i:'pin'});
   opts.buy={url:`https://bookshop.org/search?keywords=${encodeURIComponent(t?.isbn||`${look.title} ${au}`.trim())}`,l:'Buy'};
   return opts;
@@ -2506,7 +2519,7 @@ function dcard(it){
   const main=wa?wa.btn:`<button class="btn btn-primary sm" data-act="discWant" data-k="${esc(k)}">Add to To Read</button>`;
   const open=t?`data-act="openTitle" data-id="${t.id}" data-tab="about"`:`data-act="discOpen" data-k="${esc(k)}"`;
   const nfm=it.rule==='toread'?'':it.rule==='rec'?`<button class="dc-nfm" data-act="dismissRec" data-id="${t.id}" aria-label="Not for Me: ${esc(look.title)}">Not for Me</button>`:`<button class="dc-nfm" data-act="discHide" data-k="${esc(k)}" aria-label="Not for Me: ${esc(look.title)}">Not for Me</button>`;
-  return `<div class="dc-card"><div class="dc-top"><button class="lc-open" ${open}>${libCover(look)}<span class="lc-t">${esc(dispT(look.title))}</span><span class="bk-a">${esc(look.author)}</span></button>
+  return `<div class="dc-card"><div class="dc-top"><button class="lc-open" ${open}>${libCover(look)}<span class="lc-t" title="${esc(dispT(look.title))}">${esc(dispT(look.title))}</span><span class="bk-a">${esc(look.author)}</span></button>
   <div class="dc-why">${it.reason}</div>${nfm}</div>${wa?wa.line:getBest(t,x)}<div class="dc-acts">${main}</div></div>`;
 }
 /* Compact row (finish window, and Your Next Read on phones): small cover, title and reason, one small button. */
@@ -2628,7 +2641,8 @@ function ghostCard(card,k,sub,kb){
     if(had&&rowId){const cs=document.getElementById(rowId)?.closest('.dc-row')?.querySelectorAll('.dc-card');const c=cs?.[Math.min(idx,cs.length-1)];(c?.querySelector('.dc-nfm')||c?.querySelector('.lc-open'))?.focus({preventScroll:true})}};
   // The countdown waits while a mouse pointer rests on the ghost, or while a keyboard user is on its Undo.
   const canHover=matchMedia('(hover: hover)').matches;let hover=canHover&&card.matches(':hover'),onKey=!!kb;
-  const arm=()=>{clearTimeout(ghostT);if(!hover&&!onKey)ghostT=setTimeout(done,GHOST_MS)};
+  // Six seconds at first; once the pointer or keyboard has rested on it and moved away, a short two-second goodbye.
+  let rested=hover||onKey;const arm=()=>{clearTimeout(ghostT);if(hover||onKey){rested=true;return}ghostT=setTimeout(done,rested?GHOST_AFTER:GHOST_MS)};
   if(canHover){card.addEventListener('mouseenter',()=>{hover=true;arm()});card.addEventListener('mouseleave',()=>{hover=false;arm()})}
   card.addEventListener('focusout',e=>{if(!card.contains(e.relatedTarget)){onKey=false;arm()}});
   arm();
@@ -3017,7 +3031,10 @@ function adLocalRow(t){const r=myReading(t.id),own=copiesOf(t.id).some(c=>c.owne
       :`<button class="btn btn-ghost sm" data-act="adOwn" data-id="${t.id}" ${own?'disabled':''}>${own?'You Own It':'I Own It'}</button>`}
     ${r&&r.status==='want'?`<span class="xs muted">On To Read</span>`:r&&r.status!=='finished'&&r.status!=='dnf'?`<span class="xs muted">${STATUS[r.status]}</span>`:`<button class="btn btn-ghost sm" data-act="toggleWant" data-id="${t.id}">Add to To Read</button>`}</span></div>`}
 /* Open Library search. Runs in the reader's browser; no account or key needed. */
-const OL_FIELDS='key,title,author_name,author_key,first_publish_year,number_of_pages_median,cover_i,ebook_access,lending_edition_s,lending_identifier_s';
+const OL_FIELDS='key,title,author_name,author_key,first_publish_year,number_of_pages_median,cover_i,ebook_access,lending_edition_s,lending_identifier_s,id_project_gutenberg,id_librivox';
+/* Free copies Open Library knows about elsewhere: a Project Gutenberg e-book (lowest, usually original, number) and
+   whether LibriVox has a recording. */
+const olFree=d=>({gut:(d.id_project_gutenberg||[]).map(Number).filter(n=>n>0).sort((a,b)=>a-b)[0]||0,lvx:!!(d.id_librivox||[]).length});
 /* What Open Library says about reading a book online: ebook_access is public (free to read), borrowable (free loan),
    printdisabled, or no_ebook. ed and ia name the edition and Internet Archive scan to open. */
 const olEbook=d=>d.ebook_access?Object.assign({access:d.ebook_access},d.lending_edition_s?{ed:d.lending_edition_s}:{},d.lending_identifier_s?{ia:d.lending_identifier_s}:{}):undefined;
@@ -3027,7 +3044,8 @@ function olSave(t,x){
   if(t.olKey!==x.key)return;
   if(x.authorKeys?.length)t.olAuthor=x.authorKeys;
   if(x.ebook)t.ebook=x.ebook;else delete t.ebook;
-  t.olAt=Date.now();t.olV=2;
+  if(x.gut)t.gut=x.gut;else delete t.gut;if(x.lvx)t.lvx=true;else delete t.lvx;
+  t.olAt=Date.now();t.olV=3;
 }
 let olTimer,olCtl;
 const olKey=raw=>raw.trim().toLowerCase().replace(/\s+/g,' ');
@@ -3045,7 +3063,7 @@ async function olSearch(raw,signal){
   const r=await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(isbn?'isbn:'+isbn:k)}&fields=${OL_FIELDS}&limit=12&lang=en`,{signal,headers:{Accept:'application/json'}});
   if(!r.ok)throw new Error('Open Library '+r.status);
   const j=await r.json();
-  return (j.docs||[]).filter(d=>d.title).map(d=>({key:d.key,title:d.title,author:(d.author_name||[]).slice(0,2).join(', ')||'Unknown author',authorKeys:(d.author_key||[]).slice(0,2),ebook:olEbook(d),year:d.first_publish_year||'',pages:d.number_of_pages_median||0,coverId:d.cover_i||0,isbn}));
+  return (j.docs||[]).filter(d=>d.title).map(d=>({key:d.key,title:d.title,author:(d.author_name||[]).slice(0,2).join(', ')||'Unknown author',authorKeys:(d.author_key||[]).slice(0,2),ebook:olEbook(d),...olFree(d),year:d.first_publish_year||'',pages:d.number_of_pages_median||0,coverId:d.cover_i||0,isbn}));
 }
 async function olFetch(raw){
   const k=olKey(raw),isbn=olIsbn(raw);
@@ -3082,7 +3100,7 @@ let coverBusy=false,coverDraw;
 const needCover=t=>!t.cover&&!t.noAutoCover&&!(t.coverTried>Date.now()-COVER_RETRY);
 const needInfo=t=>t.olRedo||!t.olAt&&!(t.olTried>Date.now()-COVER_RETRY);
 async function olCoverFor(t,redo){
-  const base=`https://openlibrary.org/search.json?fields=key,title,author_name,edition_count,first_publish_year,cover_i,author_key,ebook_access,lending_edition_s,lending_identifier_s&limit=10&lang=en&`;
+  const base=`https://openlibrary.org/search.json?fields=key,title,author_name,edition_count,first_publish_year,cover_i,author_key,ebook_access,lending_edition_s,lending_identifier_s,id_project_gutenberg,id_librivox&limit=10&lang=en&`;
   const au=t.author&&t.author!=='Unknown author'?t.author.split(',')[0].trim():'',ln=lastName(au).toLowerCase();
   // Drop subtitles and tails like "by F. Scott Fitzgerald" that some book lists add to titles.
   let qt=t.title.split(':')[0].trim();if(ln&&new RegExp(`\\s+by\\s+.*${ln.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}.*$`,'i').test(qt))qt=qt.replace(/\s+by\s+.*$/i,'').trim();
@@ -3127,7 +3145,7 @@ async function coverFill(){
       if(redo&&d?.m&&d.m.key!==t.olKey){delete t.olKey;if(autoCover){if(d.c)t.cover=`https://covers.openlibrary.org/b/id/${d.c.cover_i}-M.jpg`;else delete t.cover;coverRedraw()}}
       if(d?.c&&wantCover){t.cover=`https://covers.openlibrary.org/b/id/${d.c.cover_i}-M.jpg`;coverRedraw()}
       const m=d?.m||(!t.olKey&&d?.c);
-      if(m)olSave(t,{key:m.key,authorKeys:(m.author_key||[]).slice(0,2),ebook:olEbook(m)});
+      if(m)olSave(t,{key:m.key,authorKeys:(m.author_key||[]).slice(0,2),ebook:olEbook(m),...olFree(m)});
       if(m?.first_publish_year&&!t.year&&t.olKey===m.key)t.year=m.first_publish_year;
       if(redo&&d?.m)delete t.desc;// a corrected match fetches its own description
       save();
@@ -4071,7 +4089,7 @@ editForm.addEventListener('submit',e=>{
 setInterval(()=>{if(S.timer&&!S.timer.stop){const v=fmtClock(tElapsed());document.querySelectorAll('[data-timer]').forEach(x=>x.textContent=v)}},1000);
 
 /* ---------- events ---------- */
-let toastT,ghostT;const GHOST_MS=5000;
+let toastT,ghostT;const GHOST_MS=6000,GHOST_AFTER=2000;
 let undoFn=null;
 const snapshot=()=>JSON.stringify(S);
 // Undo also redraws any open window (book, challenge, or battle details), since the message's Undo can be used there.

@@ -65,9 +65,14 @@ Open Library matching, book descriptions (2i). When merging next into main, next
 - **Ghost card after Not for Me** (trying it, Oct 31): faded in place with "Hidden · Undo" for 5 seconds, paused
   while the pointer rests on it or the keyboard is on Undo (Nov 2). Also on group recommendation cards. James (Nov 2):
   5 seconds acceptable, 6 better; the mouse pause can look stuck; idea to discuss: after the pointer leaves, a
-  short 2-second ghost. Don't change yet.
-- **Battle window tabs look airy** on desktop (three tabs spread across the window). Discuss: cap the gap and
-  center the group instead.
+  short 2-second ghost. Built Nov 2: 6 seconds; waits while the pointer rests on it or the keyboard is on Undo, then
+  2 seconds after it leaves.
+- **Window tabs** (Nov 2): gaps capped at 64 px with the group centered (the battle window's three tabs no longer
+  sit at the edges).
+- **Free sources** (Nov 2): Project Gutenberg and LibriVox come from the numbers Open Library already records
+  (id_project_gutenberg, id_librivox), not from Gutendex (60–90+ seconds per search) or LibriVox's API (doesn't allow
+  web pages; its script format would run LibriVox code inside Reading Room). Standard Ebooks' feeds need a paid
+  Patrons Circle membership, so search links only, as the hand-off says.
 - **Language setting** (James agreed Oct 31; do it at the very end): Open Library lookups prefer English editions, fixed in code. Add a
   member setting (for example Spanish) that sets the preferred edition language. The same setting should set Google Books' country
   (`GB_COUNTRY`, fixed to US for now).
