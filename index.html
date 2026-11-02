@@ -3354,7 +3354,8 @@ setInterval(()=>{if(S.timer&&!S.timer.stop){const v=fmtClock(tElapsed());documen
 let toastT;
 let undoFn=null;
 const snapshot=()=>JSON.stringify(S);
-const restoreTo=snap=>()=>{S=JSON.parse(snap);save();render()};
+// Undo also redraws any open window (book, challenge, or battle details), since the message's Undo can be used there.
+const restoreTo=snap=>()=>{S=JSON.parse(snap);save();refreshLib()};
 const showT=t=>{if(t.showPopover){if(t.matches(':popover-open'))t.hidePopover();t.showPopover()}else t.hidden=false};
 const hideT=t=>{if(t.hidePopover){if(t.matches(':popover-open'))t.hidePopover()}else t.hidden=true};
 let extraSub='';
