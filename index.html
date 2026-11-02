@@ -1174,8 +1174,8 @@ if(!S.invSeeded){S.invSeeded=true;const ph=(S.titles||[]).find(t=>t.title==='Pro
 if(!S.audSeeded){S.audSeeded=true;const T=today(),hc=x=>[...x].reduce((a,c)=>(a*31+c.charCodeAt(0))>>>0,7)%10;
   const tOf=(title,author,pages,genre)=>{let t=(S.titles||[]).find(x=>x.title===title);if(!t){t={id:'t'+uid(),title,author,pages,genre,c:hc(title),added:Date.now()};S.titles.push(t)}return t};
   const ph=S.books.find(b=>b.title==='Project Hail Mary'&&b.status==='want'&&!S.sessions.some(x=>x.bookId===b.id));
-  if(ph){Object.assign(ph,{format:'audio',total:970,pos:105,status:'reading',started:addDays(T,-3)});delete ph.wantSince;S.upNext=(S.upNext||[]).filter(x=>x!==ph.id);
-    S.sessions.push({id:uid(),bookId:ph.id,date:addDays(T,-2),start:0,end:45,pages:0,minutes:45,est:null,note:''},{id:uid(),bookId:ph.id,date:addDays(T,-1),start:45,end:105,pages:0,minutes:60,est:null,note:''})}
+  if(ph){Object.assign(ph,{format:'audio',total:970,pos:105,status:'reading',started:'2026-10-19'});delete ph.wantSince;S.upNext=(S.upNext||[]).filter(x=>x!==ph.id);
+    S.sessions.push({id:uid(),bookId:ph.id,date:'2026-10-20',start:0,end:45,pages:0,minutes:45,est:null,note:''},{id:uid(),bookId:ph.id,date:'2026-10-22',start:45,end:105,pages:0,minutes:60,est:null,note:''})}
   const ma=tOf('The Martian','Andy Weir',387,'Science Fiction');
   if(!S.books.some(b=>b.titleId===ma.id)){const b={id:'aud_martian',titleId:ma.id,title:ma.title,author:ma.author,format:'audio',total:653,pos:653,status:'finished',started:'2026-09-14',finished:'2026-09-27',c:ma.c};S.books.push(b);
     S.sessions.push({id:uid(),bookId:b.id,date:'2026-09-14',start:0,end:240,pages:0,minutes:240,est:null,note:''},{id:uid(),bookId:b.id,date:'2026-09-20',start:240,end:470,pages:0,minutes:230,est:null,note:''},{id:uid(),bookId:b.id,date:'2026-09-27',start:470,end:653,pages:0,minutes:183,est:null,note:''});
