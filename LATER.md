@@ -58,6 +58,10 @@ Open Library matching, book descriptions (2i). When merging next into main, next
   start in one step (for example a month of reading days, a genre or series list, a books-this-year goal), alongside
   Create Challenge and the planned way to duplicate any challenge.
 
+- **Adjust Dashboard Photo** (James, Nov 2; later, cosmetic only): the member's Dashboard photo is always centered.
+  Idea: Adjust Photo beside Change and Remove: drag it up, down or sideways, Flip (mirror) and possibly Rotate.
+  Shared with main. Book covers stay as they are.
+
 ## Issues
 
 - **Tall card rows on phones (Discover).** Cards in a row share row heights so their buttons line up. In a
