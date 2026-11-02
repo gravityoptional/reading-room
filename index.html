@@ -819,7 +819,12 @@ main section.card .card-h .ico{display:none}
 .bd-tabs::-webkit-scrollbar{display:none}
 .bd-tab{padding:9px 10px}
 /* Phones: tighter tabs, so more rows fit without scrolling (book details and the Library's tabs fit from about 375–412 px). */
-@media (max-width:480px){.bd-tab{padding:9px 6px;font-size:13.5px}.tabs{gap:12px}.tabs>.tab{font-size:14px}}
+@media (max-width:480px){.bd-tab{font-size:13.5px}.tabs>.tab{font-size:14px}}
+/* Flexible spacing: gaps between tabs shrink from their preferred size to a minimum as room runs out; text size stays. */
+.bd-tabs,.tabs[role=tablist]{gap:0}
+.bd-tab{padding-left:0;padding-right:0}
+.tab-gap{flex:0 1 24px;min-width:7px}
+.tabs[role=tablist]>.tab-gap{flex-basis:26px;min-width:9px}
 /* status picker, activity filter, recommendation edits, invites */
 .st-btns{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .st-btns .tab[disabled]{opacity:1;cursor:default}
@@ -2653,13 +2658,15 @@ function tabEdges(root=document){
       const sel=row.querySelector('[aria-selected=true]');
       if(sel&&(sel.offsetLeft+sel.offsetWidth>row.scrollLeft+row.clientWidth||sel.offsetLeft<row.scrollLeft))row.scrollLeft=sel.offsetLeft-24;
     }
+    // Flexible gaps: a spacer between tabs starts at the preferred gap and shrinks to the minimum when room is short.
+    if(!row.querySelector(':scope>.tab-gap'))[...row.children].slice(1).forEach(t=>t.insertAdjacentHTML('beforebegin','<span class="tab-gap" aria-hidden="true"></span>'));
     edgeState(w,row);
   });
 }
 function edgeState(w,row){
   const max=row.scrollWidth-row.clientWidth;
-  w.classList.toggle('more-r',max>2&&row.scrollLeft<max-2);
-  w.classList.toggle('more-l',max>2&&row.scrollLeft>2);
+  w.classList.toggle('more-r',max>0.5&&row.scrollLeft<max-0.5);
+  w.classList.toggle('more-l',max>0.5&&row.scrollLeft>0.5);
 }
 addEventListener('resize',()=>tabEdges());
 
