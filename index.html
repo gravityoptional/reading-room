@@ -2277,7 +2277,7 @@ function libResults(){
 function libraryView(){
   if(S.settings.solo&&lib.tab==='family'||!ROUTES.library.includes(lib.tab))lib.tab='mybooks';
   const tabs=[['family',`${GN()} Library`],['mybooks','My Books'],['discover','Discover']].filter(x=>!(S.settings.solo&&x[0]==='family'));
-  const n=nFilters(),shelf=S.settings.libView==='shelf',toMe=S.settings.solo?0:new Set(myRecs().map(r=>r.titleId)).size;
+  const n=nFilters(),shelf=S.settings.libView==='shelf',toMe=S.settings.solo?0:new Set(recsShown().map(r=>r.titleId)).size;
   const disc=lib.tab==='discover',tools=!disc;
   const H={family:[`${esc(GN())} Library`,`Books everyone in ${esc(GN())} can borrow and read.`],mybooks:['My Books','Every book connected to you, from To Read to Finished.'],discover:['Discover','Books you might like, why each one is here, and where to get it.']}[lib.tab];
   return `<div class="lib">
@@ -2498,6 +2498,8 @@ function ruleRecs(max=6){
 /* Recommendations to you that you haven't hidden. Hiding is private: the recommendation itself is kept, so the
    person who sent it sees no change. */
 const myRecs=()=>S.recs.filter(r=>{const t=titleById(r.titleId);return t&&!hiddenT(t)});
+/* What Recommended to You shows and counts: also leaves out books marked Already Read It. */
+const recsShown=()=>myRecs().filter(r=>!readIt(r.titleId));
 const recTools=(n)=>S.settings.solo?'':`<span class="dc-rtools"><button class="link-btn sm dc-sent" data-act="recView" data-v="from">Sent by Me (${n})</button></span>`;
 function discoverBody(){
   discLoad();discIdx={};
@@ -2506,7 +2508,7 @@ function discoverBody(){
     return `<div class="disc dc-sub">${back}<div class="dc-sec-h dc-sub-h"><h2>Sent by Me</h2><span class="dc-rtools">${fromN?`<span class="vseg" role="group" aria-label="View"><button aria-pressed="${!shelf}" data-act="libView" data-v="grid">${ic('grid')}Grid</button><button aria-pressed="${shelf}" data-act="libView" data-v="shelf">${ic('shelf')}Shelf</button></span>`:''}</span></div>${fromMe()}</div>`}
   if(lib.rv==='to'&&!S.settings.solo){const ids=[...new Set(myRecs().map(r=>r.titleId))],items=ruleRecs(99);
     return `<div class="disc dc-sub">${back}<div class="dc-sec-h dc-sub-h"><h2>Recommended to You</h2>${recTools(fromN)}</div>${items.length?`<div class="dc-scroll dc-wrap">${items.map(dcard).join('')}</div>`:`<div class="empty">${ic('send')}<h3>No Recommendations Yet</h3><p>When someone in your group recommends a book to you, it shows up here.</p></div>`}</div>`}
-  const recs=ruleRecs(),nRecs=S.settings.solo?0:new Set(myRecs().map(r=>r.titleId)).size,author=ruleAuthor(),series=ruleSeries(),toRead=ruleToRead(),want=wantList().filter(b=>!hiddenT(titleById(b.titleId)));
+  const recs=ruleRecs(),nRecs=S.settings.solo?0:new Set(recsShown().map(r=>r.titleId)).size,author=ruleAuthor(),series=ruleSeries(),toRead=ruleToRead(),want=wantList().filter(b=>!hiddenT(titleById(b.titleId)));
   if(surprise&&!want.some(b=>b.id===surprise))surprise=null;
   const loading=!author.length&&discBusy?`<p class="xs muted" role="status">Looking for more books by authors you rated highly…</p>`:'';
   const sb=surprise&&book(surprise),sp=sb?[{rule:'toread',reason:'Picked at random from your To Read',t:titleById(sb.titleId)}]:[];
