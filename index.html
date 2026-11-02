@@ -488,7 +488,18 @@ button.cal-d{border:0;font:inherit;color:inherit;cursor:pointer;position:relativ
 .bd-h h2{grid-column:2;grid-row:1}
 .bd-h>div>.muted:not(.xs){grid-column:2;grid-row:2}
 .bd-h>div>.xs{grid-column:2;grid-row:3}
-.bd-h .bd-acts{grid-column:2/-1;grid-row:4}
+.bd-h .bd-acts{grid-column:2/-1;grid-row:5}
+.bd-prev{grid-column:2/-1;grid-row:4;margin-top:6px;font-size:13px;color:var(--text-2);display:flex;align-items:flex-end;gap:4px}
+.bd-prev-t{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-width:0}
+.bd-prev .link-btn{padding:0 2px;flex:none}
+.bd-desc{max-height:7.2em;overflow:hidden;position:relative;font-size:14px;line-height:1.55}
+.bd-desc p{margin:0 0 .7em}
+.bd-src a{color:var(--primary)}
+.bd-desc:not(.open):not(.fits)::after{content:'';position:absolute;left:0;right:0;bottom:0;height:2.2em;background:linear-gradient(transparent,var(--surface))}
+.bd-desc.open{max-height:none}
+.bd-more{padding-left:0}
+.bd-src{margin:6px 0 10px}
+.bd-facts{color:var(--text-2);margin-bottom:6px}
 .bd-h>.x{grid-column:3;grid-row:1}
 @media (max-width:560px){
   .bd-h{grid-template-rows:auto auto 1fr auto;column-gap:14px}
@@ -1074,10 +1085,10 @@ main section.card .card-h .ico{display:none}
 .nx-f{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
 .nx-f .link-btn{padding-left:0}
 /* Book details: quiet links under Get This Book */
-.bd-quiet{grid-column:2/-1;grid-row:6;display:flex;align-items:center;flex-wrap:wrap;gap:2px 4px;margin-top:6px}
+.bd-quiet{grid-column:2/-1;grid-row:7;display:flex;align-items:center;flex-wrap:wrap;gap:2px 4px;margin-top:6px}
 .bd-quiet .link-btn{color:var(--text-2);font-weight:500}
 .bd-quiet .link-btn:hover{color:var(--text)}
-@media (max-width:560px){.bd-quiet{grid-column:1/-1}}
+@media (max-width:560px){.bd-quiet,.bd-prev{grid-column:1/-1}}
 .dc-acts{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding-top:4px}
 .dc-acts>.btn{flex:1;min-width:0;white-space:nowrap;padding-left:6px;padding-right:6px}
 .dc-acts>.btn svg.i{display:none}
@@ -1093,7 +1104,7 @@ a.btn{text-decoration:none}
 .get-a{color:var(--primary);font-weight:500;text-decoration:none}
 .get-a:hover{text-decoration:underline;text-underline-offset:3px}
 .get-more .link-btn.sm{padding:0;font-size:inherit}
-.bd-h .get{grid-column:2/-1;grid-row:5;flex-direction:row;flex-wrap:wrap;align-items:center;gap:6px 12px;margin-top:10px}
+.bd-h .get{grid-column:2/-1;grid-row:6;flex-direction:row;flex-wrap:wrap;align-items:center;gap:6px 12px;margin-top:10px}
 @media (max-width:560px){.bd-h .get{grid-column:1/-1}}
 .lcard .get{margin-top:2px}
 .lcard .get .btn{width:100%}
@@ -2021,7 +2032,7 @@ function cardAction(t){
 }
 function lcard(t,extra=''){
   const av=avail(t.id);
-  return `<div class="lcard"><button class="lc-open" data-act="openTitle" data-id="${t.id}">${libCover(t)}<span class="lc-t">${esc(t.title)}</span><span class="bk-a">${esc(t.author)}</span></button>
+  return `<div class="lcard"><button class="lc-open" data-act="openTitle" data-id="${t.id}">${libCover(t)}<span class="lc-t">${esc(dispT(t.title))}</span><span class="bk-a">${esc(t.author)}</span></button>
   ${copiesOf(t.id).length?`<div class="lc-meta">${fmtChips(t.id)}</div><div class="lc-own">${avStack(t.id)}</div>`:`<div class="xs muted">Not in the group library</div>`}
   ${av?`<div class="avail ${av.cls}">${av.t}</div>`:''}${extra}
   <div class="lc-act">${cardAction(t)}</div></div>`;
@@ -2072,8 +2083,8 @@ function mbCard(t){
   else if(st==='finished')act=`<button class="btn btn-ghost sm" data-act="startTitle" data-id="${t.id}">Read Again</button>`;
   else if(st==='dnf')act=`<div class="two"><button class="btn btn-ghost sm" data-act="pickup" data-book="${r.id}">Pick Up Again</button><button class="btn btn-ghost sm" data-act="startTitle" data-id="${t.id}">Start Over</button></div>`;
   const when=st==='finished'&&r.finished?`Finished ${fmtDateY(r.finished)}`:st==='dnf'?`Stopped at ${r.format==='audio'?fmtPos(r.pos):'page '+r.pos}${r.dnfOn?` · ${fmtDateY(r.dnfOn)}`:''}${r.dnfWhy?` · ${dnfWhyL(r.dnfWhy)}`:''}`:'';
-  return `<div class="lcard"><button class="lc-open" data-act="openTitle" data-id="${t.id}">${libCover(t)}<span class="lc-t">${esc(t.title)}</span><span class="bk-a">${esc(t.author)}</span></button>
-  <div>${chip}${r&&r.status==='finished'&&r.rating?` <span class="xs" style="color:var(--orange);font-weight:600">★ ${r.rating}</span>`:''}</div>${when?`<div class="xs muted">${when}</div>`:''}${fin>1?`<div class="xs muted">Read ${fin}×</div>`:fin===1&&st!=='finished'?`<div class="xs muted">Read once before</div>`:''}<div class="xs ${mine?'own-me':'muted'}">${own}</div>
+  return `<div class="lcard"><button class="lc-open" data-act="openTitle" data-id="${t.id}">${libCover(t)}<span class="lc-t">${esc(dispT(t.title))}</span><span class="bk-a">${esc(t.author)}</span></button>
+  <div>${chip}${r&&r.status==='finished'&&r.rating?` <span class="xs" style="color:var(--orange);font-weight:600">${r.rating}★</span>`:''}</div>${when?`<div class="xs muted">${when}</div>`:''}${fin>1?`<div class="xs muted">Read ${fin}×</div>`:fin===1&&st!=='finished'?`<div class="xs muted">Read once before</div>`:''}<div class="xs ${mine?'own-me':'muted'}">${own}</div>
   <div class="lc-act">${act}</div></div>`;
 }
 let recEdit=null;
@@ -2090,8 +2101,8 @@ function fromMe(){
   return `<div class="lib-count"><span class="small muted">${ids.length} book${ids.length===1?'':'s'} recommended</span></div><div class="from-list">${ids.map(id=>{const t=titleById(id);if(!t)return '';
     return `<div class="from card"><button class="lc-open from-b" data-act="openTitle" data-id="${id}">${libCover(t,56)}<span><span class="lc-t" style="display:block">${esc(t.title)}</span><span class="bk-a">${esc(t.author)}</span></span></button>
     <div class="from-rows">${byT[id].map(r=>{const vis=S.members[r.to]?.share!==false,st=vis?(r.status||'sent'):'sent';
-      if(recEdit===r.id)return `<div class="from-row rec-edit"><span class="avatar" style="background:${colorOf(r.to)}">${initOf(r.to)}</span><input class="inp sm" id="recEditIn" maxlength="140" value="${esc(r.note||'')}" placeholder="Add a note (optional)" aria-label="Note for ${esc(nameOf(r.to))}">${(()=>{const rt=r.rating||myRating(r.titleId);return rt?`<label class="chk xs"><input type="checkbox" id="recEditRate" ${r.rating?'checked':''}> Include my rating ★${rt}</label>`:''})()}<button class="btn btn-primary sm" data-act="recEditSave" data-id="${r.id}">Save</button><button class="link-btn sm" data-act="recEditCancel">Cancel</button></div>`;
-      return `<div class="from-row"><span class="avatar" style="background:${colorOf(r.to)}">${initOf(r.to)}</span><span class="small fr-txt"><b>${esc(nameOf(r.to))}</b>${r.note?` <span class="muted">“${esc(r.note)}”</span>`:''}${r.rating?` <span class="xs muted">· your rating ★${r.rating} included</span>`:''} <span class="xs muted">· ${ago(r.ts)}</span></span><span class="st ${st==='finished'?'st-finished':st==='reading'?'st-reading':st==='want'?'st-want':''}">${REC_ST[st]}</span><span class="fr-acts"><button class="link-btn sm" data-act="recEdit" data-id="${r.id}">${r.note?'Edit Note':'Add Note'}</button><button class="link-btn sm" data-act="recWithdraw" data-id="${r.id}">Withdraw</button></span></div>`}).join('')}</div></div>`}).join('')}</div>
+      if(recEdit===r.id)return `<div class="from-row rec-edit"><span class="avatar" style="background:${colorOf(r.to)}">${initOf(r.to)}</span><input class="inp sm" id="recEditIn" maxlength="140" value="${esc(r.note||'')}" placeholder="Add a note (optional)" aria-label="Note for ${esc(nameOf(r.to))}">${(()=>{const rt=r.rating||myRating(r.titleId);return rt?`<label class="chk xs"><input type="checkbox" id="recEditRate" ${r.rating?'checked':''}> Include my rating (${rt}★)</label>`:''})()}<button class="btn btn-primary sm" data-act="recEditSave" data-id="${r.id}">Save</button><button class="link-btn sm" data-act="recEditCancel">Cancel</button></div>`;
+      return `<div class="from-row"><span class="avatar" style="background:${colorOf(r.to)}">${initOf(r.to)}</span><span class="small fr-txt"><b>${esc(nameOf(r.to))}</b>${r.note?` <span class="muted">“${esc(r.note)}”</span>`:''}${r.rating?` <span class="xs muted">· your rating (${r.rating}★) included</span>`:''} <span class="xs muted">· ${ago(r.ts)}</span></span><span class="st ${st==='finished'?'st-finished':st==='reading'?'st-reading':st==='want'?'st-want':''}">${REC_ST[st]}</span><span class="fr-acts"><button class="link-btn sm" data-act="recEdit" data-id="${r.id}">${r.note?'Edit Note':'Add Note'}</button><button class="link-btn sm" data-act="recWithdraw" data-id="${r.id}">Withdraw</button></span></div>`}).join('')}</div></div>`}).join('')}</div>
     <p class="xs muted" style="margin-top:12px">Progress shows only for group members who share their activity; otherwise it stays at Sent. Withdrawing a recommendation takes it off their list without notifying them.</p>`;
 }
 function filtersPanel(){
@@ -2445,19 +2456,19 @@ function dcard(it){
   const look=t||{title:x.title,author:x.author,c:hashStr(x.title)%COVERS.length,cover:x.coverId?`https://covers.openlibrary.org/b/id/${x.coverId}-M.jpg`:''};
   const r=t&&myReading(t.id),wa=r&&r.status==='want'?wantActs(t,r):null;
   const main=wa?wa.btn:`<button class="btn btn-primary sm" data-act="discWant" data-k="${esc(k)}">Add to To Read</button>`;
-  const open=t?`data-act="openTitle" data-id="${t.id}"`:`data-act="discOpen" data-k="${esc(k)}"`;
+  const open=t?`data-act="openTitle" data-id="${t.id}" data-tab="about"`:`data-act="discOpen" data-k="${esc(k)}"`;
   const nfm=it.rule==='toread'?'':it.rule==='rec'?`<button class="dc-nfm" data-act="dismissRec" data-id="${t.id}" aria-label="Not for Me: ${esc(look.title)}">Not for Me</button>`:`<button class="dc-nfm" data-act="discHide" data-k="${esc(k)}" aria-label="Not for Me: ${esc(look.title)}">Not for Me</button>`;
-  return `<div class="dc-card"><div class="dc-top"><button class="lc-open" ${open}>${libCover(look)}<span class="lc-t">${esc(look.title)}</span><span class="bk-a">${esc(look.author)}</span></button>
+  return `<div class="dc-card"><div class="dc-top"><button class="lc-open" ${open}>${libCover(look)}<span class="lc-t">${esc(dispT(look.title))}</span><span class="bk-a">${esc(look.author)}</span></button>
   <div class="dc-why">${it.reason}</div>${nfm}</div>${wa?wa.line:getBest(t,x)}<div class="dc-acts">${main}</div></div>`;
 }
 /* Compact row (finish window, and Your Next Read on phones): small cover, title and reason, one small button. */
 function drow(it){
   const t=it.t,x=it.x,k=discKey(it);discIdx[k]=it;
   const look=t||{title:x.title,author:x.author,c:hashStr(x.title)%COVERS.length,cover:x.coverId?`https://covers.openlibrary.org/b/id/${x.coverId}-S.jpg`:''};
-  const r=t&&myReading(t.id),open=t?`data-act="openTitle" data-id="${t.id}"`:`data-act="discOpen" data-k="${esc(k)}"`;
+  const r=t&&myReading(t.id),open=t?`data-act="openTitle" data-id="${t.id}" data-tab="about"`:`data-act="discOpen" data-k="${esc(k)}"`;
   const btn=r&&r.status==='want'?`<button class="btn btn-ghost sm" data-act="bdLog" data-id="${r.id}" aria-label="Start reading ${esc(look.title)}">Start</button>`
     :`<button class="btn btn-ghost sm" data-act="discWant" data-k="${esc(k)}" aria-label="Add ${esc(look.title)} to To Read">${ic('plus')}To Read</button>`;
-  return `<div class="dc-line"><button class="dl-cover" ${open} tabindex="-1" aria-hidden="true">${libCover(look,40)}</button><div class="dl-txt"><button class="dl-t" ${open}>${esc(look.title)}</button><div class="dc-why">${it.reason}</div></div>${btn}</div>`;
+  return `<div class="dc-line"><button class="dl-cover" ${open} tabindex="-1" aria-hidden="true">${libCover(look,40)}</button><div class="dl-txt"><button class="dl-t" ${open}>${esc(dispT(look.title))}</button><div class="dc-why">${it.reason}</div></div>${btn}</div>`;
 }
 const dcRow=(id,h,items,extra='')=>items.length?`<section class="dc-row" aria-labelledby="${id}"><div class="dc-rh"><h3 class="dc-h" id="${id}">${h}</h3>${extra}</div><div class="dc-scroll">${items.map(dcard).join('')}</div></section>`:'';
 /* Recommended to You: up to six books people in your group suggested, each with who and their note.
@@ -2541,7 +2552,7 @@ function renderNextDlg(){
   if(!nextDone)return;const n=yearFinished(),q=upList()[0],qt=q&&titleById(q.titleId);
   let body;
   if(qt){const more=nextMore(nextDone.tid);
-    body=`<h3 class="dc-h">What’s Next?</h3><div class="nx-q"><button class="dl-cover" data-act="openTitle" data-id="${qt.id}" tabindex="-1" aria-hidden="true">${libCover(qt,64)}</button><div class="dl-txt"><button class="dl-t" data-act="openTitle" data-id="${qt.id}">${esc(qt.title)}</button><div class="dc-why">First in your Reading Queue</div>${(()=>{const w=wantActs(qt,q);return `<div class="nx-q-acts">${w.btn}${w.line.replace('<div class="dc-get">','<div class="dc-get nx-start">')}</div>`})()}</div></div>
+    body=`<h3 class="dc-h">What’s Next?</h3><div class="nx-q"><button class="dl-cover" data-act="openTitle" data-id="${qt.id}" data-tab="about" tabindex="-1" aria-hidden="true">${libCover(qt,64)}</button><div class="dl-txt"><button class="dl-t" data-act="openTitle" data-id="${qt.id}" data-tab="about">${esc(dispT(qt.title))}</button><div class="dc-why">First in your Reading Queue</div>${(()=>{const w=wantActs(qt,q);return `<div class="nx-q-acts">${w.btn}${w.line.replace('<div class="dc-get">','<div class="dc-get nx-start">')}</div>`})()}</div></div>
       ${more.length?`<h3 class="dc-h">Discover More</h3><div class="dc-lines">${more.map(drow).join('')}</div>`:''}`}
   else{const picks=nextPicks();body=picks.length?`<h3 class="dc-h">What’s Next?</h3><div class="dc-lines">${picks.map(drow).join('')}</div>`:''}
   nextBody.innerHTML=`<div class="dlg-h"><div style="flex:1;min-width:0"><h2 id="nxTitle">🎉 You finished ${ti(nextDone.title)}!</h2><div class="muted small">That’s ${n} book${n===1?'':'s'} this year.${nextDone.undo?' <button class="link-btn sm nx-undo" data-act="nextUndo">Undo</button>':''}</div></div><button type="button" class="icon-btn x" data-act="nextClose" aria-label="Close">${ic('x')}</button></div>
@@ -2558,13 +2569,19 @@ function pruneDisc(){
 
 /* Ghost card after Not for Me: the card stays in place, faded, with Hidden · Undo (and, for a recommendation, who
    won't be told) for a few seconds; then the row closes up and focus moves to the card that took its place. */
-function ghostCard(card,k,sub){
+function ghostCard(card,k,sub,kb){
   const rowId=card.closest('.dc-row')?.querySelector('.dc-h')?.id,idx=[...card.parentNode.children].indexOf(card);
   [...card.children].forEach(c=>c.inert=true);card.classList.add('dc-ghost');
   card.insertAdjacentHTML('beforeend',`<div class="dc-ghost-bar" role="status"><span class="dg-main"><span>Hidden</span><span aria-hidden="true">·</span><button class="link-btn sm" data-act="ghostUndo" data-k="${esc(k)}">Undo</button></span>${sub?`<span class="dg-sub">${esc(sub)}</span>`:''}</div>`);
   card.querySelector('[data-act=ghostUndo]').focus({preventScroll:true});
-  clearTimeout(ghostT);ghostT=setTimeout(()=>{const had=document.activeElement?.closest('.dc-ghost');refreshLib();
-    if(had&&rowId){const cs=document.getElementById(rowId)?.closest('.dc-row')?.querySelectorAll('.dc-card');const c=cs?.[Math.min(idx,cs.length-1)];(c?.querySelector('.dc-nfm')||c?.querySelector('.lc-open'))?.focus({preventScroll:true})}},GHOST_MS);
+  const done=()=>{const had=document.activeElement?.closest('.dc-ghost');refreshLib();
+    if(had&&rowId){const cs=document.getElementById(rowId)?.closest('.dc-row')?.querySelectorAll('.dc-card');const c=cs?.[Math.min(idx,cs.length-1)];(c?.querySelector('.dc-nfm')||c?.querySelector('.lc-open'))?.focus({preventScroll:true})}};
+  // The countdown waits while a mouse pointer rests on the ghost, or while a keyboard user is on its Undo.
+  const canHover=matchMedia('(hover: hover)').matches;let hover=canHover&&card.matches(':hover'),onKey=!!kb;
+  const arm=()=>{clearTimeout(ghostT);if(!hover&&!onKey)ghostT=setTimeout(done,GHOST_MS)};
+  if(canHover){card.addEventListener('mouseenter',()=>{hover=true;arm()});card.addEventListener('mouseleave',()=>{hover=false;arm()})}
+  card.addEventListener('focusout',e=>{if(!card.contains(e.relatedTarget)){onKey=false;arm()}});
+  arm();
 }
 /* ---------- did not finish ----------
    Books you stop don't get a rating; instead, an optional reason and note. When you share your activity, your group
@@ -2587,11 +2604,61 @@ function renderDnf(){
   <div class="dlg-f"><button class="btn btn-ghost" data-act="dnfClose">${dnfSel.edit?'Cancel':'Skip'}</button><button class="btn btn-primary" data-act="dnfSave">Save</button></div>`;
 }
 
+/* ---------- book descriptions (2i) ----------
+   Sources in order: one a member wrote in Edit Book, then the Open Library work record (fetched with the work key
+   and saved on the title). Google Books, the third source, waits until its terms have been read. */
+function cleanDesc(raw){
+  let s=raw&&typeof raw==='object'?raw.value:raw;if(typeof s!=='string')return '';
+  s=s.replace(/\r/g,'');
+  // Open Library often adds a divider, then "Contains" or "See also" lists: keep only the description above it.
+  const parts=s.split(/^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/m);if(parts.length>1&&parts[0].trim().length>=60)s=parts[0];
+  s=s.replace(/^\s*\[\d+\]:\s*\S+.*$/gm,'')                 // reference-link definitions
+     .replace(/\[([^\]]+)\]\([^)]*\)/g,'$1')                  // [text](url)
+     .replace(/\[([^\]]+)\]\[\d*\]/g,'$1')                   // [text][1]
+     .replace(/\(\s*(?:source|from)\b[^)]*\)/gi,'')            // (source: ...)
+     .replace(/^\s*(?:see also\b|source:|also contained in\b).*$/gim,'')
+     .replace(/https?:\/\/\S+/g,'')
+     .replace(/(\*\*|__)(.+?)\1/g,'$2')
+     .replace(/[ \t]+\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
+  return s.replace(/\s+/g,' ').length<60?'':s;   // a few words or just a credit: not a description
+}
+const descOf=t=>t.descText?{text:t.descText,src:'member',by:t.descBy}:t.desc?{text:t.desc,src:'ol'}:null;
+const descWaiting=t=>!descOf(t)&&!!t.olKey&&t.desc===undefined;
+let descBusy=false;const descTodo=[];
+/* Queue a title's description; books opened in details go to the front. */
+function descWant(t,now){
+  if(!t?.olKey||t.desc!==undefined||t.descTried>Date.now()-COVER_RETRY)return;
+  const i=descTodo.indexOf(t.id);if(i>=0)descTodo.splice(i,1);now?descTodo.unshift(t.id):descTodo.push(t.id);
+  if(!descBusy)setTimeout(descFill,now?0:300);
+}
+async function descFill(){
+  if(descBusy||navigator.onLine===false)return;descBusy=true;
+  try{while(descTodo.length){const t=titleById(descTodo.shift());if(!t||t.desc!==undefined||!t.olKey)continue;
+    let r;try{r=await fetch(`https://openlibrary.org${t.olKey}.json`,{headers:{Accept:'application/json'}})}catch(e){break}
+    if(!r.ok){t.descTried=Date.now();save();if(r.status>=500)break;continue}
+    const j=await r.json(),d=cleanDesc(j.description);
+    if(d)t.desc=d;else t.descTried=Date.now();save();
+    if(bookDlg.open&&bd.id===t.id)renderBD();
+    await new Promise(z=>setTimeout(z,1000));
+  }}finally{descBusy=false}
+}
+/* Fill descriptions in for every book in the background, after the cover lookup has had a head start. */
+function descAll(){S.titles.forEach(t=>descWant(t))}
+/* Display-only title case for titles saved in sentence case ("Adventures in the screen trade"). The saved title
+   is unchanged. Titles with capitals after the first word are left alone. */
+const SMALLW=new Set('a an and as at but by for from in into nor of on onto or over per the to up via vs with'.split(' '));
+function dispT(x){
+  x=String(x||'');const w=x.split(' ');if(w.length<3)return x;
+  const later=w.slice(1).filter(s=>/^[A-Za-z]{4,}/.test(s));
+  if(!later.length||later.some(s=>/^[A-Z]/.test(s)))return x;
+  return w.map((s,i)=>!/^[a-z]/.test(s)||i>0&&i<w.length-1&&SMALLW.has(s)&&!/[:—–]$/.test(w[i-1])?s:s[0].toUpperCase()+s.slice(1)).join(' ');
+}
+
 /* ---------- book detail ---------- */
 const bookDlg=document.getElementById('bookDlg'),bookBody=document.getElementById('bookBody');
 bookDlg.addEventListener('close',()=>pruneDisc());
 let bd={id:null,tab:'copies',rec:false,lend:null,addCopy:false,reqNote:null};
-function openTitle(id){bd={id,tab:'copies',rec:false,lend:null,addCopy:false,reqNote:null};renderBD();if(!bookDlg.open)bookDlg.showModal()}
+function openTitle(id,tab){bd={id,tab:tab||'copies',rec:false,lend:null,addCopy:false,reqNote:null,descOpen:false};descWant(titleById(id),true);renderBD();if(!bookDlg.open)bookDlg.showModal()}
 function copyRow(c){
   const mine=c.owner==='me',ph=c.format==='physical';
   let act='';
@@ -2616,12 +2683,12 @@ const myRating=tid=>S.books.filter(b=>b.titleId===tid&&b.status==='finished'&&b.
    included; when you don't, it's an opt-in for just these people, off by default. */
 function recRateOpt(t,id){
   const rt=myRating(t.id);if(!rt)return '';
-  return S.settings.share?`<div class="xs muted" id="${id}" data-on="1">Your rating (★${rt}) is included, since you share your activity.</div>`
-    :`<label class="chk xs"><input type="checkbox" id="${id}"> Include my rating ★${rt} <span class="muted">(only the people you choose see it)</span></label>`;
+  return S.settings.share?`<div class="xs muted" id="${id}" data-on="1">Your rating (${rt}★) is included, since you share your activity.</div>`
+    :`<label class="chk xs"><input type="checkbox" id="${id}"> Include my rating (${rt}★) <span class="muted">(only the people you choose see it)</span></label>`;
 }
 const recRateOn=id=>{const el=document.getElementById(id);return !!el&&(el.dataset.on==='1'||el.checked)};
 /* How a recommendation's sender and rating read to the person receiving it. */
-const recWho=r=>`${nameOf(r.from)}${r.rating?` ★${r.rating}`:''}`;
+const recWho=r=>`${nameOf(r.from)}${r.rating?` (${r.rating}★)`:''}`;
 /* Sends a recommendation to each chosen member who doesn't already have it; returns their names. The rating, when
    included, is a snapshot: changing it later doesn't change what was sent. */
 function sendRec(t,to,note,withRating){
@@ -2655,9 +2722,18 @@ function renderBD(){
   else prim=`<button class="btn btn-primary" data-act="toggleWant" data-id="${t.id}">${ic('plus')}Add to To Read</button>`;
   if(!S.settings.solo)prim+=`<button class="btn btn-ghost" data-act="bdRec" aria-expanded="${bd.rec}">${ic('send')}Recommend</button>`;
   if(canEditTitle(t))prim+=`<button class="btn btn-ghost" data-act="teOpen" data-id="${t.id}">${ic('pencil')}Edit Book</button>`;
-  const tabs=[['copies',`Copies (${cs.length})`],['mine','My Reading'],['activity',`${GN()} Activity`],['notes','Notes']].filter(x=>!(S.settings.solo&&x[0]==='activity'));
+  const tabs=[['about','About'],['copies',`Copies (${cs.length})`],['mine','My Reading'],['activity',`${GN()} Activity`],['notes','Notes']].filter(x=>!(S.settings.solo&&x[0]==='activity'));
   let body='';
-  if(bd.tab==='copies'){
+  const dsc=descOf(t);
+  if(bd.tab==='about'){
+    // Kept collapsed on purpose: publisher text is marketing copy, and later books in a series can spoil earlier ones.
+    const facts=[t.year?`Published ${t.year}`:'',t.pages?`About ${t.pages} pages`:''].filter(Boolean).join(' · ')||`By ${esc(t.author)}`;
+    const src=dsc?.src==='member'?`Description by ${esc(dsc.by==='me'||!dsc.by?S.me.name:nameOf(dsc.by))}`:dsc?`Description from <a href="https://openlibrary.org${esc(t.olKey)}" target="_blank" rel="noopener">Open Library</a>${EXT}`:'';
+    body=(dsc?`<div class="bd-desc ${bd.descOpen?'open':''}" id="bdDesc">${dsc.text.split(/\n{2,}/).map(p=>`<p>${esc(p).replace(/\n/g,'<br>')}</p>`).join('')}</div><button class="link-btn sm bd-more" data-act="bdDescMore" aria-expanded="${!!bd.descOpen}" aria-controls="bdDesc">${bd.descOpen?'Show Less':'Show More'}</button><div class="xs muted bd-src">${src}</div>`
+      :descWaiting(t)&&!(t.descTried>Date.now()-COVER_RETRY)?`<p class="xs muted" role="status">Looking for a description…</p>`:'')
+      +`<div class="small bd-facts">${facts}</div>`
+      +(!dsc&&canEditTitle(t)?`<button class="link-btn sm" data-act="teOpen" data-id="${t.id}" data-focus="tDesc">${ic('pencil')}Add a Description</button>`:'');
+  }else if(bd.tab==='copies'){
     body=(cs.length?cs.map(copyRow).join(''):`<p class="small muted">${S.settings.solo?'You haven’t added a copy of this book.':'Nobody in your group owns a copy yet.'}</p>`)+
       (bd.addCopy?`<div class="addcopy"><select class="inp sm" id="acFmt" aria-label="Format"><option value="physical">Physical</option><option value="ebook">Ebook</option><option value="audio">Audiobook</option></select><input class="inp sm" id="acWhere" placeholder="Where is it? (optional)" aria-label="Where is it">${S.settings.solo?'':`<label class="chk xs"><input type="checkbox" id="acShare" checked> Show in ${esc(GN())} Library</label>`}<button class="btn btn-primary sm" data-act="bdAddCopyGo">Add My Copy</button><button class="link-btn sm" data-act="bdAddCopy">Cancel</button></div>`
       :`<button class="link-btn" data-act="bdAddCopy">${ic('plus')}I Own a Copy</button>`);
@@ -2678,12 +2754,15 @@ function renderBD(){
   }else{
     body=`<label class="f"><span>Notes <span class="sub">(only you see these)</span></span><textarea class="inp" id="bdNotes" rows="5" maxlength="5000" data-count="5000" aria-describedby="bdNoteCount" placeholder="Thoughts, favorite quotes, where you left off…">${esc(S.notes[t.id]||'')}</textarea>${charCount('bdNoteCount',(S.notes[t.id]||'').length,5000)}</label><div class="xs muted" style="margin-top:6px">Saved as you type.</div>`;
   }
-  bookBody.innerHTML=`<div class="dlg-h bd-h">${libCover(t,84)}<div style="flex:1;min-width:0"><h2 id="bdTitle">${esc(t.title)}</h2><div class="muted">${esc(t.author)}</div><div class="xs muted" style="margin-top:4px">${[t.series?`${esc(t.series)} #${t.seriesNo??'?'}`:'',t.genre,t.pages?`${t.pages} pages`:''].filter(Boolean).join(' · ')}</div>
+  bookBody.innerHTML=`<div class="dlg-h bd-h">${libCover(t,84)}<div style="flex:1;min-width:0"><h2 id="bdTitle">${esc(dispT(t.title))}</h2><div class="muted">${esc(t.author)}</div><div class="xs muted" style="margin-top:4px">${[t.series?`${esc(t.series)} #${t.seriesNo??'?'}`:'',t.genre,t.pages?`${t.pages} pages`:''].filter(Boolean).join(' · ')}</div>
+ ${dsc&&bd.tab!=='about'?`<div class="bd-prev"><span class="bd-prev-t">${esc(dsc.text.replace(/\s+/g,' '))}</span><button class="link-btn sm" data-act="bdTab" data-v="about">More</button></div>`:''}
  <div class="bd-acts">${prim}</div>${getLine(t)}${bdQuiet(t,r)}</div><button type="button" class="icon-btn x" data-act="closeBD" aria-label="Close">${ic('x')}</button></div>
-    ${(()=>{const rs=myRecs().filter(r=>r.titleId===t.id);return rs.length?`<div class="rec-box">${rs.map(r=>`<div class="small"><b>${esc(nameOf(r.from))}</b>${r.rating?` (★${r.rating})`:''} recommended this to you${r.note?`: “${esc(r.note)}”`:'.'}</div>`).join('')}<div class="rec-acts"><button class="link-btn sm" data-act="dismissRec" data-id="${t.id}">Not for Me</button><span class="xs muted">Only you see this; ${esc([...new Set(rs.map(r=>nameOf(r.from)))].join(' and '))} won’t be told.</span></div></div>`:''})()}
+    ${(()=>{const rs=myRecs().filter(r=>r.titleId===t.id);return rs.length?`<div class="rec-box">${rs.map(r=>`<div class="small"><b>${esc(nameOf(r.from))}</b>${r.rating?` (${r.rating}★)`:''} recommended this to you${r.note?`: “${esc(r.note)}”`:'.'}</div>`).join('')}<div class="rec-acts"><button class="link-btn sm" data-act="dismissRec" data-id="${t.id}">Not for Me</button><span class="xs muted">Only you see this; ${esc([...new Set(rs.map(r=>nameOf(r.from)))].join(' and '))} won’t be told.</span></div></div>`:''})()}
     ${bd.rec?`<div class="recf"><div class="small" style="font-weight:600">Recommend To</div><div class="chips">${Object.entries(S.members).map(([k,m])=>{const done=S.recsSent.some(r=>r.titleId===t.id&&r.to===k);return `<label class="chk ${done?'dim':''}"><input type="checkbox" name="recTo" value="${k}" ${done?'disabled':''}> ${esc(m.name)}${done?' <span class="xs muted">(already recommended)</span>':''}</label>`}).join('')}</div><input class="inp sm" id="recNote" maxlength="140" placeholder="Add a note (optional)" aria-label="Note">${recRateOpt(t,'recRate')}<div class="err" id="recErr" role="alert"></div><div class="dlg-f"><button class="btn btn-ghost sm" data-act="bdRec">Cancel</button><button class="btn btn-primary sm" data-act="bdRecGo">Send Recommendation</button></div></div>`:''}
     <div class="bd-tabs" role="tablist">${tabs.map(([k,l])=>`<button class="bd-tab" role="tab" aria-selected="${bd.tab===k}" data-act="bdTab" data-v="${k}">${l}</button>`).join('')}</div>
     <div class="bd-body">${body}</div>`;
+  const dd=document.getElementById('bdDesc');
+  if(dd&&!bd.descOpen&&dd.scrollHeight<=dd.clientHeight+2){dd.classList.add('fits');bookBody.querySelector('.bd-more')?.remove()}
 }
 
 /* ---------- edit a library entry ---------- */
@@ -2706,6 +2785,7 @@ function openTitleEdit(id){
     <div class="f2"><label class="f"><span>Series Name <span class="sub">(optional)</span></span><input class="inp" name="tSeries" list="teSeries" value="${esc(t.series||'')}" autocomplete="off"><datalist id="teSeries">${series.map(n=>`<option value="${esc(n)}">`).join('')}</datalist></label>
     <label class="f">Book Number<input class="inp" name="tSeriesNo" inputmode="decimal" value="${t.seriesNo??''}"></label></div>
     <label class="f"><span>Books in the Series <span class="sub">(if known)</span></span><input class="inp" name="tSeriesLen" inputmode="numeric" value="${t.series?(S.seriesLen?.[t.series]??''):''}"></label>
+    <label class="f"><span>Description <span class="sub">(optional, shown in About)</span></span><textarea class="inp" name="tDesc" rows="5" maxlength="3000" placeholder="What the book is about, without spoilers">${esc(t.descText||'')}</textarea></label>
     <div class="section-t">Cover</div>
     <div class="te-cover"><div class="te-prev"><div id="tePrev"></div><span class="xs muted" id="teSrc" aria-live="polite"></span><button type="button" class="link-btn sm" data-act="teGen">Use Generated Cover</button></div>
       <div class="te-panel"><div class="vseg ad-tabs" role="tablist" aria-label="Cover source">${[['url','Web Address'],['upload','Upload'],['ol','Open Library']].map(([k,l])=>`<button type="button" role="tab" aria-pressed="${te.tab===k}" data-act="teTab" data-v="${k}">${l}</button>`).join('')}</div><div id="tePanel"></div></div></div>
@@ -2783,6 +2863,7 @@ titleForm.addEventListener('submit',e=>{
   const old=t.title;
   Object.assign(t,{title,author,pages:pages?+pages:undefined,isbn:isbn||undefined,genre:v('tGenre'),series:sn||undefined,seriesNo:sn&&no?+no:undefined});
   if(sn&&len)(S.seriesLen=S.seriesLen||{})[sn]=+len;
+  {const d=v('tDesc');if(d!==(t.descText||'')){if(d){t.descText=d;t.descBy='me'}else{delete t.descText;delete t.descBy}}}
   if(te.touched){if(te.cover){t.cover=te.cover;t.coverPicked=true;delete t.noAutoCover}else{delete t.cover;t.noAutoCover=true}}
   else if(!t.cover&&!t.noAutoCover&&old!==title){delete t.coverTried;setTimeout(coverFill,500)}
   mine.forEach(b=>{b.title=title;b.author=author;if(b.format!=='audio'&&pages)b.total=+pages});
@@ -2872,7 +2953,7 @@ let coverBusy=false,coverDraw;
 const needCover=t=>!t.cover&&!t.noAutoCover&&!(t.coverTried>Date.now()-COVER_RETRY);
 const needInfo=t=>t.olRedo||!t.olAt&&!(t.olTried>Date.now()-COVER_RETRY);
 async function olCoverFor(t,redo){
-  const base=`https://openlibrary.org/search.json?fields=key,title,author_name,edition_count,cover_i,author_key,ebook_access,lending_edition_s,lending_identifier_s&limit=10&lang=en&`;
+  const base=`https://openlibrary.org/search.json?fields=key,title,author_name,edition_count,first_publish_year,cover_i,author_key,ebook_access,lending_edition_s,lending_identifier_s&limit=10&lang=en&`;
   const au=t.author&&t.author!=='Unknown author'?t.author.split(',')[0].trim():'',ln=lastName(au).toLowerCase();
   // Drop subtitles and tails like "by F. Scott Fitzgerald" that some book lists add to titles.
   let qt=t.title.split(':')[0].trim();if(ln&&new RegExp(`\\s+by\\s+.*${ln.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}.*$`,'i').test(qt))qt=qt.replace(/\s+by\s+.*$/i,'').trim();
@@ -2918,6 +2999,8 @@ async function coverFill(){
       if(d?.c&&wantCover){t.cover=`https://covers.openlibrary.org/b/id/${d.c.cover_i}-M.jpg`;coverRedraw()}
       const m=d?.m||(!t.olKey&&d?.c);
       if(m)olSave(t,{key:m.key,authorKeys:(m.author_key||[]).slice(0,2),ebook:olEbook(m)});
+      if(m?.first_publish_year&&!t.year&&t.olKey===m.key)t.year=m.first_publish_year;
+      if(redo&&d?.m)delete t.desc;// a corrected match fetches its own description
       save();
       await new Promise(r=>setTimeout(r,1000));
     }
@@ -4027,17 +4110,18 @@ document.addEventListener('click',e=>{
     case 'libF':lib.f[a.dataset.k]=a.dataset.v;refreshLib();break;
     case 'libClear':lib.f={...LIB0};lib.q='';refreshLib();break;
     case 'libView':S.settings.libView=a.dataset.v;save();refreshLib();break;
-    case 'openTitle':if(nextDlg.open)nextDlg.close();openTitle(a.dataset.id);break;
+    case 'openTitle':if(nextDlg.open)nextDlg.close();openTitle(a.dataset.id,a.dataset.tab);break;
+    case 'bdDescMore':bd.descOpen=!bd.descOpen;renderBD();break;
     case 'discWant':{const it=discIdx[a.dataset.k];if(!it)break;const snap=snapshot(),t=it.t||olTitleFrom(it.x),r=myReading(t.id);
       if(!r||r.status==='finished'||r.status==='dnf')S.books.push({id:'r'+uid(),titleId:t.id,title:t.title,author:t.author,format:'print',total:t.pages||300,pos:0,status:'want',c:t.c,wantSince:today()});
       save();refreshLib();toast(`Added ${t.title} to your To Read list.`,restoreTo(snap));break}
     case 'discHide':{const card=a.closest('.dc-card'),k=a.dataset.k;
       S.discHide=[...(S.discHide||[]),k];save();
       if(!card||bookDlg.open){refreshLib();break}
-      ghostCard(card,k);break}
+      ghostCard(card,k,'',e.detail===0);break}
     case 'ghostUndo':{clearTimeout(ghostT);S.discHide=(S.discHide||[]).filter(x=>x!==a.dataset.k);save();refreshLib();break}
     case 'discUnhide':{const t=titleById(a.dataset.id),ks=[t&&'t:'+t.id,t?.olKey].filter(Boolean);S.discHide=(S.discHide||[]).filter(k=>!ks.includes(k));save();refreshLib();break}
-    case 'discOpen':{const it=discIdx[a.dataset.k];if(!it)break;let t=it.t;if(!t){const n=S.titles.length;t=olTitleFrom(it.x);if(S.titles.length>n)t.fromDisc=true}if(nextDlg.open)nextDlg.close();openTitle(t.id);break}
+    case 'discOpen':{const it=discIdx[a.dataset.k];if(!it)break;let t=it.t;if(!t){const n=S.titles.length;t=olTitleFrom(it.x);if(S.titles.length>n)t.fromDisc=true}if(nextDlg.open)nextDlg.close();openTitle(t.id,'about');break}
     case 'readIt':{const t=titleById(a.dataset.id);if(!t)break;const snap=snapshot();(S.readIt=S.readIt||{})[t.id]=today();save();refreshLib();toast(`Marked ${t.title} as already read.`,restoreTo(snap),'It won’t be suggested, and it isn’t counted in your stats.');break}
     case 'readItUndo':if(S.readIt)delete S.readIt[a.dataset.id];save();refreshLib();break;
     case 'surprise':{const w=wantList().filter(b=>b.id!==surprise&&!hiddenT(titleById(b.titleId)));if(w.length)surprise=w[Math.floor(Math.random()*w.length)].id;refreshLib();document.getElementById('dcSurprise')?.closest('.dc-row')?.querySelector('.lc-open')?.focus();break}
@@ -4058,7 +4142,7 @@ document.addEventListener('click',e=>{
     case 'dismissRec':{const snap=snapshot(),t=titleById(a.dataset.id),who=[...new Set(S.recs.filter(r=>r.titleId===a.dataset.id).map(r=>nameOf(r.from)))].join(' and ');
       // Kept private: the recommendation stays as sent; only this member's hidden list changes.
       const hk=t.olKey||'t:'+t.id;S.discHide=[...(S.discHide||[]),hk];save();
-      const gc=a.closest('.dc-card');if(gc&&!bookDlg.open){ghostCard(gc,hk,`${who} won’t be told`);break}refreshLib();toast(`Removed ${t.title} from your recommendations.`,restoreTo(snap),`${who} won’t be told.`);break}
+      const gc=a.closest('.dc-card');if(gc&&!bookDlg.open){ghostCard(gc,hk,`${who} won’t be told`,e.detail===0);break}refreshLib();toast(`Removed ${t.title} from your recommendations.`,restoreTo(snap),`${who} won’t be told.`);break}
     case 'addBook':openAdd();break;
     case 'closeAdd':addDlg.close();refreshLib();break;
     case 'adTab':ad.tab=a.dataset.v;ad.own=null;renderAdd();if(ad.tab==='search')setTimeout(()=>document.getElementById('adQ')?.focus(),30);if(ad.tab==='manual')setTimeout(()=>document.getElementById('amTitle')?.focus(),30);break;
@@ -4109,7 +4193,7 @@ document.addEventListener('click',e=>{
     case 'discardTimer':{const snap=snapshot();S.timer=null;save();render();toast('Timer discarded.',restoreTo(snap));break}
     case 'editBook':openEdit(id);break;
     case 'closeEdit':editDlg.close();break;
-    case 'teOpen':openTitleEdit(a.dataset.id);break;
+    case 'teOpen':openTitleEdit(a.dataset.id);if(a.dataset.focus)setTimeout(()=>titleForm.querySelector(`[name=${a.dataset.focus}]`)?.focus(),40);break;
     case 'teClose':titleDlg.close();break;
     case 'teTab':te.tab=a.dataset.v;tePanel();break;
     case 'teSearch':teSearch();break;
@@ -4192,6 +4276,7 @@ paintIcons();
 readRoute();
 render();
 setTimeout(coverFill,1000);
+setTimeout(descAll,6000);
 setTimeout(maybeOfferTour,700);
 </script>
 </body>

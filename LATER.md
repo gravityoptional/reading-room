@@ -14,11 +14,11 @@ Known issues and follow-ups for the next prototype. Not published; the site only
 
 ## Planned
 
-- **Book descriptions** (plan: `plans/Book_Descriptions.md`, added Nov 1, 2026). An About tab in book details,
-  a two-line preview under the title, descriptions from a member (Edit Book), then Open Library (saved), then
-  Google Books (on demand, never saved). Depends on 2a (done). Before building: confirm the Open Library
-  description format, read Google Books' terms, run the 20-book coverage test (needs openlibrary.org and
-  googleapis.com reachable), and James's two open items (Google Books from the start; title capitalization).
+- **Book descriptions (2i)**: built Nov 2, 2026 (plan: `plans/Book_Descriptions.md`) with member-written and Open
+  Library descriptions, the About tab, the preview, and display-only title case. **Google Books is not built yet**:
+  the plan requires reading Google's current Books API terms first, and developers.google.com isn't reachable from
+  the build session. Allow it in the environment's network settings, then add it. Coverage test (20 family books)
+  still to do on /next/.
 
 ## Issues
 
@@ -28,8 +28,8 @@ Known issues and follow-ups for the next prototype. Not published; the site only
   the full title in book details, and size rows to what's visible.
 - **WorldCat "Error 1015" on the first Find at Your Library click** (seen Oct 31, 2026; the same link worked on
   retry). WorldCat's traffic protection, not Reading Room. If it recurs, switch the link target.
-- **Ghost card after Not for Me** (trying it, Oct 31): the card stays faded in place with "Hidden · Undo" for 5
-  seconds, then the row closes up. Judge on /next/: is 5 seconds right, and does it feel quiet enough?
+- **Ghost card after Not for Me** (trying it, Oct 31): faded in place with "Hidden · Undo" for 5 seconds, paused
+  while the pointer rests on it or the keyboard is on Undo (Nov 2). Also on group recommendation cards. Judge on /next/.
 - **Language setting** (James agreed Oct 31): Open Library lookups prefer English editions, fixed in code. Add a
   member setting (for example Spanish) that sets the preferred edition language.
 - **Did Not Finish reasons** (James, Oct 31): the list is fine for now (Not for me, Too slow, Not the right time,
