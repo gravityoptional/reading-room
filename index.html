@@ -557,7 +557,7 @@ button.cal-d{border:0;font:inherit;color:inherit;cursor:pointer;position:relativ
 .timer-actions{display:flex;gap:8px}.timer-actions .btn-primary{flex:1}
 .timer-actions .btn{white-space:nowrap}
 .cu-from[hidden],.cu-note[hidden],.log-ask[hidden]{display:none}
-.min-hint{min-height:1.2em}.cf-warn{color:var(--warn,#9a5b00)}.cf-warn:empty{display:none}.log-ask{border:1px solid var(--border);background:var(--surface-2,var(--surface));border-radius:12px;padding:10px 12px;display:grid;gap:8px}.log-ask p{margin:0}.log-ask-b{display:flex;flex-wrap:wrap;gap:8px}.cu-dates{margin-bottom:6px}.timer-redo{display:flex;gap:6px;align-items:center;justify-content:center;margin-top:-4px}
+.min-hint{min-height:1.2em}.cf-warn{color:var(--warn,#9a5b00)}.cf-warn:empty{display:none}.log-ask{border:1px solid var(--border);background:var(--surface-2,var(--surface));border-radius:12px;padding:10px 12px;display:grid;gap:8px}.log-ask p{margin:0}.log-ask-b{display:flex;flex-wrap:wrap;gap:8px}.cu-dates{margin-bottom:6px}.timer-actions{align-items:flex-start}.ta-main{flex:1;min-width:0;display:grid;gap:4px}.ta-main .btn-primary{width:100%}.timer-redo{display:flex;gap:6px;align-items:center;justify-content:center}
 .timer-pill{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:8;display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:6px 6px 6px 14px;box-shadow:0 10px 30px rgba(15,23,42,.18);font-variant-numeric:tabular-nums;font-weight:600}
 .timer-pill .tp-t{font-weight:400;color:var(--text-2);max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .timer-pill .btn{padding:6px 12px;border-radius:999px}
@@ -1580,7 +1580,7 @@ const fmtClock=m=>{const sec=Math.floor(m*60),h=Math.floor(sec/3600),mm=Math.flo
 function timerBox(){
   const b=book(S.timer.bookId),st=!!S.timer.stop;
   return `<div class="timer-box"><div class="timer-top"><div style="min-width:0"><div class="xs muted">${st?'Timer Stopped':'Reading Now'}</div><div class="timer-t">${esc(b?b.title:'')}</div></div><div class="clock" data-timer>${fmtClock(tElapsed())}</div></div>
-  <div class="timer-actions"><button class="btn btn-primary" data-act="stopTimer">${st?'Finish Logging':'Stop and Log'}</button><button class="btn btn-ghost" data-act="discardTimer">Discard</button></div>${st?'<div class="timer-redo"><button class="link-btn sm" data-act="resumeTimer">Resume</button><span class="muted" aria-hidden="true">·</span><button class="link-btn sm" data-act="resetTimer">Start Over at 0:00</button></div>':''}</div>`;
+  <div class="timer-actions"><div class="ta-main"><button class="btn btn-primary" data-act="stopTimer">${st?'Finish Logging':'Stop and Log'}</button>${st?'<div class="timer-redo"><button class="link-btn sm" data-act="resumeTimer">Resume</button><span class="muted" aria-hidden="true">·</span><button class="link-btn sm" data-act="resetTimer">Start Over at 0:00</button></div>':''}</div><button class="btn btn-ghost" data-act="discardTimer">Discard</button></div></div>`;
 }
 function startTimer(id){
   const b=(id&&book(id))||currentSel();if(!b){toast('Start a book first, then time your reading.');return}
