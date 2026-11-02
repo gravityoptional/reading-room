@@ -14,6 +14,8 @@ next; next-only features wait for James's approval to merge into main.
   which main doesn't have.
 - Undo in messages works while a window is open: the message goes inside the open window (main 6f4d203, merged
   Nov 2). Same code on both.
+- Undo from a message also redraws the open window (main 89a9a48, merged Nov 2). Same code on both; on next,
+  the shared redraw also covers the finish window.
 
 **next-only (waiting to merge into main):** Discover release 1 (2a–2h) and later changes: Discover as a Library
 tab, lean cards, ghost card, finish window (queue, rate, thank, recommend), finished-only ratings, Did Not Finish
