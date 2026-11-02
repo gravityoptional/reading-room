@@ -17,7 +17,7 @@ next; next-only features wait for James's approval to merge into main.
 - Undo from a message also redraws the open window (main 89a9a48, merged Nov 2). Same code on both; on next,
   the shared redraw also covers the finish window.
 
-**next-only (waiting to merge into main):** Discover release 1 (2a–2h) and later changes: Discover as a Library
+**next-only (waiting to merge into main):** Discover release 1 (2a–2h), "Finished, date unknown", and later changes: Discover as a Library
 tab, lean cards, ghost card, finish window (queue, rate, thank, recommend), finished-only ratings, Did Not Finish
 reasons, include my rating, rating label follows sharing, Recommend a Book on every tab, English editions and
 Open Library matching, book descriptions (2i). When merging next into main, next's version wins everywhere.
