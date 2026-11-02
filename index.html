@@ -3358,7 +3358,11 @@ const restoreTo=snap=>()=>{S=JSON.parse(snap);save();render()};
 const showT=t=>{if(t.showPopover){if(t.matches(':popover-open'))t.hidePopover();t.showPopover()}else t.hidden=false};
 const hideT=t=>{if(t.hidePopover){if(t.matches(':popover-open'))t.hidePopover()}else t.hidden=true};
 let extraSub='';
-function toast(m,undo,sub,cele){if(extraSub){sub=sub?`${sub} ${extraSub}`:extraSub;extraSub=''}const t=document.getElementById('toast');t.classList.toggle('cele',!!cele);t.innerHTML=`<span><span class="t-main">${esc(m)}</span>${sub?`<span class="t-sub">${esc(sub)}</span>`:''}</span>${undo?'<button class="toast-undo" data-act="undo">Undo</button>':''}`;undoFn=undo||null;showT(t);clearTimeout(toastT);toastT=setTimeout(()=>{hideT(t);undoFn=null},undo?6000:sub?4500:2800)}
+function toast(m,undo,sub,cele){if(extraSub){sub=sub?`${sub} ${extraSub}`:extraSub;extraSub=''}const t=document.getElementById('toast');
+  // While a window is open, the browser blocks taps and clicks on everything outside it, so the message goes inside
+  // that window, where its Undo still works.
+  const host=[...document.querySelectorAll('dialog[open]')].pop()||document.body;if(t.parentNode!==host){hideT(t);host.appendChild(t)}
+  t.classList.toggle('cele',!!cele);t.innerHTML=`<span><span class="t-main">${esc(m)}</span>${sub?`<span class="t-sub">${esc(sub)}</span>`:''}</span>${undo?'<button class="toast-undo" data-act="undo">Undo</button>':''}`;undoFn=undo||null;showT(t);clearTimeout(toastT);toastT=setTimeout(()=>{hideT(t);undoFn=null},undo?6000:sub?4500:2800)}
 function closeMenus(){['bellMenu','meMenu','grpMenu'].forEach(i=>document.getElementById(i).hidden=true)}
 document.addEventListener('change',async e=>{
   if(e.target.id!=='heroUpload')return;
