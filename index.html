@@ -818,6 +818,8 @@ main section.card .card-h .ico{display:none}
 .bd-tabs{gap:0;scrollbar-width:none}
 .bd-tabs::-webkit-scrollbar{display:none}
 .bd-tab{padding:9px 10px}
+/* Phones: tighter tabs, so more rows fit without scrolling (book details and the Library's tabs fit from about 375–412 px). */
+@media (max-width:480px){.bd-tab{padding:9px 6px;font-size:13.5px}.tabs{gap:12px}.tabs>.tab{font-size:14px}}
 /* status picker, activity filter, recommendation edits, invites */
 .st-btns{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .st-btns .tab[disabled]{opacity:1;cursor:default}
@@ -2834,7 +2836,7 @@ function renderBD(){
   else prim=`<button class="btn btn-primary" data-act="toggleWant" data-id="${t.id}">${ic('plus')}Add to To Read</button>`;
   if(!S.settings.solo)prim+=`<button class="btn btn-ghost" data-act="bdRec" aria-expanded="${bd.rec}">${ic('send')}Recommend</button>`;
   if(canEditTitle(t))prim+=`<button class="btn btn-ghost" data-act="teOpen" data-id="${t.id}">${ic('pencil')}Edit Book</button>`;
-  const tabs=[['about','About'],['copies',`Copies (${cs.length})`],['mine','My Reading'],['activity','Activity'],['notes','Notes']].filter(x=>!(S.settings.solo&&x[0]==='activity'));
+  const tabs=[['about','About'],['copies',bd.tab==='copies'?`Copies (${cs.length})`:'Copies'],['mine','My Reading'],['activity','Activity'],['notes','Notes']].filter(x=>!(S.settings.solo&&x[0]==='activity'));
   let body='';
   const dsc=descOf(t);
   if(bd.tab==='about'){
