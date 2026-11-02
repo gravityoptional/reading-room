@@ -807,6 +807,10 @@ main section.card .card-h .ico{display:none}
 .tabs>.tab{margin-bottom:0}
 .bd-tabs{border-bottom:0;box-shadow:inset 0 -1px 0 var(--border);overflow-y:hidden}
 .bd-tab{margin-bottom:0}
+/* Five tabs since About: tighter, and no visible scrollbar where they still scroll on narrow screens. */
+.bd-tabs{gap:0;scrollbar-width:none}
+.bd-tabs::-webkit-scrollbar{display:none}
+.bd-tab{padding:9px 10px}
 /* status picker, activity filter, recommendation edits, invites */
 .st-btns{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .st-btns .tab[disabled]{opacity:1;cursor:default}
@@ -1303,6 +1307,7 @@ if(!S.actSeeded2){S.actSeeded2=true;const n=Date.now(),H=3600e3,ms=Object.keys(S
   {id:uid(),who:m(0),kind:'session',text:'logged a reading session',book:'Dune',ts:n-4*H,r:{}},
   {id:uid(),who:m(0),kind:'session',text:'logged a reading session',book:'Dune',ts:n-5*H,r:{}})}}
 if(!S.group)S.group={name:'Emberton Family'};
+if(!S.descV2){S.descV2=true;(S.titles||[]).forEach(t=>{if(t.desc){const c=cleanDesc(t.desc);if(c)t.desc=c;else delete t.desc}})}
 if(!S.recRateSeeded){S.recRateSeeded=true;const r=(S.recs||[]).find(x=>x.id==='r1');if(r)r.rating=4.5}
 if(S.titles?.some(t=>t.fromDisc))pruneDisc();
 (S.titles||[]).forEach(t=>{if(t.olTried&&!t.olV){t.olRedo=true;delete t.olAt;delete t.olTried}});
@@ -2619,6 +2624,7 @@ function cleanDesc(raw){
      .replace(/^\s*(?:see also\b|source:|also contained in\b).*$/gim,'')
      .replace(/https?:\/\/\S+/g,'')
      .replace(/(\*\*|__)(.+?)\1/g,'$2')
+     .replace(/(^|[\s(“"'])([*_])(\S(?:[^*_\n]*?\S)?)\2(?=[\s).,;:!?”"']|$)/gm,'$1$3')   // *emphasis* and _emphasis_
      .replace(/[ \t]+\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
   return s.replace(/\s+/g,' ').length<60?'':s;   // a few words or just a credit: not a description
 }
