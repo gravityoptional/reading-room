@@ -16,11 +16,24 @@ next; next-only features wait for James's approval to merge into main.
   Nov 2). Same code on both.
 - Undo from a message also redraws the open window (main 89a9a48, merged Nov 2). Same code on both; on next,
   the shared redraw also covers the finish window.
+- Fix bundle (main 9b94137 + f54bef0, merged Nov 2): timer Resume and Start Over at 0:00; the Minutes box takes
+  hours (90, 1:30, 2h 30m) with "= 1h 30m" under it; a day can't pass 24 hours, and over 8 hours or 500 pages the
+  form asks "Is that right?" (the timer asks whether it kept running); catch-up entries ("Covers more than one
+  day": count toward totals, hours and pages goals, and challenges whose dates hold the whole stretch, never
+  streaks, daily goals, or reading days); Duplicate on every challenge and Battle of the Books (month or year in
+  the name moves forward; otherwise the name is selected to type over; Battles carry no readers, picks,
+  moderator, or results); Count It for list books finished before a challenge started, and a start-date warning
+  in the form; sample audiobooks (Project Hail Mary in progress, The Martian finished and unrated, Pride and
+  Prejudice to read), added once to saved data. Same code on both, except next keeps "Finished, date unknown" in
+  the Add Progress list.
 
 **next-only (waiting to merge into main):** Discover release 1 (2a–2h), "Finished, date unknown", and later changes: Discover as a Library
 tab, lean cards, ghost card, finish window (queue, rate, thank, recommend), finished-only ratings, Did Not Finish
 reasons, include my rating, rating label follows sharing, Recommend a Book on every tab, English editions and
-Open Library matching, book descriptions (2i). When merging next into main, next's version wins everywhere.
+Open Library matching, book descriptions (2i), more than one Did Not Finish reason, which tab book details
+open on (My Reading for your books, Copies for the group library, owned To Read books, and copy notices; About
+elsewhere), optional stars in Recommend for finished books you haven't rated, and the Recommend form keeping its
+choices when the window redraws. When merging next into main, next's version wins everywhere.
 
 **Changes on next that fix main behavior too** (come over with the merge; James chose next first):
 - One click opens book details from Currently Reading (large cover and title) and Paused Books, on My Reading;

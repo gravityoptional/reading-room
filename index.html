@@ -554,6 +554,10 @@ button.cal-d{border:0;font:inherit;color:inherit;cursor:pointer;position:relativ
 .timer-t{font-family:var(--serif);font-weight:600;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .clock{flex-shrink:0;font-family:var(--serif);font-size:30px;font-weight:600;color:var(--primary);font-variant-numeric:tabular-nums}
 .timer-actions{display:flex;gap:8px}.timer-actions .btn-primary{flex:1}
+.timer-actions .btn{white-space:nowrap}
+.cu-from[hidden],.cu-note[hidden],.log-ask[hidden]{display:none}
+.timer-actions.st .btn{flex:1 1 0}@media (max-width:480px){.timer-actions.st{flex-wrap:wrap}.timer-actions.st .btn-primary{flex-basis:100%}}
+.min-hint{min-height:1.2em}.cf-warn{color:var(--warn,#9a5b00)}.cf-warn:empty{display:none}.log-ask{border:1px solid var(--border);background:var(--surface-2,var(--surface));border-radius:12px;padding:10px 12px;display:grid;gap:8px}.log-ask p{margin:0}.log-ask-b{display:flex;flex-wrap:wrap;gap:8px}.cu-dates{margin-bottom:6px}.timer-redo{display:flex;justify-content:flex-end;margin-top:-4px}
 .timer-pill{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:8;display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:6px 6px 6px 14px;box-shadow:0 10px 30px rgba(15,23,42,.18);font-variant-numeric:tabular-nums;font-weight:600}
 .timer-pill .tp-t{font-weight:400;color:var(--text-2);max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .timer-pill .btn{padding:6px 12px;border-radius:999px}
@@ -1249,6 +1253,7 @@ const ICONS={
   heart:'<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
   compass:'<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/>',
   plus:'<path d="M12 5v14M5 12h14"/>',
+  copy:'<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/>',
   lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
   play:'<path d="M8 5v14l11-7z"/>',
   pin:'<path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>'
@@ -1264,6 +1269,18 @@ const addDays=(s,n)=>{const d=new Date(s+'T12:00:00');d.setDate(d.getDate()+n);r
 const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const fmtDate=s=>{const d=new Date(s+'T12:00:00');return `${MON[d.getMonth()]} ${d.getDate()}`};
 const fmtMin=m=>{m=Math.round(m);if(m<60)return `${m} min`;const h=Math.floor(m/60),r=m%60;return r?`${h}h ${r}m`:`${h}h`};
+/* The Minutes box takes minutes (90), hours and minutes (1:30), or words (2h 30m, 1.5 hours, 45 min). */
+function parseMin(v){v=String(v??'').trim().toLowerCase();if(v==='')return null;let m;
+  if(/^\d+$/.test(v))return +v;
+  if((m=v.match(/^(\d+):([0-5]\d)$/)))return +m[1]*60+ +m[2];
+  if((m=v.match(/^(\d+(?:\.\d+)?)\s*h(?:ours?|rs?)?\.?\s*(?:(\d+)\s*m(?:in(?:ute)?s?)?\.?)?$/)))return Math.round(+m[1]*60+(+m[2]||0));
+  if((m=v.match(/^(\d+)\s*m(?:in(?:ute)?s?)?\.?$/)))return +m[1];
+  return NaN}
+/* Catch-up entries cover several days (from → date). They count toward totals, goals for hours and pages, Records totals,
+   and challenges whose dates hold the whole stretch, but never toward streaks, daily goals, or reading days. */
+const isCU=x=>!!x.from;
+const DAY_MAX=1440,DAY_ASK_MIN=480,DAY_ASK_PAGES=500;
+const daysIn=(a,b)=>daysBetween(a,b)+1;
 const fmtPos=m=>`${Math.floor(m/60)}:${pad(Math.round(m%60))}`;
 const parsePos=v=>{v=String(v).trim();if(!v)return null;if(/^\d+$/.test(v))return +v;const m=v.match(/^(\d+):(\d{1,2})$/);return m?(+m[1])*60+(+m[2]):NaN};
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1339,6 +1356,18 @@ S.me.admin=true;
 S.settings.hideAct=S.settings.hideAct||[];
 if(!S.seriesSeeded){S.seriesSeeded=true;['Wool','Shift','Dust'].forEach((n,i)=>{const t=(S.titles||[]).find(x=>x.title===n&&/Howey/.test(x.author||''));if(t){t.series='Silo';t.seriesNo=i+1}});(S.seriesLen=S.seriesLen||{}).Silo=3}
 if(!S.invSeeded){S.invSeeded=true;const ph=(S.titles||[]).find(t=>t.title==='Project Hail Mary');if(ph){S.challenges.push({id:'inv1',name:'Read Project Hail Mary Before Thanksgiving',desc:'Want to read this one with me?',mode:'coop',type:'list',titleIds:[ph.id],target:null,start:today(),end:'2026-11-26',creator:'keng',participants:['keng'],inviteOnly:true,invited:['me'],sample:{keng:0},rule:'all'});(S.notifs=S.notifs||[]).unshift({id:'n4',text:'Keng invited you to a challenge: Read Project Hail Mary Before Thanksgiving.',ts:Date.now()-2*3600e3,link:{type:'ch',id:'inv1'}})}}
+/* Audiobooks for testing (added once, also to saved data): Project Hail Mary in progress, The Martian finished and unrated, Pride and Prejudice to read. */
+if(!S.audSeeded){S.audSeeded=true;const T=today(),hc=x=>[...x].reduce((a,c)=>(a*31+c.charCodeAt(0))>>>0,7)%10;
+  const tOf=(title,author,pages,genre)=>{let t=(S.titles||[]).find(x=>x.title===title);if(!t){t={id:'t'+uid(),title,author,pages,genre,c:hc(title),added:Date.now()};S.titles.push(t)}return t};
+  const ph=S.books.find(b=>b.title==='Project Hail Mary'&&b.status==='want'&&!S.sessions.some(x=>x.bookId===b.id));
+  if(ph){Object.assign(ph,{format:'audio',total:970,pos:105,status:'reading',started:'2026-10-19'});delete ph.wantSince;S.upNext=(S.upNext||[]).filter(x=>x!==ph.id);
+    S.sessions.push({id:uid(),bookId:ph.id,date:'2026-10-20',start:0,end:45,pages:0,minutes:45,est:null,note:''},{id:uid(),bookId:ph.id,date:'2026-10-22',start:45,end:105,pages:0,minutes:60,est:null,note:''})}
+  const ma=tOf('The Martian','Andy Weir',387,'Science Fiction');
+  if(!S.books.some(b=>b.titleId===ma.id)){const b={id:'aud_martian',titleId:ma.id,title:ma.title,author:ma.author,format:'audio',total:653,pos:653,status:'finished',started:'2026-09-14',finished:'2026-09-27',c:ma.c};S.books.push(b);
+    S.sessions.push({id:uid(),bookId:b.id,date:'2026-09-14',start:0,end:240,pages:0,minutes:240,est:null,note:''},{id:uid(),bookId:b.id,date:'2026-09-20',start:240,end:470,pages:0,minutes:230,est:null,note:''},{id:uid(),bookId:b.id,date:'2026-09-27',start:470,end:653,pages:0,minutes:183,est:null,note:''});
+    if(!S.copies.some(c=>c.titleId===ma.id&&c.owner==='me'))S.copies.push({id:'c'+uid(),titleId:ma.id,owner:'me',format:'audio',where:'Audible',loanTo:null})}
+  const pp=tOf('Pride and Prejudice','Jane Austen',279,'Classics');
+  if(!S.books.some(b=>b.titleId===pp.id))S.books.push({id:'aud_pride',titleId:pp.id,title:pp.title,author:pp.author,format:'audio',total:707,pos:0,status:'want',wantSince:T,c:pp.c})}
 if(!S.actSeeded2){S.actSeeded2=true;const n=Date.now(),H=3600e3,ms=Object.keys(S.members||{}),m=i=>ms[i%ms.length];if(ms.length){S.activity.push(
   {id:uid(),who:m(0),kind:'earned',text:'earned the badge',book:'On a Roll',ts:n-3*H,r:{}},
   {id:uid(),who:m(1),kind:'halfway',text:'reached the halfway point of',book:'Wonder',ts:n-7*H,r:{}},
@@ -1426,7 +1455,7 @@ function applyPrefs(){
 /* ---------- calculations ---------- */
 const book=id=>S.books.find(b=>b.id===id);
 function pace(bookId){
-  const both=S.sessions.filter(s=>s.pages>0&&s.minutes>0);
+  const both=S.sessions.filter(s=>s.pages>0&&s.minutes>0&&!isCU(s));
   const own=both.filter(s=>s.bookId===bookId);
   const use=own.length>=3?own:(both.length>=3?both:null);
   if(!use)return null;
@@ -1434,7 +1463,7 @@ function pace(bookId){
   return m?p/m:null;
 }
 function day(date){
-  const ss=S.sessions.filter(s=>s.date===date);
+  const ss=S.sessions.filter(s=>s.date===date&&!isCU(s));
   let rec=0,est=0,pages=0;
   for(const s of ss){if(s.minutes)rec+=s.minutes;else if(s.est)est+=s.est;pages+=s.pages||0}
   return {active:ss.length>0,rec,est,pages};
@@ -1551,12 +1580,15 @@ const fmtClock=m=>{const sec=Math.floor(m*60),h=Math.floor(sec/3600),mm=Math.flo
 function timerBox(){
   const b=book(S.timer.bookId),st=!!S.timer.stop;
   return `<div class="timer-box"><div class="timer-top"><div style="min-width:0"><div class="xs muted">${st?'Timer Stopped':'Reading Now'}</div><div class="timer-t">${esc(b?b.title:'')}</div></div><div class="clock" data-timer>${fmtClock(tElapsed())}</div></div>
-  <div class="timer-actions"><button class="btn btn-primary" data-act="stopTimer">${st?'Finish Logging':'Stop and Log'}</button><button class="btn btn-ghost" data-act="discardTimer">Discard</button></div></div>`;
+  <div class="timer-actions ${st?'st':''}"><button class="btn btn-primary" data-act="stopTimer">${st?'Finish Logging':'Stop and Log'}</button>${st?`<button class="btn btn-ghost" data-act="resumeTimer">${ic('play')}Resume</button>`:''}<button class="btn btn-ghost" data-act="discardTimer">Discard</button></div>${st?'<div class="timer-redo"><button class="link-btn sm" data-act="resetTimer">Start Over at 0:00</button></div>':''}</div>`;
 }
 function startTimer(id){
   const b=(id&&book(id))||currentSel();if(!b){toast('Start a book first, then time your reading.');return}
   S.timer={bookId:b.id,start:Date.now(),stop:null};save();render();toast(`Timer started for ${b.title}. Enjoy your reading!`);
 }
+/* Resume picks up where the clock stopped; the stopped time doesn't count. Start Over runs it again from 0:00. */
+function resumeTimer(){if(!S.timer?.stop)return;S.timer.start+=Date.now()-S.timer.stop;S.timer.stop=null;save();render()}
+function resetTimer(){if(!S.timer)return;const snap=snapshot();S.timer={bookId:S.timer.bookId,start:Date.now(),stop:null};save();render();toast('Timer started over at 0:00.',restoreTo(snap))}
 function stopTimer(){
   if(!S.timer)return;const b=book(S.timer.bookId);
   if(!b){S.timer=null;save();render();return}
@@ -1568,15 +1600,15 @@ const recency=b=>lastRead(b.id)||b.started||'';
 function readingList(){return S.books.filter(b=>b.status==='reading').sort((a,b)=>recency(b).localeCompare(recency(a)))}
 function currentSel(){const list=readingList();if(!list.length)return null;return list.find(x=>x.id===selBook)||list[0]}
 function bookStats(b){
-  const t=today(),audio=b.format==='audio',ss=S.sessions.filter(s=>s.bookId===b.id);
+  const t=today(),audio=b.format==='audio',ss=S.sessions.filter(s=>s.bookId===b.id&&!isCU(s));
   const left=Math.max(0,b.total-b.pos);
   let per=null;
   if(audio){const m=ss.map(s=>s.minutes||s.est||0).filter(x=>x>0);if(m.length)per=m.reduce((a,x)=>a+x,0)/m.length}
-  else{const own=ss.filter(s=>s.pages>0).map(s=>s.pages),all=S.sessions.filter(s=>s.pages>0).map(s=>s.pages);const use=own.length>=2?own:all;if(use.length)per=use.reduce((a,x)=>a+x,0)/use.length}
+  else{const own=ss.filter(s=>s.pages>0).map(s=>s.pages),all=S.sessions.filter(s=>s.pages>0&&!isCU(s)).map(s=>s.pages);const use=own.length>=2?own:all;if(use.length)per=use.reduce((a,x)=>a+x,0)/use.length}
   const toGo=per?Math.ceil(left/per):null;
   const days=new Set(ss.filter(s=>s.date>addDays(t,-14)).map(s=>s.date)).size;
   const reading=Math.max(1,S.books.filter(x=>x.status==='reading').length);
-  const rate=days?days/14:new Set(S.sessions.filter(s=>s.date>addDays(t,-14)).map(s=>s.date)).size/14/reading;
+  const rate=days?days/14:new Set(S.sessions.filter(s=>s.date>addDays(t,-14)&&!isCU(s)).map(s=>s.date)).size/14/reading;
   const finish=toGo&&rate?addDays(t,Math.ceil(toGo/rate)):null;
   const started=b.started||ss.map(s=>s.date).sort()[0]||null;
   return {left,per,toGo,finish,started};
@@ -1871,7 +1903,7 @@ function calCard(){
     const tip=g.active?`${fmtDate(ds)}: ${Math.round(g.mins)} min${g.pages?`, ${g.pages} pages`:''}${g.met?', goal met':''}`:`${fmtDate(ds)}${r?': rest day':''}`;
     cells+=`<span class="cal-d ${cls} ${ds===t?'today':''}" title="${tip}">${d}</span>`}
   const ms=S.sessions.filter(x=>x.date.slice(0,7)===m);
-  const mDays=new Set(ms.map(x=>x.date)).size,mMin=ms.reduce((a,x)=>a+(x.minutes||0),0),mEst=ms.reduce((a,x)=>a+(!x.minutes&&x.est?x.est:0),0),mPages=ms.reduce((a,x)=>a+(x.pages||0),0);
+  const mDays=new Set(ms.filter(x=>!isCU(x)).map(x=>x.date)).size,mMin=ms.reduce((a,x)=>a+(x.minutes||0),0),mEst=ms.reduce((a,x)=>a+(!x.minutes&&x.est?x.est:0),0),mPages=ms.reduce((a,x)=>a+(x.pages||0),0);
   const fin=S.books.filter(b=>b.status==='finished'&&b.finished&&b.finished.slice(0,7)===m).length;
   return `<section class="card" aria-labelledby="calH"><div class="card-h"><h2 id="calH">${MONF[M-1]} ${Y}</h2><span class="cal-nav"><button class="icon-btn" data-act="histM" data-v="-1" aria-label="Previous month">${ic('chevL')}</button><button class="icon-btn" data-act="histM" data-v="1" aria-label="Next month" ${m>=t.slice(0,7)?'disabled':''}>${ic('chevR')}</button></span></div>
   <div class="cal mini-cal">${cells}</div>
@@ -1884,7 +1916,7 @@ let hist={m:today().slice(0,7),sel:null,panel:null,recYear:false,mode:'month'};
 function monthAdd(m,n){const [y,mo]=m.split('-').map(Number);const d=new Date(y,mo-1+n,1);return `${d.getFullYear()}-${pad(d.getMonth()+1)}`}
 function longestStreak(){return longestStreakRange().n}
 /* Longest streak with its first and last reading day; rest days inside a run don't break it. */
-function longestStreakRange(){const ds=S.sessions.map(x=>x.date).sort();if(!ds.length)return {n:0};const allow=S.settings.restDays??1,used={},end=today();let d=ds[0],best=0,run=0,st=null,last=null,bs=null,be=null;
+function longestStreakRange(){const ds=S.sessions.filter(x=>!isCU(x)).map(x=>x.date).sort();if(!ds.length)return {n:0};const allow=S.settings.restDays??1,used={},end=today();let d=ds[0],best=0,run=0,st=null,last=null,bs=null,be=null;
   while(d<=end){if(day(d).active){if(!run)st=d;run++;last=d;if(run>best){best=run;bs=st;be=last}}else if(run>0&&(used[weekOf(d)]||0)<allow){used[weekOf(d)]=(used[weekOf(d)]||0)+1}else run=0;d=addDays(d,1)}
   return {n:Math.max(best,streak()),start:bs,end:be}}
 const fmtRange=(a,b)=>!a?'':a===b?fmtDateY(a):a.slice(0,4)===b.slice(0,4)?`${fmtDate(a)} – ${fmtDateY(b)}`:`${fmtDateY(a)} – ${fmtDateY(b)}`;
@@ -1898,9 +1930,9 @@ function records(){
   const fin=S.books.filter(b=>b.status==='finished'&&b.finished);// Records are tied to dates
   const longest=fin.filter(b=>b.total&&b.format!=='audio').sort((a,b)=>b.total-a.total)[0];
   const fast=fin.filter(b=>b.started&&b.finished&&b.finished>=b.started).map(b=>({b,d:daysBetween(b.started,b.finished)+1})).sort((a,b)=>a.d-b.d)[0];
-  const pace=S.sessions.filter(x=>x.pages>0&&x.minutes>=10).map(x=>({x,p:x.pages/x.minutes*60})).sort((a,b)=>b.p-a.p)[0];
-  const ls=S.sessions.filter(x=>x.minutes).sort((a,b)=>b.minutes-a.minutes)[0];
-  const dp={};S.sessions.forEach(x=>dp[x.date]=(dp[x.date]||0)+(x.pages||0));const bd=Object.entries(dp).sort((a,b)=>b[1]-a[1])[0];
+  const pace=S.sessions.filter(x=>x.pages>0&&x.minutes>=10&&!isCU(x)).map(x=>({x,p:x.pages/x.minutes*60})).sort((a,b)=>b.p-a.p)[0];
+  const ls=S.sessions.filter(x=>x.minutes&&!isCU(x)).sort((a,b)=>b.minutes-a.minutes)[0];
+  const dp={};S.sessions.forEach(x=>!isCU(x)&&(dp[x.date]=(dp[x.date]||0)+(x.pages||0)));const bd=Object.entries(dp).sort((a,b)=>b[1]-a[1])[0];
   const yr={};fin.forEach(b=>{if(b.finished){const y=b.finished.slice(0,4);yr[y]=(yr[y]||0)+1}});const by=Object.entries(yr).sort((a,b)=>b[1]-a[1]||b[0].localeCompare(a[0]))[0];
   const ttl=x=>book(x.bookId)?.title||'';
   hist.recYearKey=by?by[0]:null;
@@ -1909,7 +1941,7 @@ function records(){
     ['chart','Best Reading Pace',pace?`${Math.round(pace.p)} pages/hr`:'—',pace?`${ttl(pace.x)} · ${fmtDateY(pace.x.date)}`:'Log pages and minutes together',pace?book(pace.x.bookId)?.titleId:null],
     ['clock','Longest Session',ls?fmtMin(ls.minutes):'—',ls?`${ttl(ls)} · ${fmtDateY(ls.date)}`:'Log minutes to set this',ls?book(ls.bookId)?.titleId:null],
     ['cal','Most Pages in a Day',bd&&bd[1]?`${bd[1].toLocaleString()} pages`:'—',bd&&bd[1]?fmtDateY(bd[0]):'Log pages to set this',null,
-      bd&&bd[1]?`<div class="xs muted">${fmtDateY(bd[0])}</div><div class="rec-books">${[...new Set(S.sessions.filter(x=>x.date===bd[0]&&x.pages).map(x=>book(x.bookId)?.titleId).filter(Boolean))].map(id=>`<button class="sess-b rec-s" data-act="openTitle" data-id="${id}">${esc(titleById(id)?.title||'')}</button>`).join('')}</div>`:null],
+      bd&&bd[1]?`<div class="xs muted">${fmtDateY(bd[0])}</div><div class="rec-books">${[...new Set(S.sessions.filter(x=>x.date===bd[0]&&x.pages&&!isCU(x)).map(x=>book(x.bookId)?.titleId).filter(Boolean))].map(id=>`<button class="sess-b rec-s" data-act="openTitle" data-id="${id}">${esc(titleById(id)?.title||'')}</button>`).join('')}</div>`:null],
     ['library','Most Books in a Year',by?`${by[1]} books`:'—',by?by[0]:'Finish a book to set this',null,
       by?`<div class="xs muted">${by[0]}</div><button class="sess-b rec-s" data-act="recYear" aria-expanded="${hist.recYear}">${hist.recYear?'Hide the books':`Show the ${by[1]} books`}</button>`:null],
     (()=>{const L=longestStreakRange();return ['trophy','Longest Streak',`${L.n} day${L.n===1?'':'s'}`,'Rest days don’t break it',null,
@@ -2003,7 +2035,7 @@ function historyView(){
     const desc=[fmtDateY(ds),g.active?`${Math.round(g.mins)} min${g.pages?`, ${g.pages} pages`:''}`:'no reading',g.met?'goal met':'',r?'rest day':'',...st.map(b=>`started ${b.title}`),...fin.map(b=>`finished ${b.title}`),nts.length?`note: ${nts[0].text.slice(0,60)}`:''].filter(Boolean).join(', ');
     cells+=`<button class="cal-d ${lv?'lv'+lv:''} ${g.met?'met':''} ${r?'rest':''} ${ds===t?'today':''} ${hist.sel===ds?'sel':''}" data-act="histDay" data-v="${ds}" aria-pressed="${hist.sel===ds}" aria-label="${esc(desc)}" title="${esc(desc)}">${nts.length?'<i class="mk-n" aria-hidden="true"></i>':''}${d}${st.length||fin.length?`<span class="cal-mk" aria-hidden="true">${st.length?'<i class="mk-s"></i>':''}${fin.length?'<i class="mk-f"></i>':''}</span>`:''}</button>`;endRow()}
   const ms=S.sessions.filter(x=>x.date.slice(0,7)===m);
-  const mDays=new Set(ms.map(x=>x.date)).size,mMin=ms.reduce((a,x)=>a+(x.minutes||0),0),mEst=ms.reduce((a,x)=>a+(!x.minutes&&x.est?x.est:0),0),mPages=ms.reduce((a,x)=>a+(x.pages||0),0);
+  const mDays=new Set(ms.filter(x=>!isCU(x)).map(x=>x.date)).size,mMin=ms.reduce((a,x)=>a+(x.minutes||0),0),mEst=ms.reduce((a,x)=>a+(!x.minutes&&x.est?x.est:0),0),mPages=ms.reduce((a,x)=>a+(x.pages||0),0);
   const byDay={};ms.forEach(x=>{(byDay[x.date]=byDay[x.date]||[]).push(x)});
   const sel=hist.sel&&hist.sel.slice(0,7)===m?hist.sel:null;
   const dayNotes=d=>[...S.books.filter(b=>b.started===d).map(b=>`Started <button class="sess-b" data-act="openTitle" data-id="${b.titleId||''}">${esc(b.title)}</button>`),...S.books.filter(b=>b.finished===d).map(b=>`Finished <button class="sess-b" data-act="openTitle" data-id="${b.titleId||''}">${esc(b.title)}</button>`)].map(h=>`<div class="small sess-mark">${h}</div>`).join('');
@@ -2011,7 +2043,7 @@ function historyView(){
   const list=dayKeys.filter(d=>byDay[d]||dayNotes(d)).map(d=>`<div class="sess-day"><div class="sess-date">${fmtDateY(d)}</div>${dayNotes(d)}${(byDay[d]||[]).map(x=>{const b=book(x.bookId);
     const pg=x.pages?(x.start!=null?`p. ${x.start}–${x.end} (${x.pages} pages)`:`${x.pages} pages`):(b&&b.format==='audio'&&x.start!=null?`${fmtPos(x.start)}–${fmtPos(x.end)}`:'');
     const mn=x.minutes?fmtMin(x.minutes):x.est?`~${fmtMin(x.est)} (estimated)`:'';
-    return `<div class="sess"><button class="sess-b" data-act="openTitle" data-id="${b?.titleId||''}">${esc(b?b.title:'Removed book')}</button><span class="small muted">${[pg,mn,x.with?`with ${x.with.map(nameOf).join(' and ')}`:''].filter(Boolean).join(' · ')}</span><button class="link-btn sm sess-edit" data-act="sessEdit" data-id="${x.id}" aria-label="Edit this session">${ic('pencil')}Edit</button>${x.note?`<div class="sess-note-w"><div class="xs muted sess-note clampable" data-clamp="s${x.id}" style="--lines:3">“${esc(x.note)}”</div><button class="link-btn sm more-t" data-act="noteMore" data-v="s${x.id}" hidden>Show More</button></div>`:''}</div>`}).join('')}</div>`).join('');
+    return `<div class="sess"><button class="sess-b" data-act="openTitle" data-id="${b?.titleId||''}">${esc(b?b.title:'Removed book')}</button><span class="small muted">${[isCU(x)?`Catch-up reading, ${fmtRange(x.from,x.date)}`:'',pg,mn,x.with?`with ${x.with.map(nameOf).join(' and ')}`:''].filter(Boolean).join(' · ')}</span><button class="link-btn sm sess-edit" data-act="sessEdit" data-id="${x.id}" aria-label="Edit this session">${ic('pencil')}Edit</button>${x.note?`<div class="sess-note-w"><div class="xs muted sess-note clampable" data-clamp="s${x.id}" style="--lines:3">“${esc(x.note)}”</div><button class="link-btn sm more-t" data-act="noteMore" data-v="s${x.id}" hidden>Show More</button></div>`:''}</div>`}).join('')}</div>`).join('');
   const byTitle={};S.books.forEach(b=>{if(b.titleId&&b.status!=='want')(byTitle[b.titleId]=byTitle[b.titleId]||[]).push(b)});
   const rr=Object.entries(byTitle).filter(([,v])=>v.length>1);
   const rereads=rr.length?rr.map(([tid,v])=>{const tt=titleById(tid);return `<div class="rr"><button class="sess-b" data-act="openTitle" data-id="${tid}">${esc(tt.title)}</button>${[...v].sort((a,b)=>{const k=x=>x.started||x.finished||(['reading','paused','want'].includes(x.status)?'9999':'0000');return k(a).localeCompare(k(b))}).map((b,i)=>`<div class="small muted rr-row">Read-through ${i+1}: ${b.started?`started ${fmtDateY(b.started)}`:'start date unknown'}${b.finished?`, finished ${fmtDateY(b.finished)}`:b.status==='finished'?', finished, date unknown':''} <span class="st st-${b.status}">${STATUS[b.status]}</span></div>`).join('')}</div>`}).join('')
@@ -2023,7 +2055,7 @@ function historyView(){
     ${hist.mode==='year'?yearCal(Y,ratio):`<div class="cal cal-wk">${cells}</div>`}
     <div class="cal-legend xs muted"><span class="lg-scale">Less <i class="lg lv1"></i><i class="lg lv2"></i><i class="lg lv3"></i><i class="lg lv4"></i> More</span><span><i class="lg-ok" aria-hidden="true">✓</i>Goal met</span>${hist.mode==='year'?'':'<span><i class="mk-s"></i>Started</span><span><i class="mk-f"></i>Finished</span><span><i class="mk-n lg-n"></i>Note</span><span><i class="lg rest"></i>Rest day</span>'}</div>
     <div class="xs muted" style="margin-top:6px">${hist.mode==='year'?'Tap a month to open it.':'Tap a day to see what you read.'}</div>
-    <div class="small muted" style="margin-top:10px">${hist.mode==='year'?(()=>{const ss=S.sessions.filter(x=>x.date.slice(0,4)===String(Y)),dd=new Set(ss.map(x=>x.date)).size,mm=ss.reduce((a,x)=>a+(x.minutes||0),0),pp=ss.reduce((a,x)=>a+(x.pages||0),0);return `${Y}: ${dd} day${dd===1?'':'s'} read · ${fmtMin(mm)} · ${pp.toLocaleString()} pages`})():`${mDays} day${mDays===1?'':'s'} read · ${fmtMin(mMin)}${mEst?` + ~${fmtMin(mEst)} estimated`:''} · ${mPages.toLocaleString()} pages`}</div></section>
+    <div class="small muted" style="margin-top:10px">${hist.mode==='year'?(()=>{const ss=S.sessions.filter(x=>x.date.slice(0,4)===String(Y)),dd=new Set(ss.filter(x=>!isCU(x)).map(x=>x.date)).size,mm=ss.reduce((a,x)=>a+(x.minutes||0),0),pp=ss.reduce((a,x)=>a+(x.pages||0),0);return `${Y}: ${dd} day${dd===1?'':'s'} read · ${fmtMin(mm)} · ${pp.toLocaleString()} pages`})():`${mDays} day${mDays===1?'':'s'} read · ${fmtMin(mMin)}${mEst?` + ~${fmtMin(mEst)} estimated`:''} · ${mPages.toLocaleString()} pages`}</div></section>
   <section class="card"><div class="card-h"><span class="ico">${ic('book')}</span><h2>Reading Sessions</h2><span class="count">${sel?fmtDate(sel):MONF[M-1]}</span>${sel?`<button class="link-btn sm" data-act="histDay" data-v="">Show All of ${MONF[M-1]}</button>`:''}<button class="btn btn-ghost sm note-add" data-act="noteNew" data-v="${sel||''}" aria-label="${sel?`Add a note for ${fmtDate(sel)}`:'Add a note'}">${ic('plus')}Add Note</button></div>
     ${(()=>{const mStart=`${m}-01`,mEnd=`${m}-${pad(days)}`,ns=(sel?notesOn(sel):(S.journal||[]).filter(n=>n.start<=mEnd&&(n.end||n.start)>=mStart)).sort((a,b)=>b.start.localeCompare(a.start));
       return ns.length?`<div class="notes-list">${ns.map(n=>`<div class="note-i"><div class="note-h"><span class="xs muted">${ic('pencil')}Note · ${noteRange(n)}</span><button class="link-btn sm" data-act="noteEdit" data-id="${n.id}" aria-label="Edit note for ${noteRange(n)}">Edit</button></div><p class="small clampable" data-clamp="n${n.id}" style="--lines:4">${esc(n.text)}</p><button class="link-btn sm more-t" data-act="noteMore" data-v="n${n.id}" hidden>Show More</button></div>`).join('')}</div>`:''})()}
@@ -2605,7 +2637,7 @@ function nxShare(){
   const thank=froms.map(w=>`<div class="nx-line">${thanked(w)?`<span class="small muted nx-thanked" tabindex="-1">${ic('check')}Thanks sent to ${esc(nameOf(w))}</span>`:`<span class="small">${esc(nameOf(w))} recommended this.</span><button class="link-btn sm" data-act="nxThank" data-w="${w}">${ic('heart')}Thank ${esc(nameOf(w))}</button>`}</div>`).join('');
   let rec='';
   if(!solo){
-    if(nextDone.rec)rec=`<div class="recf nx-recf"><div class="small" style="font-weight:600">Recommend To</div><div class="chips">${Object.entries(S.members).map(([k,m])=>{const done=S.recsSent.some(r=>r.titleId===t.id&&r.to===k);return `<label class="chk ${done?'dim':''}"><input type="checkbox" name="nxRecTo" value="${k}" ${done?'disabled':''}> ${esc(m.name)}${done?' <span class="xs muted">(already recommended)</span>':''}</label>`}).join('')}</div><input class="inp sm" id="nxRecNote" maxlength="140" placeholder="Add a note (optional)" aria-label="Note">${recRateOpt(t,'nxRecRate')}<div class="err" id="nxRecErr" role="alert"></div><div class="dlg-f"><button class="btn btn-ghost sm" data-act="nxRec">Cancel</button><button class="btn btn-primary sm" data-act="nxRecGo">Send Recommendation</button></div></div>`;
+    if(nextDone.rec)rec=`<div class="recf nx-recf"><div class="small" style="font-weight:600">Recommend To</div><div class="chips">${Object.entries(S.members).map(([k,m])=>{const done=S.recsSent.some(r=>r.titleId===t.id&&r.to===k);return `<label class="chk ${done?'dim':''}"><input type="checkbox" name="nxRecTo" value="${k}" ${done?'disabled':''}> ${esc(m.name)}${done?' <span class="xs muted">(already recommended)</span>':''}</label>`}).join('')}</div><input class="inp sm" id="nxRecNote" maxlength="140" placeholder="Add a note (optional)" aria-label="Note">${recRateOpt(t,'nxRecRate',false)}<div class="err" id="nxRecErr" role="alert"></div><div class="dlg-f"><button class="btn btn-ghost sm" data-act="nxRec">Cancel</button><button class="btn btn-primary sm" data-act="nxRecGo">Send Recommendation</button></div></div>`;
     else if(nextDone.sent.length)rec=`<div class="nx-line"><span class="small muted nx-sent" tabindex="-1">${ic('check')}Recommended to ${esc(nextDone.sent.map(nameOf).join(', '))}</span><button class="link-btn sm" data-act="nxRec">Recommend to Someone Else</button></div>`;
     else rec=`<div class="nx-line"><button class="btn btn-ghost sm" data-act="nxRec">${ic('send')}Recommend to Someone</button></div>`;
   }
@@ -2696,18 +2728,20 @@ new MutationObserver(()=>{if(document.querySelector('.bd-tabs:not(:has(>.tab-gap
    Books you stop don't get a rating; instead, an optional reason and note. When you share your activity, your group
    sees it with the book, which helps someone deciding whether to borrow it. */
 const DNF_WHY=[['notforme','Not for me'],['slow','Too slow'],['time','Not the right time'],['content','Content I didn’t want'],['returned','Had to return it']];
-const dnfWhyL=k=>(DNF_WHY.find(x=>x[0]===k)||[])[1]||'';
+/* Reasons can be more than one (older books saved a single reason as text). Shown in the list's order. */
+const dnfWhyA=v=>Array.isArray(v)?v:v?[v]:[];
+const dnfWhyL=(v,low)=>DNF_WHY.filter(x=>dnfWhyA(v).includes(x[0])).map(x=>low?x[1][0].toLowerCase()+x[1].slice(1):x[1]).join(', ');
 const dnfDlg=document.getElementById('dnfDlg'),dnfBody=document.getElementById('dnfBody');
 const stopAt=b=>b.format==='audio'?fmtPos(b.pos):'page '+b.pos;
 let dnfSel=null;
 function openDnf(b,undo){
-  dnfSel={id:b.id,undo,why:b.dnfWhy||'',note:b.dnfNote||'',edit:!!(b.dnfWhy||b.dnfNote)};renderDnf();if(!dnfDlg.open)dnfDlg.showModal();
+  dnfSel={id:b.id,undo,why:[...dnfWhyA(b.dnfWhy)],note:b.dnfNote||'',edit:!!(b.dnfWhy||b.dnfNote)};renderDnf();if(!dnfDlg.open)dnfDlg.showModal();
   dnfBody.querySelector('[data-act=dnfWhy]')?.focus();
 }
 function renderDnf(){
   const b=book(dnfSel.id);if(!b)return;const shared=S.settings.share&&!S.settings.solo;
   dnfBody.innerHTML=`<div class="dlg-h"><div style="flex:1;min-width:0"><h2 id="dnfT">${dnfSel.edit?`Why You Stopped ${ti(b.title)}`:`Moved ${ti(b.title)} to Did Not Finish`}</h2><div class="muted small">Your place is saved at ${stopAt(b)}.${dnfSel.undo?' <button class="link-btn sm nx-undo" data-act="dnfUndo">Undo</button>':''}</div></div><button type="button" class="icon-btn x" data-act="dnfClose" aria-label="Close">${ic('x')}</button></div>
-  <div class="f"><span class="fl" id="dnfWhyL">Why did you stop? <span class="sub">(optional)</span></span><div class="chips" role="radiogroup" aria-labelledby="dnfWhyL">${DNF_WHY.map(([k,l])=>`<button type="button" class="tab sm" role="radio" aria-checked="${dnfSel.why===k}" data-act="dnfWhy" data-v="${k}">${l}</button>`).join('')}</div></div>
+  <div class="f"><span class="fl" id="dnfWhyL">Why did you stop? <span class="sub">(optional, choose any)</span></span><div class="chips" role="group" aria-labelledby="dnfWhyL">${DNF_WHY.map(([k,l])=>`<button type="button" class="tab sm" aria-pressed="${dnfSel.why.includes(k)}" data-act="dnfWhy" data-v="${k}">${l}</button>`).join('')}</div></div>
   <label class="f"><span>Note <span class="sub">(optional)</span></span><input class="inp" id="dnfNote" maxlength="140" value="${esc(dnfSel.note)}" placeholder="For example, where it lost you"></label>
   <p class="xs muted" style="margin:0">${shared?'Your group sees this with the book, since you share your activity.':'Only you see this.'}</p>
   <div class="dlg-f"><button class="btn btn-ghost" data-act="dnfClose">${dnfSel.edit?'Cancel':'Skip'}</button><button class="btn btn-primary" data-act="dnfSave">Save</button></div>`;
@@ -2801,7 +2835,15 @@ function descFit(){
 const bookDlg=document.getElementById('bookDlg'),bookBody=document.getElementById('bookBody');
 bookDlg.addEventListener('close',()=>pruneDisc());
 let bd={id:null,tab:'copies',rec:false,lend:null,addCopy:false,reqNote:null};
-function openTitle(id,tab){bd={id,tab:tab||'copies',rec:false,lend:null,addCopy:false,reqNote:null,descOpen:false};const t0=titleById(id);descWant(t0,true);if(t0&&(!t0.olKey||t0.descTried>Date.now()-COVER_RETRY))gbWant(t0);renderBD();if(!bookDlg.open){bookDlg.showModal();descFit()}}
+/* Which tab a book opens on: the most useful one for where it was opened and your status. The group library and
+   copy notices open on Copies; your current, paused, finished, and stopped books on My Reading; books you own
+   but haven't started on Copies (where your copy is); everything else on About. Discover and search pass About. */
+function bdTabFor(id,el){
+  if(el&&view==='library'&&lib.tab==='family'&&!el.closest('dialog'))return 'copies';
+  const r=myReading(id);if(r&&['reading','paused','finished','dnf'].includes(r.status))return 'mine';
+  if(copiesOf(id).some(c=>c.owner==='me'))return 'copies';
+  return 'about'}
+function openTitle(id,tab){bd={id,tab:tab||bdTabFor(id),rec:false,lend:null,addCopy:false,reqNote:null,descOpen:false};const t0=titleById(id);descWant(t0,true);if(t0&&(!t0.olKey||t0.descTried>Date.now()-COVER_RETRY))gbWant(t0);renderBD();if(!bookDlg.open){bookDlg.showModal();descFit()}}
 function copyRow(c){
   const mine=c.owner==='me',ph=c.format==='physical';
   let act='';
@@ -2824,8 +2866,10 @@ function copyRow(c){
 const myRating=tid=>S.books.filter(b=>b.titleId===tid&&b.status==='finished'&&b.rating).map(b=>b.rating).pop()||0;
 /* In the recommend forms: include your rating. When you share your activity it's already visible, so it's
    included; when you don't, it's an opt-in for just these people, off by default. */
-function recRateOpt(t,id){
-  const rt=myRating(t.id);if(!rt)return '';
+/* A finished book you haven't rated shows optional stars here; once rated, the include option appears in their place. */
+function recRateOpt(t,id,stars=true){
+  const rt=myRating(t.id);
+  if(!rt){const fb=stars&&S.books.filter(b=>b.titleId===t.id&&b.status==='finished').pop();return fb?`<div class="nx-rate rec-rate" data-rbox="${id}">${starsFor(fb)}<span class="xs muted">Rate it to include your rating (optional)</span></div>`:''}
   return S.settings.share?`<div class="xs muted" id="${id}" data-on="1">Your rating (${rt}★) is included, since you share your activity.</div>`
     :`<label class="chk xs"><input type="checkbox" id="${id}"> Include my rating (${rt}★) <span class="muted">(only the people you choose see it)</span></label>`;
 }
@@ -2854,6 +2898,12 @@ function bdQuiet(t,r){
   return `<div class="bd-quiet">${rec?'':`<button class="link-btn sm" data-act="discHide" data-k="${esc(k)}">Not for Me</button><span aria-hidden="true" class="muted">·</span>`}<button class="link-btn sm" data-act="readIt" data-id="${t.id}">Already Read It</button></div>`;
 }
 function renderBD(){
+  // Redraws (a description arriving, a rating) keep what's been chosen and typed in the Recommend form.
+  const keep=bookBody.querySelector('.recf')?{to:[...bookBody.querySelectorAll('[name=recTo]:checked')].map(x=>x.value),note:document.getElementById('recNote')?.value||'',rate:!!document.getElementById('recRate')?.checked,focus:document.activeElement?.id||''}:null;
+  renderBD0();
+  if(keep&&bd.rec){keep.to.forEach(v=>{const c=bookBody.querySelector(`[name=recTo][value="${v}"]`);if(c&&!c.disabled)c.checked=true});const n=document.getElementById('recNote');if(n)n.value=keep.note;const r=document.getElementById('recRate');if(r&&r.type==='checkbox'&&keep.rate)r.checked=true;if(keep.focus)document.getElementById(keep.focus)?.focus()}
+}
+function renderBD0(){
   const t=titleById(bd.id);if(!t){bookDlg.close();return}
   const r=myReading(t.id),cs=copiesOf(t.id).filter(c=>!S.settings.solo||c.owner==='me');
   if(S.settings.solo&&bd.tab==='activity')bd.tab='copies';
@@ -3265,9 +3315,9 @@ function openSess(id){
   const x=S.sessions.find(y=>y.id===id);if(!x)return;const b=book(x.bookId),audio=b?.format==='audio',v=n=>n==null?'':audio?fmtPos(n):n;
   sessForm.dataset.id=id;
   sessForm.innerHTML=`<div class="dlg-h"><div style="flex:1;min-width:0"><h2 id="seTitle">Edit Session</h2><div class="small muted">${esc(b?b.title:'')}</div></div><button type="button" class="icon-btn x" data-act="closeSess" aria-label="Close">${ic('x')}</button></div>
-  <div class="form"><div class="f3"><label class="f">${audio?'Start Position':'Starting Page'}<input class="inp" name="start" value="${v(x.start)}" inputmode="${audio?'text':'numeric'}"></label><label class="f">${audio?'End Position':'Ending Page'}<input class="inp" name="end" value="${v(x.end)}" inputmode="${audio?'text':'numeric'}"></label><label class="f">Minutes<input class="inp" name="minutes" value="${x.minutes??''}" inputmode="numeric"></label></div>
+  <div class="form"><div class="f3"><label class="f">${audio?'Start Position':'Starting Page'}<input class="inp" name="start" value="${v(x.start)}" inputmode="${audio?'text':'numeric'}"></label><label class="f">${audio?'End Position':'Ending Page'}<input class="inp" name="end" value="${v(x.end)}" inputmode="${audio?'text':'numeric'}"></label><label class="f">Minutes<input class="inp" name="minutes" value="${x.minutes??''}" inputmode="text" placeholder="90 or 1:30"></label></div>
   ${x.start==null&&x.pages?`<label class="f">Pages Read<input class="inp" name="pagesOnly" value="${x.pages}" inputmode="numeric"></label>`:''}
-  <label class="f">Date<input class="inp" type="date" name="date" value="${x.date}" max="${today()}"></label>
+  ${isCU(x)?`<div class="f2"><label class="f">From<input class="inp" type="date" name="from" value="${x.from}" max="${today()}"></label><label class="f">To<input class="inp" type="date" name="date" value="${x.date}" max="${today()}"></label></div><span class="xs muted">Catch-up reading counts toward totals and challenges, but not streaks or daily goals.</span>`:`<label class="f">Date<input class="inp" type="date" name="date" value="${x.date}" max="${today()}"></label>`}
   <label class="f"><span>Note <span class="sub">(optional, only you see it)</span></span><textarea class="inp" name="note" maxlength="200" data-count="200" aria-describedby="sessNoteCount">${esc(x.note||'')}</textarea>${charCount('sessNoteCount',(x.note||'').length,200)}</label>
   <div class="err" id="seErr" role="alert"></div>
   <div class="dlg-f" style="justify-content:space-between"><button type="button" class="btn btn-ghost" data-act="sessDel">Delete Session</button><span style="display:flex;gap:10px"><button type="button" class="btn btn-ghost" data-act="cancelSess">Cancel</button><button type="submit" class="btn btn-primary">Save Changes</button></span></div></div>`;
@@ -3278,7 +3328,7 @@ function syncPos(b){if(!b||!['reading','paused'].includes(b.status))return;const
 sessForm.addEventListener('submit',e=>{
   e.preventDefault();const x=S.sessions.find(y=>y.id===sessForm.dataset.id),b=book(x.bookId),audio=b?.format==='audio',f=Object.fromEntries(new FormData(sessForm)),er=m=>document.getElementById('seErr').textContent=m;
   const num=v=>String(v??'').trim()===''?null:audio?parsePos(v):(/^\d+$/.test(String(v).trim())?+v:NaN);
-  const st=num(f.start),en=num(f.end),mn=num(f.minutes),po=f.pagesOnly!=null?num(f.pagesOnly):null;
+  const st=num(f.start),en=num(f.end),mn=parseMin(f.minutes),po=f.pagesOnly!=null?num(f.pagesOnly):null;
   if([st,en,mn,po].some(n=>Number.isNaN(n)))return er(audio?'Use h:mm for positions and whole numbers for minutes.':'Use whole numbers.');
   if((st==null)!==(en==null))return er('Enter both the start and the end, or leave both blank.');
   if(en!=null&&en<st)return er('The end must be after the start.');
@@ -3287,6 +3337,10 @@ sessForm.addEventListener('submit',e=>{
   const pages=audio?0:(en!=null?en-st:(po||0));
   if(!pages&&mn==null&&en==null)return er('A session needs pages, minutes, or both.');
   if(!f.date||f.date>today())return er('Choose a date that isn’t in the future.');
+  if(isCU(x)&&(!f.from||f.from>=f.date))return er('The first day must be before the last day.');
+  {const nD=isCU(x)?daysIn(f.from,f.date):1,other=isCU(x)?0:S.sessions.filter(y=>y!==x&&y.date===f.date&&!isCU(y)).reduce((a,y)=>a+(y.minutes||0),0);
+   if(other+(mn||0)>DAY_MAX*nD)return er(isCU(x)?`${nD} days can’t hold more than ${nD*24} hours.`:`${f.date===today()?'Today':fmtDate(f.date)} can’t hold more than 24 hours.${other?` Other sessions that day already have ${fmtMin(other)}.`:''}`)}
+  if(isCU(x))x.from=f.from;
   Object.assign(x,{date:f.date,start:st,end:en,pages,minutes:mn,note:f.note||''});
   x.est=null;if(!audio&&pages&&mn==null&&S.settings.estimate){const pc=pace(x.bookId);if(pc)x.est=Math.round(pages/pc)}else if(audio&&en!=null&&mn==null&&S.settings.estimate)x.est=en-st;
   sessForm.dataset.done='1';draftClear(sessForm.dataset.dkey);syncPos(b);save();sessDlg.close();render();toast('Session updated.',null,'Goals, streaks, challenges, and records recalculate automatically.');
@@ -3325,9 +3379,9 @@ function contrib(c){
     S.books.forEach(b=>{if(!fit(b))return;const auto=(c.type==='list'||(c.rule||'all')!=='none')&&inWin(c,b.finished)&&(c.type==='list'||ruleOk(c,b.titleId)),man=has(I.books,b.id);
       if(!auto&&!man)return;items.push({kind:'books',key:b.id,auto:auto&&!man,removed:has(X.books,b.id),date:b.finished||'',titleId:b.titleId,label:b.title,sub:`${esc(b.author)}${b.finished?` · Finished ${fmtDateY(b.finished)}`:''}`,amt:1})});
   }else{
-    const sesAuto=x=>(c.rule||'all')!=='none'&&inWin(c,x.date)&&ruleOk(c,titleOfSession(x));
+    const sesAuto=x=>(c.rule||'all')!=='none'&&inWin(c,x.date)&&(!isCU(x)||inWin(c,x.from))&&ruleOk(c,titleOfSession(x));
     if(c.type==='days'||c.type==='goaldays'){
-      const dates={};S.sessions.forEach(x=>{if(x.date>T)return;const a=sesAuto(x),m=has(I.days,x.date);if(a||m){const d=dates[x.date]||(dates[x.date]={auto:false,man:m,books:new Set()});if(a)d.auto=true;d.books.add(book(x.bookId)?.title||'')}});
+      const dates={};S.sessions.forEach(x=>{if(x.date>T||isCU(x))return;const a=sesAuto(x),m=has(I.days,x.date);if(a||m){const d=dates[x.date]||(dates[x.date]={auto:false,man:m,books:new Set()});if(a)d.auto=true;d.books.add(book(x.bookId)?.title||'')}});
       Object.entries(dates).forEach(([d,o])=>{if(c.type==='goaldays'&&!goalState(d).met)return;items.push({kind:'days',key:d,auto:o.auto&&!o.man,removed:has(X.days,d),date:d,label:fmtDateY(d),sub:esc([...o.books].filter(Boolean).join(', ')),amt:1})});
     }else S.sessions.forEach(x=>{if(x.date>T)return;const a=sesAuto(x),m=has(I.sessions,x.id);if(!a&&!m)return;const b=book(x.bookId);
       const amt=c.type==='pages'?(x.pages||0):(x.minutes||(S.settings.estimate?x.est||0:0));
@@ -3339,7 +3393,7 @@ function contrib(c){
   return {items,live,removed:items.filter(i=>i.removed),v:Math.round(v),est:Math.round(live.reduce((a,i)=>a+(i.est||0),0))};
 }
 function myVal(c){
-  if(c.mode==='comp'){const t=today(),ok=d=>(!c.start||d>=c.start)&&(!c.end||d<=c.end)&&d<=t;const ds=[...new Set(S.sessions.filter(x=>ok(x.date)).map(x=>x.date))];return c.type==='goaldays'?ds.filter(d=>goalState(d).met).length:ds.length}
+  if(c.mode==='comp'){const t=today(),ok=d=>(!c.start||d>=c.start)&&(!c.end||d<=c.end)&&d<=t;const ds=[...new Set(S.sessions.filter(x=>ok(x.date)&&!isCU(x)).map(x=>x.date))];return c.type==='goaldays'?ds.filter(d=>goalState(d).met).length:ds.length}
   return contrib(c).v;
 }
 const valOf=(c,w)=>w==='me'?myVal(c):(c.sample?.[w]||0);
@@ -3411,7 +3465,7 @@ function achievements(){
   // Book-count badges also count books finished on an unknown date, from the day they were marked read.
   const fin=[...fb.map(b=>b.finished),...S.books.filter(b=>b.status==='finished'&&!b.finished).map(b=>b.markedOn||today())].sort(),nth=n=>fin[n-1]||null;
   const ss=[...S.sessions].sort((a,b)=>a.date.localeCompare(b.date));
-  const days=[...new Set(ss.map(x=>x.date))].sort(),met=days.filter(d=>goalState(d).met),both=days.filter(d=>goalState(d).both);
+  const days=[...new Set(ss.filter(x=>!isCU(x)).map(x=>x.date))].sort(),met=days.filter(d=>goalState(d).met),both=days.filter(d=>goalState(d).both);
   const cum=(fn,n)=>{let t=0;for(const x of ss){t+=fn(x);if(t>=n)return x.date}return null};
   const pg=n=>cum(x=>x.pages||0,n),hr=n=>cum(x=>x.minutes||0,n*60);
   const reach=n=>{if(!days.length)return null;const allow=S.settings.restDays??1,used={},end=today();let d=days[0],run=0;while(d<=end){if(day(d).active){run++;if(run>=n)return d}else if(run>0&&(used[weekOf(d)]||0)<allow){used[weekOf(d)]=(used[weekOf(d)]||0)+1}else run=0;d=addDays(d,1)}return null};
@@ -3547,14 +3601,14 @@ function renderCh(){
   if(c.mode==='coop'){const rows=c.participants.map(w=>({w,v:valOf(c,w)})).sort((a,b)=>b.v-a.v),vis=rows.filter(r=>r.w==='me'||S.members[r.w]?.share!==false),hid=rows.length-vis.length;
     sec=`<h3 class="sec-h">Contributions</h3>${vis.map(r=>`<div class="contrib"><span class="avatar" style="background:${colorOf(r.w)}">${initOf(r.w)}</span><span class="small"><b>${esc(nameOf(r.w))}</b></span><span class="small muted">${fmtV(c,r.v)}${unitOf(c,r.v)}</span><div class="bar"><span style="width:${p.t?Math.min(100,r.v/p.t*100):0}%"></span></div></div>`).join('')}${hid?`<p class="xs muted">${hid} member${hid===1?'’s':'s’'} contribution${hid===1?' is':'s are'} private but still counts toward the total.</p>`:''}`}
   else if(c.mode==='comp'){sec=`<h3 class="sec-h">Everyone’s Progress</h3><p class="xs muted" style="margin:0 0 6px">Counts ${c.type==='goaldays'?'days each person meets their own daily goal':'days each person reads'}, so every reader has a fair shot. A rest day never counts against anyone.</p>${p.ranked.map((r,i)=>{const priv=r.w!=='me'&&S.members[r.w]?.share===false;return `<div class="contrib"><span class="avatar" style="background:${colorOf(r.w)}">${initOf(r.w)}</span><span class="small"><b>${esc(nameOf(r.w))}</b></span><span class="small muted">${priv?'Private':r.v+unitOf(c,r.v)}</span><div class="bar"><span style="width:${priv?0:Math.min(100,r.v/Math.max(1,p.soFar||p.t)*100)}%"></span></div></div>`}).join('')}`}
-  else if(c.type==='list'){sec=`<h3 class="sec-h">Books</h3>${c.titleIds.map(id=>{const t=titleById(id);return t?`<div class="b-row">${libCover(t)}<div class="cp-main"><div class="small"><b>${esc(t.title)}</b></div><div class="xs muted">${esc(t.author)}</div></div>${bookAct(id)}</div>`:''}).join('')}`}
+  else if(c.type==='list'){sec=`<h3 class="sec-h">Books</h3>${c.titleIds.map(id=>{const t=titleById(id);return t?`<div class="b-row">${libCover(t)}<div class="cp-main"><div class="small"><b>${esc(t.title)}</b></div><div class="xs muted">${esc(t.author)}</div>${listMiss(c,id)}</div>${listMissR(c,id)||bookAct(id)}</div>`:''}).join('')}`}
 
   if(c.mode!=='comp'&&(c.mode==='personal'||joined))sec+=contribSection(c);
   let acts='';
   if(st.k!=='ended'&&(!fam||joined))acts+=`<button class="btn btn-primary" data-act="chLog">${ic('book')}Log Reading</button>`;
   if(fam&&!joined&&st.k!=='ended'){const inv=c.inviteOnly&&(c.invited||[]).includes('me')&&!(c.declined||[]).includes('me');acts+=inv?`<div class="inv-box"><span class="small"><b>${esc(nameOf(c.creator))}</b> invited you to this challenge.</span><span class="inv-acts"><button class="btn btn-ghost" data-act="chDecline" data-id="${c.id}">Decline</button><button class="btn btn-primary" data-act="chJoin" data-id="${c.id}">${ic('check')}Accept</button></span></div>`:`<button class="btn btn-primary" data-act="chJoin" data-id="${c.id}">${ic('plus')}Join Challenge</button>`}
   if(fam&&joined)acts+=`<button class="btn btn-ghost" data-act="chLeave" data-id="${c.id}">Leave Challenge</button>`;
-  if(creator&&st.k==='ended'&&c.mode==='personal')acts+=`<button class="btn btn-primary" data-act="chAgain" data-id="${c.id}">Try Again</button>`;
+  acts+=`<button class="btn btn-ghost" data-act="chAgain" data-id="${c.id}">${ic('copy')}Duplicate</button>`;
   const finished=st.k==='done'||st.k==='ended';
   if(creator)acts+=`<button class="btn btn-ghost" data-act="chEdit" data-id="${c.id}">${ic('pencil')}Edit</button>`+(!fam||!finished?`<button class="link-btn" data-act="chDelAsk" aria-expanded="${!!cv.del}">Delete</button>`:'');
   if(fam&&finished)acts+=hiddenC().includes(c.id)?`<button class="link-btn" data-act="chHide" data-v="0">Show in My Lists</button>`:`<button class="link-btn" data-act="chHide" data-v="1">Hide from My Lists</button>`;
@@ -3589,8 +3643,8 @@ function contribSection(c){
 function cbPicker(c,q){
   q=(q||'').trim().toLowerCase();const C=contrib(c),counted=new Set(C.items.map(i=>i.key)),T=today();let rows=[];
   if(c.type==='books'||c.type==='list')rows=S.books.filter(b=>b.status==='finished'&&!counted.has(b.id)&&(c.type!=='list'||c.titleIds.includes(b.titleId))).sort((a,b)=>(b.finished||'').localeCompare(a.finished||'')).map(b=>({k:'books',id:b.id,t:b.title,sub:`${b.author}${b.finished?` · Finished ${fmtDateY(b.finished)}`:' · Finished, date unknown'}`,tid:b.titleId}));
-  else if(c.type==='days'){const ds={};S.sessions.forEach(x=>{if(x.date<=T&&!counted.has(x.date))(ds[x.date]=ds[x.date]||new Set()).add(book(x.bookId)?.title||'')});rows=Object.keys(ds).sort().reverse().map(d=>({k:'days',id:d,t:fmtDateY(d),sub:[...ds[d]].join(', ')}))}
-  else rows=S.sessions.filter(x=>x.date<=T&&!counted.has(x.id)).sort((a,b)=>b.date.localeCompare(a.date)).map(x=>({k:'sessions',id:x.id,t:book(x.bookId)?.title||'Reading session',sub:`${fmtDateY(x.date)} · ${x.pages?x.pages+' pages':''}${x.pages&&x.minutes?' · ':''}${x.minutes?fmtMin(x.minutes):''}`}));
+  else if(c.type==='days'){const ds={};S.sessions.forEach(x=>{if(x.date<=T&&!isCU(x)&&!counted.has(x.date))(ds[x.date]=ds[x.date]||new Set()).add(book(x.bookId)?.title||'')});rows=Object.keys(ds).sort().reverse().map(d=>({k:'days',id:d,t:fmtDateY(d),sub:[...ds[d]].join(', ')}))}
+  else rows=S.sessions.filter(x=>x.date<=T&&!counted.has(x.id)).sort((a,b)=>b.date.localeCompare(a.date)).map(x=>({k:'sessions',id:x.id,t:book(x.bookId)?.title||'Reading session',sub:`${isCU(x)?`Catch-up, ${fmtRange(x.from,x.date)}`:fmtDateY(x.date)} · ${x.pages?x.pages+' pages':''}${x.pages&&x.minutes?' · ':''}${x.minutes?fmtMin(x.minutes):''}`}));
   rows=rows.filter(r=>!q||(r.t+' '+r.sub).toLowerCase().includes(q));
   return rows.length?rows.slice(0,60).map(r=>`<div class="b-row">${r.tid?libCover(titleById(r.tid)):`<span class="chc-ic sm">${ic(r.k==='days'?'cal':'book')}</span>`}<div class="cp-main"><div class="small"><b>${esc(r.t)}</b></div><div class="xs muted">${esc(r.sub)}</div></div><button class="btn btn-ghost sm" data-act="cbInc" data-k="${r.k}" data-id="${r.id}">${ic('plus')}Add</button></div>`).join('')+(rows.length>60?`<p class="xs muted">Showing 60 of ${rows.length}. Search to narrow it down.</p>`:'')
     :`<p class="small muted">${q?'No matches.':'Everything eligible is already counted.'}</p>`;
@@ -3606,6 +3660,12 @@ function renderCbPicker(){
   setTimeout(()=>document.getElementById('cbQ')?.focus(),30);
 }
 document.addEventListener('input',e=>{if(e.target.id==='cbQ'){const c=S.challenges.find(x=>x.id===cv.id);document.getElementById('cbRes').innerHTML=cbPicker(c,e.target.value)}});
+/* A list book you finished that this challenge doesn't count (finished before it started, or removed): say so, and offer Count It. */
+function listMissB(c,id){const r=S.books.filter(b=>b.titleId===id&&b.status==='finished').sort((a,b)=>(b.finished||'').localeCompare(a.finished||''))[0];if(!r)return null;
+  const C=contrib(c);return C.live.some(i=>i.titleId===id)?null:{r,removed:C.removed.some(i=>i.titleId===id)}}
+function listMiss(c,id){const m=c.mode!=='comp'&&listMissB(c,id);if(!m)return '';
+  return `<div class="xs muted">${m.r.finished?`Finished ${fmtDateY(m.r.finished)}`:'Finished, date unknown'} · ${m.removed?'removed from this challenge':c.start&&m.r.finished&&m.r.finished<c.start?'before this challenge started':'not counted'}</div>`}
+function listMissR(c,id){const m=c.mode!=='comp'&&(c.mode==='personal'||(c.participants||[]).includes('me'))&&listMissB(c,id);return m?`<button class="btn btn-ghost sm" data-act="chCount" data-k="books" data-id="${m.r.id}">${ic('plus')}Count It</button>`:''}
 function bookAct(id){const r=myReading(id);
   if(r&&(r.status==='reading'||r.status==='paused'))return `<button class="btn btn-primary sm" data-act="bdLog" data-id="${r.id}">${ic('book')}Log Reading</button>`;
   if(r&&r.status==='finished')return `<span class="st st-finished">${ic('check')}Finished</span>`;
@@ -3613,12 +3673,28 @@ function bookAct(id){const r=myReading(id);
   return `<button class="btn btn-ghost sm" data-act="startTitle" data-id="${id}">${ic('play')}Start Reading</button>`}
 function bookChip(id){const r=myReading(id);if(!r)return `<button class="btn btn-ghost sm" data-act="toggleWant" data-id="${id}">${ic('plus')}To Read</button>`;return `<span class="st st-${r.status}">${r.status==='want'?'On To Read':STATUS[r.status]}</span>`}
 /* create / edit challenge */
+/* Duplicate: a month in the name moves to the next month (December also moves the year), a year moves to the next year.
+   A challenge that covered a whole calendar month covers the next one (or this month, if that one is already over);
+   anything else starts today and keeps its length. With nothing to change in the name, the name is selected to type over. */
+const lastOfMonth=m=>addDays(addDays(m+'-01',32).slice(0,7)+'-01',-1);
+function dupPlan(name,start,end){
+  const t=today(),re=new RegExp(`\\b(${MONF.join('|')})\\b`);let n=name,changed=false,ns=t,ne=null;
+  const whole=start&&end&&start.slice(8)==='01'&&end===lastOfMonth(start.slice(0,7));
+  let tm=null;if(whole){tm=addDays(lastOfMonth(start.slice(0,7)),1).slice(0,7);if(lastOfMonth(tm)<t)tm=t.slice(0,7);ns=tm+'-01'<t?t:tm+'-01';ne=lastOfMonth(tm)}
+  else if(start&&end)ne=addDays(t,daysBetween(start,end));
+  const mm=n.match(re);
+  if(mm){const from=MONF.indexOf(mm[1]),to=tm?+tm.slice(5)-1:(from+1)%12;n=n.replace(re,MONF[to]);changed=true;
+    const yr=tm?tm.slice(0,4):null;n=n.replace(/\b(19|20)\d\d\b/g,y=>yr||(to<from?String(+y+1):y))}
+  else if(/\b(19|20)\d\d\b/.test(n)){n=n.replace(/\b(19|20)\d\d\b/g,y=>String(+y+1));changed=true}
+  return {name:n,start:ns,end:ne,sel:!changed}}
 function openChForm(id,mode,copy){
   const c=id?S.challenges.find(x=>x.id===id):null;
   cf=c?{who:c.inviteOnly?'invite':'all',invite:[...(c.invited||[])],id:c.id,mode:c.mode,type:c.type,titleIds:[...(c.titleIds||[])],name:c.name,desc:c.desc||'',target:c.type==='minutes'?Math.round(c.target/60):c.target,start:c.start||'',end:c.end||'',q:'',countPrior:!!c.countPrior,rule:c.rule||'all',ruleVal:c.ruleVal||''}
-    :{who:'all',invite:[],id:null,mode:mode||'personal',type:mode==='comp'?'days':'books',titleIds:[],name:'',desc:'',target:'',start:today(),end:'',q:'',countPrior:false,rule:'all',ruleVal:''};
-  if(copy){cf.id=null;cf.start=today();cf.end='';}
-  chMode='form';renderChForm();if(!chDlg.open)chDlg.showModal();setTimeout(()=>document.getElementById('cfName')?.focus(),30);
+    :{who:'all',invite:[],id:null,dup:false,mode:mode||'personal',type:mode==='comp'?'days':'books',titleIds:[],name:'',desc:'',target:'',start:today(),end:'',q:'',countPrior:false,rule:'all',ruleVal:''};
+  let sel=false;
+  if(copy){const d=dupPlan(c.name,c.start,c.end);cf.id=null;cf.dup=true;cf.name=d.name;cf.start=d.start;cf.end=d.end||'';sel=d.sel;
+    if(c.mode!=='personal'&&c.inviteOnly)cf.invite=[...new Set([c.creator,...(c.invited||[]),...(c.participants||[])])].filter(w=>w&&w!=='me'&&S.members[w])}
+  chMode='form';renderChForm();if(!chDlg.open)chDlg.showModal();setTimeout(()=>{const n=document.getElementById('cfName');n?.focus();if(sel)n?.select()},30);
 }
 function captureCf(){const v=id=>document.getElementById(id);if(!v('cfName'))return;cf.name=v('cfName').value;cf.desc=v('cfDesc').value;cf.start=v('cfStart').value;cf.end=v('cfEnd').value;if(v('cfTarget'))cf.target=v('cfTarget').value;if(v('cfPrior'))cf.countPrior=v('cfPrior').checked;if(v('cfRule'))cf.rule=v('cfRule').value;if(v('cfRuleVal'))cf.ruleVal=v('cfRuleVal').value;if(cf.who==='invite'&&document.querySelector('[name=cfInv]'))cf.invite=[...document.querySelectorAll('[name=cfInv]:checked')].map(x=>x.value)}
 function renderChForm(){
@@ -3627,7 +3703,7 @@ function renderChForm(){
   const unit={books:'books',pages:'pages',minutes:'hours',days:'days'}[cf.type];
   const listPick=cf.type==='list'?`<div class="f"><span class="fl" style="margin:0">Books</span><div class="chips">${cf.titleIds.map(id=>`<span class="chip-x">${esc(titleById(id)?.title||'')}<button class="icon-btn" style="padding:2px" data-act="cfRm" data-id="${id}" aria-label="Remove">${ic('x')}</button></span>`).join('')||'<span class="xs muted">No books yet.</span>'}</div>
     <label class="search" style="margin-top:6px">${ic('search')}<input id="cfQ" type="search" placeholder="Add a book by title or author" value="${esc(cf.q)}" autocomplete="off" aria-label="Add a book"></label><div id="cfRes" class="pick-list" style="margin-top:6px">${cfResults()}</div></div>`:'';
-  chBody.innerHTML=`<div class="dlg-h"><h2 id="chTitle" style="flex:1">${cf.id?'Edit Challenge':'Create a Challenge'}</h2><button type="button" class="icon-btn x" data-act="closeCh" aria-label="Close">${ic('x')}</button></div>
+  chBody.innerHTML=`<div class="dlg-h"><h2 id="chTitle" style="flex:1">${cf.id?'Edit Challenge':cf.dup?'Duplicate Challenge':'Create a Challenge'}</h2><button type="button" class="icon-btn x" data-act="closeCh" aria-label="Close">${ic('x')}</button></div>
   <div class="form">
     ${cf.id?'':`<div class="vseg ad-tabs" role="group" aria-label="Who is it for">${[['personal','Personal'],['coop','Group Cooperative'],['comp','Group Competition']].map(([k,l])=>`<button aria-pressed="${cf.mode===k}" data-act="cfMode" data-v="${k}">${l}</button>`).join('')}</div>
     <div class="xs muted" style="margin-top:-6px">${{personal:'A goal just for you.',coop:'Everyone who joins adds to one shared group total.',comp:'A friendly competition scored on consistency, not on how many books you finish.'}[cf.mode]}</div>`}
@@ -3643,10 +3719,17 @@ function renderChForm(){
     ${cf.mode!=='personal'&&!cf.id?`<div class="f"><span class="fl" style="margin:0">Who Can Join</span><div class="vseg ad-tabs" role="group" aria-label="Who can join">${[['all',`Anyone in ${esc(GN())}`],['invite','Only People I Invite']].map(([k,l])=>`<button aria-pressed="${cf.who===k}" data-act="cfWho" data-v="${k}">${l}</button>`).join('')}</div>
       ${cf.who==='invite'?`<div class="chips">${Object.entries(S.members).map(([k,m])=>`<label class="chk"><input type="checkbox" name="cfInv" value="${k}" ${cf.invite.includes(k)?'checked':''}> ${esc(m.name)}</label>`).join('')}</div><span class="xs muted">Only the people you invite see this challenge. Each gets a notification and can accept or decline.</span>`:`<span class="xs muted">Everyone in the group gets a notification and can join.</span>`}</div>`:''}
     <div class="f2"><label class="f">Start Date<input class="inp" type="date" id="cfStart" value="${cf.start}"></label><label class="f"><span>End Date${cf.mode==='comp'?'':' <span class="sub">(optional)</span>'}</span><input class="inp" type="date" id="cfEnd" value="${cf.end}"></label></div>
+    <div class="xs cf-warn" id="cfWarn" role="status">${cfWarn()}</div>
     <div class="err" id="cfErr" role="alert"></div>
     <div class="dlg-f"><button class="btn btn-ghost" data-act="closeCh">Cancel</button><button class="btn btn-primary" data-act="cfSave">${cf.id?'Save Changes':'Create Challenge'}</button></div>
   </div>`;
 }
+/* A start date after books on the list were finished: they won't count unless "Count books I've already finished" is on. */
+function cfWarn(){if(cf.mode==='comp'||!cf.start||cf.countPrior||!['list','books'].includes(cf.type))return '';
+  const inc=(cf.id&&S.challenges.find(x=>x.id===cf.id)?.inc?.books)||[],early=S.books.filter(b=>b.status==='finished'&&b.finished&&b.finished<cf.start&&!inc.includes(b.id)&&(cf.type!=='list'||cf.titleIds.includes(b.titleId)));
+  if(cf.type==='list'&&early.length)return `⚠ ${early.length===1?`You finished ${esc(early[0].title)} before ${fmtDateY(cf.start)}, so it won’t count`:`You finished ${early.length} books on this list before ${fmtDateY(cf.start)}, so they won’t count`}. Change the start date, or turn on “Count books I’ve already finished.”`;
+  if(cf.start>today())return `⚠ This starts ${fmtDateY(cf.start)}. Books you finish before then won’t count.`;return ''}
+document.addEventListener('input',e=>{if(chMode==='form'&&['cfStart','cfPrior','cfEnd'].includes(e.target.id)){captureCf();const w=document.getElementById('cfWarn');if(w)w.innerHTML=cfWarn()}});
 function cfResults(){const q=cf.q.trim().toLowerCase();if(!q)return '';return S.titles.filter(t=>!cf.titleIds.includes(t.id)&&(t.title+' '+t.author).toLowerCase().includes(q)).slice(0,6).map(t=>`<button type="button" class="pick" data-act="cfAdd" data-id="${t.id}">${libCover(t)}<span><span class="pick-t">${esc(t.title)}</span><span class="xs muted">${esc(t.author)}</span></span></button>`).join('')||'<span class="xs muted">No matches.</span>'}
 function saveCf(){
   captureCf();const er=m=>{document.getElementById('cfErr').textContent=m};
@@ -3687,6 +3770,7 @@ function renderBattle(){
     else if(mod)acts=`<span class="joined">${ic('check')}You’re moderating</span><button class="btn btn-ghost" data-act="bUnmod">Step Down</button>`;
     else acts=`<button class="btn btn-primary" data-act="bJoin">${ic('plus')}Join as Reader</button>${b.moderator?'':`<button class="btn btn-ghost" data-act="bMod">Moderate</button>`}`;
   }
+  acts+=`<button class="btn btn-ghost" data-act="bDup">${ic('copy')}Duplicate</button>`;
   if(bCreator(b)==='me')acts+=`<button class="btn btn-ghost" data-act="bEdit">${ic('pencil')}Edit</button>`;
   if(bCreator(b)==='me'&&st!=='completed')acts+=`<button class="link-btn" data-act="bDel" aria-expanded="${!!bv.del}">Delete</button>`;
   if(st==='completed')acts+=hiddenB().includes(b.id)?`<button class="link-btn" data-act="bHide" data-v="0">Show in My List</button>`:`<button class="link-btn" data-act="bHide" data-v="1">Hide from My List</button>`;
@@ -3706,12 +3790,12 @@ function renderBattle(){
 }
 function bResults(b){const q=bv.q.trim().toLowerCase();if(!q)return '<span class="xs muted">Type a title or author.</span>';const taken=new Set(bList(b).map(x=>x.id));
   return S.titles.filter(t=>!taken.has(t.id)&&(t.title+' '+t.author).toLowerCase().includes(q)).slice(0,6).map(t=>`<button type="button" class="pick" data-act="bPick" data-id="${t.id}">${libCover(t)}<span><span class="pick-t">${esc(t.title)}</span><span class="xs muted">${esc(t.author)}</span></span></button>`).join('')||'<span class="xs muted">No matches. Add the book in the Library first.</span>'}
-function openBForm(b){chMode='bform';const ed=!!b;chBody.innerHTML=`<div class="dlg-h"><h2 id="chTitle" style="flex:1">${ed?'Edit Battle of the Books':'Start a Battle of the Books'}</h2><button type="button" class="icon-btn x" data-act="closeCh" aria-label="Close">${ic('x')}</button></div>
-  <div class="form"><label class="f">Name<input class="inp" id="bfName" maxlength="80" autocomplete="off" value="${ed?esc(b.name):''}"></label><label class="f"><span>Description <span class="sub">(optional)</span></span><textarea class="inp" id="bfDesc" rows="2" maxlength="200">${ed?esc(b.desc||''):''}</textarea></label>
-  <div class="f2"><label class="f">Reading Starts<input class="inp" type="date" id="bfStart" value="${ed?b.readStart:today()}"></label><label class="f">Battle Date<input class="inp" type="date" id="bfEvent" value="${ed?b.event:''}"></label></div>
-  ${ed&&Object.keys(b.readers).length?`<p class="xs muted" style="margin:0">Readers who already joined keep their picks and progress. Changing the dates can change whether the battle shows as Upcoming, Active, or Completed.</p>`:''}
+function openBForm(b,dup){chMode='bform';const ed=!!b&&!dup,d=dup?dupPlan(dup.name,dup.readStart,dup.event):null;chBody.innerHTML=`<div class="dlg-h"><h2 id="chTitle" style="flex:1">${ed?'Edit Battle of the Books':d?'Duplicate Battle of the Books':'Start a Battle of the Books'}</h2><button type="button" class="icon-btn x" data-act="closeCh" aria-label="Close">${ic('x')}</button></div>
+  <div class="form"><label class="f">Name<input class="inp" id="bfName" maxlength="80" autocomplete="off" value="${ed?esc(b.name):d?esc(d.name):''}"></label><label class="f"><span>Description <span class="sub">(optional)</span></span><textarea class="inp" id="bfDesc" rows="2" maxlength="200">${ed?esc(b.desc||''):d?esc(dup.desc||''):''}</textarea></label>
+  <div class="f2"><label class="f">Reading Starts<input class="inp" type="date" id="bfStart" value="${ed?b.readStart:d?d.start:today()}"></label><label class="f">Battle Date<input class="inp" type="date" id="bfEvent" value="${ed?b.event:d?d.end||'':''}"></label></div>
+  ${d?`<p class="xs muted" style="margin:0">A fresh start: readers, picks, the moderator, and results don’t carry over.</p>`:''}${ed&&Object.keys(b.readers).length?`<p class="xs muted" style="margin:0">Readers who already joined keep their picks and progress. Changing the dates can change whether the battle shows as Upcoming, Active, or Completed.</p>`:''}
   <div class="err" id="bfErr" role="alert"></div><div class="dlg-f"><button class="btn btn-ghost" data-act="${ed?'bEditCancel':'closeCh'}">Cancel</button><button class="btn btn-primary" data-act="${ed?'bSave':'bCreate'}">${ed?'Save Changes':'Start Battle'}</button></div></div>`;
-  if(!chDlg.open)chDlg.showModal();setTimeout(()=>document.getElementById('bfName')?.focus(),30)}
+  if(!chDlg.open)chDlg.showModal();setTimeout(()=>{const n=document.getElementById('bfName');n?.focus();if(d?.sel)n?.select()},30)}
 function openAwardForm(){chMode='award';chBody.innerHTML=`<div class="dlg-h"><h2 id="chTitle" style="flex:1">Give an Award</h2><button type="button" class="icon-btn x" data-act="closeCh" aria-label="Close">${ic('x')}</button></div>
   <div class="form"><p class="small muted" style="margin:0">For accomplishments outside the app, like a school reading competition or a Battle of the Books win.</p><div class="chips aw-pre">${['Most Improved','Great Reading Partner','Kept Going','Battle Champion','Reader of the Month','Read-Aloud Star','Big Book Finisher','Great Recommendation','Library Helper'].map(n=>`<button type="button" class="tab sm" data-act="awPreset" data-v="${n}">${n}</button>`).join('')}</div><label class="f">Award Name<input class="inp" id="awName" maxlength="80" autocomplete="off"></label>
   <label class="f">For<select class="inp" id="awTo"><option value="me">Me</option>${(S.settings.solo?[]:Object.entries(S.members)).map(([k,m])=>`<option value="${k}">${esc(m.name)}</option>`).join('')}</select></label>
@@ -3840,22 +3924,31 @@ function drawLog(b,focus,preMin){
     <div class="f3">
       <label class="f">${audio?'Start Position':'Starting Page'}<input class="inp" name="start" inputmode="${audio?'text':'numeric'}" value="${audio?fmtPos(b.pos):b.pos}" placeholder="${audio?'h:mm':''}"></label>
       <label class="f"><span>${audio?'End Position':'Ending Page'} <span class="sub" data-opt="end" hidden>(optional)</span></span><input class="inp" name="end" inputmode="${audio?'text':'numeric'}" placeholder="${audio?'h:mm':'Page'}"></label>
-      <label class="f"><span>Minutes <span class="sub" data-opt="min" hidden>(optional)</span></span><input class="inp" name="minutes" inputmode="numeric" value="${preMin||''}" placeholder="${audio?'Time spent':'Minutes'}"></label>
+      <label class="f"><span>Minutes <span class="sub" data-opt="min" hidden>(optional)</span></span><input class="inp" name="minutes" inputmode="text" autocomplete="off" value="${preMin||''}" placeholder="${audio?'Time spent':'Minutes'}" aria-describedby="minHint"><span class="xs muted min-hint" id="minHint" aria-live="polite"></span></label>
     </div>
     <div class="calc" id="calc"></div>
     <div class="xs muted" style="margin-top:-8px">${audio?`Total length ${fmtPos(b.total)}. Enter positions as h:mm. Add minutes for the time you actually spent listening; otherwise the change in position counts as estimated time.`:(isNew?`New book: the starting page is 0, so reading pages 1–20 counts as 20 pages. Saving starts the book even if you don’t log pages yet.`:`The starting page is where you left off. Enter pages, minutes, or both.`)}</div>
     <div class="f"><span class="fl" style="margin:0">Read Together <span class="sub">(optional)</span></span><div class="chips">${Object.entries(S.members).map(([k,m])=>`<label class="tog"><input type="checkbox" name="with" value="${k}"><span>${esc(m.name)}</span></label>`).join('')}</div><span class="xs muted">Reading aloud or side by side? Everyone you choose gets credit for this session too.</span></div>
-    <label class="f">Date<input class="inp" type="date" name="date" value="${today()}" max="${today()}"></label>
+    <div class="f"><div class="f2 cu-dates"><label class="f cu-from" hidden>From<input class="inp" type="date" name="from" max="${today()}"></label><label class="f"><span class="cu-to">Date</span><input class="inp" type="date" name="date" value="${today()}" max="${today()}"></label></div>
+      <label class="chk"><input type="checkbox" name="cu"> Covers more than one day</label><span class="xs muted cu-note" hidden>Counts toward totals and challenges, but not streaks or daily goals.</span></div>
     <label class="f"><span>Add a Note <span class="sub">(optional, only you see it)</span></span><textarea class="inp" name="note" maxlength="200" data-count="200" aria-describedby="logNoteCount" placeholder="What did you read today?"></textarea>${charCount('logNoteCount',0,200)}</label>
     <label class="chk"><input type="checkbox" name="finished"> Mark as finished</label>
-    <div class="err" id="logErr" role="alert"></div>
+    <div class="err" id="logErr" role="alert"></div><div class="log-ask" id="logAsk" hidden></div>
     <div class="dlg-f"><button type="button" class="btn btn-ghost" data-act="cancelLog">Cancel</button><button type="submit" class="btn btn-primary">Save Reading</button></div>
   </div>`;
-  logForm.dataset.book=b.id;logForm.dataset.mode='log';
+  logForm.dataset.book=b.id;logForm.dataset.mode='log';logForm.dataset.ok='';
   if(S.settings.solo)logForm.querySelector('[name=with]')?.closest('.f')?.remove();
   draftAttach(logForm,'log:'+(b.titleId||b.id),'reading entry',preMin?['minutes']:null);
   setLogOpt();calcLog();
 }
+function cuShow(on){
+  logForm.querySelector('.cu-from').hidden=!on;logForm.querySelector('.cu-note').hidden=!on;logForm.querySelector('.cu-to').textContent=on?'To':'Date';
+  if(on&&!logForm.from.value)logForm.from.value=addDays(logForm.date.value||today(),-1);
+}
+/* The daily check: a question inside the form (no second window), or a stop when a day would pass 24 hours. */
+function logAsk(html){const a=document.getElementById('logAsk');a.innerHTML=html;a.hidden=false;document.getElementById('logErr').textContent='';a.querySelector('button')?.focus()}
+function logAskClear(){const a=document.getElementById('logAsk');if(a&&!a.hidden){a.hidden=true;a.innerHTML=''}logForm.dataset.ok=''}
+const spreadBtn='<button type="button" class="btn btn-ghost sm" data-act="logSpread">Log It Over Several Days</button>';
 function drawNew(){
   nw={q:'',ol:null};
   const has=S.books.some(x=>x.status==='reading'||x.status==='paused');
@@ -3921,7 +4014,7 @@ function readLog(){
   const b=findB(f.book);const audio=b.format==='audio';
   const parse=v=>audio?parsePos(v):(String(v).trim()===''?null:(/^\d+$/.test(v.trim())?+v:NaN));
   const start=parse(f.start),end=parse(f.end);
-  const minutes=String(f.minutes).trim()===''?null:(/^\d+$/.test(f.minutes.trim())?+f.minutes:NaN);
+  const minutes=parseMin(f.minutes);
   return {f,b,audio,start,end,minutes};
 }
 function calcLog(){
@@ -3938,11 +4031,14 @@ function calcLog(){
     }
     if(end>=b.total)parts.push(`<b>That’s the end of the book!</b>`);
   }else parts.push('Pages read <b>—</b>');
-  const dt=logForm.querySelector('[name=date]')?.value||today();const ts=goalState(dt);
+  const mh=document.getElementById('minHint');if(mh)mh.textContent=minutes==null?'':isNaN(minutes)?'Try 90, 1:30, or 2h 30m':`= ${fmtMin(minutes)}`;
+  const cu=logForm.cu?.checked;
+  const dt=logForm.querySelector('[name=date]')?.value||today();const ts=cu?{mins:0,pages:0}:goalState(dt);
   let addP=0,addM=0;
   if(start!=null&&end!=null&&!isNaN(start)&&!isNaN(end)&&end>=start){if(audio){if(g.estimate)addM=end-start}else addP=end-start}
   if(minutes&&!isNaN(minutes))addM=minutes;else if(!audio&&addP&&g.estimate){const p=pace(b.id);if(p)addM=addP/p}
   const lbl=dt===today()?'Today':fmtDate(dt);
+  if(cu){const fr=logForm.from.value,n=fr&&fr<=dt?daysIn(fr,dt):0;parts.push(n?`Catch-up for ${n} days: <b>${[addM?fmtMin(addM):'',addP?`${addP} pages`:''].filter(Boolean).join(', ')||'—'}</b>`:'Choose the first day it covers.');el.innerHTML=parts.map(p=>`<span>${p}</span>`).join('');return}
   const tm=`${Math.round(ts.mins+addM)} / ${g.goalMinutes} min`,tp=`${ts.pages+addP} / ${g.goalPages} pages`;
   parts.push(`${lbl} after saving <b>${g.goalType==='minutes'?tm:g.goalType==='pages'?tp:tm+', '+tp}</b><button type="button" class="edit-goal" data-act="editGoal">${ic('pencil')}Edit Goal</button>`);
   el.innerHTML=parts.map(p=>`<span>${p}</span>`).join('');
@@ -3954,6 +4050,8 @@ logForm.addEventListener('input',e=>{
   if(e.target.name==='end'){const {b,end}=readLog();if(end!=null&&end>=b.total)logForm.finished.checked=true}
   if(e.target.name==='finished'&&e.target.checked)logForm.status.value='finished';
   if(e.target.name==='status')logForm.finished.checked=e.target.value==='finished';
+  if(e.target.name==='cu')cuShow(e.target.checked);
+  logAskClear();
   calcLog();
 });
 logForm.addEventListener('submit',e=>{
@@ -3966,25 +4064,36 @@ logForm.addEventListener('submit',e=>{
   if(f.date>today())return err('The date can’t be in the future.');
   if(hasEnd&&!hasStart)return err(`Enter the ${audio?'start position':'starting page'} too.`);
   if((hasStart&&isNaN(start))||(hasEnd&&isNaN(end)))return err(audio?'Enter positions as h:mm, for example 3:10.':'Pages must be whole numbers.');
-  if(minutes!=null&&(isNaN(minutes)||minutes<=0))return err('Minutes must be a whole number above zero.');
+  if(minutes!=null&&isNaN(minutes))return err('Enter minutes (90) or hours and minutes (1:30).');
+  if(minutes!=null&&minutes<=0)return err('Minutes must be above zero.');
   const range=hasEnd;
+  const fromD=logForm.cu.checked?f.from:null;
+  if(logForm.cu.checked){if(!fromD)return err('Choose the first day this covers.');if(fromD>=f.date)return err('The first day must be before the last day.')}
   if(range&&end<start)return err(`The ${audio?'end position':'ending page'} must be after the ${audio?'start position':'starting page'}.`);
   if(range&&end>b.total)return err(audio?`This audiobook is ${fmtPos(b.total)} long.`:`This book has ${b.total} pages.`);
   const finished=logForm.finished.checked||f.status==='finished';
   const statusChanged=finished||f.status!==b.status;
   if(!range&&minutes==null&&!statusChanged)return err('Enter pages, minutes, or both.');
   const span=range?end-start:0;
+  {const nD=fromD?daysIn(fromD,f.date):1,pr=fromD?{rec:0,pages:0}:day(f.date),totM=pr.rec+(minutes||0),totP=pr.pages+(audio?0:span),on=fromD?`${fmtRange(fromD,f.date)}`:f.date===today()?'today':`on ${fmtDate(f.date)}`;
+   if(totM>DAY_MAX*nD)return logAsk(fromD?`<p class="small"><b>${nD} days can’t hold more than ${nD*24} hours.</b> Check the minutes or the dates.</p>`
+     :`<p class="small"><b>${f.date===today()?'Today':fmtDate(f.date)} can’t hold more than 24 hours.</b> ${pr.rec?`You’ve already logged ${fmtMin(pr.rec)} that day.`:'Log longer reading on the days it happened.'}</p><div class="log-ask-b">${spreadBtn}</div>`);
+   if(logForm.dataset.ok!=='1'&&(totM/nD>DAY_ASK_MIN||totP/nD>DAY_ASK_PAGES)){
+     const timer=!fromD&&S.timer?.stop&&S.timer.bookId===b.id&&minutes===Math.max(1,Math.round(tElapsed()));
+     const what=[totM/nD>DAY_ASK_MIN?fmtMin(fromD?totM/nD:totM):'',totP/nD>DAY_ASK_PAGES?`${Math.round(fromD?totP/nD:totP)} pages`:''].filter(Boolean).join(' and ');
+     const q=timer?`The timer ran for ${fmtMin(minutes)}. Did it keep going after you stopped reading?`:fromD?`That’s about ${what} a day for ${nD} days. Is that right?`:`That’s ${what} of reading ${on}. Is that right?`;
+     return logAsk(`<p class="small"><b>${q}</b></p><div class="log-ask-b"><button type="button" class="btn btn-primary sm" data-act="logYes">Yes, Save It</button><button type="button" class="btn btn-ghost sm" data-act="logFix">Let Me Fix It</button>${fromD?'':spreadBtn}</div>`)}}
   const before=goalState(f.date),skBefore=streak();
   const isNew=!S.books.includes(b),wasWant=isNew||b.status==='want';
   if(isNew){S.books.push(b);pendingNew=null}
   if(!b.titleId){const nt={id:'t'+uid(),title:b.title,author:b.author,pages:b.format==='audio'?0:b.total,genre:'',c:b.c,added:Date.now()};S.titles.push(nt);b.titleId=nt.id}
-  if(wasWant&&!b.started)b.started=f.date;
+  if(wasWant&&!b.started)b.started=fromD||f.date;
   if(range||minutes!=null){
     let est=null;
     const pages=audio?0:span;
     if(minutes==null&&S.settings.estimate){if(audio&&span>0)est=span;else if(pages>0){const p=pace(b.id);if(p)est=Math.round(pages/p)}}
     const withIds=[...logForm.querySelectorAll('[name=with]:checked')].map(x=>x.value);
-    S.sessions.push({id:uid(),bookId:b.id,date:f.date,start:range?start:null,end:range?end:null,pages,minutes,est,note:f.note||'',with:withIds.length?withIds:undefined});
+    S.sessions.push({id:uid(),bookId:b.id,date:f.date,from:fromD||undefined,start:range?start:null,end:range?end:null,pages,minutes,est,note:f.note||'',with:withIds.length?withIds:undefined});
     if(withIds.length){extraSub=`Also counted for ${withIds.map(nameOf).join(' and ')}.`;if(S.settings.share)S.activity.push({id:uid(),who:'me',kind:'together',text:`read together with ${withIds.map(nameOf).join(' and ')}`,book:b.title,ts:Date.now(),r:{}})}
   }
   if(range)b.pos=end;
@@ -4171,6 +4280,8 @@ document.addEventListener('click',e=>{
     case 'cbAdd':renderCbPicker();break;
     case 'cbBack':chMode='ch';renderCh();break;
     case 'cbAll':cv.all=!cv.all;renderCh();break;
+    case 'chCount':{const c=S.challenges.find(x=>x.id===cv.id),k=a.dataset.k,id=a.dataset.id;if(!c)break;c.inc=c.inc||{};c.exc=c.exc||{};c.exc[k]=(c.exc[k]||[]).filter(x=>x!==id);
+      if(!contrib(c).live.some(i=>i.key===id))c.inc[k]=[...new Set([...(c.inc[k]||[]),id])];save();openCh(c.id);render();toast('Counted.',null,chProg(c).label);break}
     case 'cbInc':{const c=S.challenges.find(x=>x.id===cv.id),k=a.dataset.k,id=a.dataset.id;c.inc=c.inc||{};c.exc=c.exc||{};c.exc[k]=(c.exc[k]||[]).filter(x=>x!==id);
       if(!contrib(c).live.some(i=>i.key===id))c.inc[k]=[...new Set([...(c.inc[k]||[]),id])];save();
       const q=document.getElementById('cbQ')?.value||'';document.getElementById('cbRes').innerHTML=cbPicker(c,q);toast('Added to the challenge.',null,chProg(c).label);break}
@@ -4213,6 +4324,7 @@ document.addEventListener('click',e=>{
     case 'bNew':openBForm();break;
     case 'bEdit':{const b=S.battles.find(x=>x.id===bv.id);if(b&&bCreator(b)==='me')openBForm(b);break}
     case 'bEditCancel':openBattle(bv.id);break;
+    case 'bDup':{const b=S.battles.find(x=>x.id===bv.id);if(b)openBForm(null,b);break}
     case 'bDel':bv.del=!bv.del;renderBattle();break;
     case 'bDelGo':{const b=S.battles.find(x=>x.id===bv.id);if(!b||bCreator(b)!=='me'||bStatus(b)==='completed')break;const snap=snapshot();
       S.battles=S.battles.filter(x=>x!==b);S.notifs=S.notifs.filter(n=>!(n.link&&n.link.type==='battle'&&n.link.id===b.id));save();chDlg.close();render();toast(`Deleted ${b.name}.`,restoreTo(snap));break}
@@ -4259,7 +4371,7 @@ document.addEventListener('click',e=>{
     case 'libF':lib.f[a.dataset.k]=a.dataset.v;refreshLib();break;
     case 'libClear':lib.f={...LIB0};lib.q='';refreshLib();break;
     case 'libView':S.settings.libView=a.dataset.v;save();refreshLib();break;
-    case 'openTitle':if(nextDlg.open)nextDlg.close();openTitle(a.dataset.id,a.dataset.tab);break;
+    case 'openTitle':if(nextDlg.open)nextDlg.close();openTitle(a.dataset.id,a.dataset.tab||bdTabFor(a.dataset.id,a));break;
     case 'bdDescMore':bd.descOpen=!bd.descOpen;renderBD();break;
     case 'discWant':{const it=discIdx[a.dataset.k];if(!it)break;const snap=snapshot(),t=it.t||olTitleFrom(it.x),r=myReading(t.id);
       if(!r||r.status==='finished'||r.status==='dnf')S.books.push({id:'r'+uid(),titleId:t.id,title:t.title,author:t.author,format:'print',total:t.pages||300,pos:0,status:'want',c:t.c,wantSince:today()});
@@ -4282,10 +4394,10 @@ document.addEventListener('click',e=>{
     case 'goRecs':view='library';lib.tab='discover';lib.rv='to';render();window.scrollTo(0,0);break;
     case 'surpriseClear':surprise=null;refreshLib();document.querySelector('[data-act=surprise]')?.focus();break;
     case 'nextClose':nextDlg.close();break;
-    case 'dnfWhy':{dnfSel.note=document.getElementById('dnfNote').value;dnfSel.why=dnfSel.why===a.dataset.v?'':a.dataset.v;renderDnf();dnfBody.querySelector(`[data-act=dnfWhy][data-v="${a.dataset.v}"]`)?.focus();break}
+    case 'dnfWhy':{dnfSel.note=document.getElementById('dnfNote').value;dnfSel.why=dnfSel.why.includes(a.dataset.v)?dnfSel.why.filter(x=>x!==a.dataset.v):[...dnfSel.why,a.dataset.v];renderDnf();dnfBody.querySelector(`[data-act=dnfWhy][data-v="${a.dataset.v}"]`)?.focus();break}
     case 'dnfSave':{const b=book(dnfSel.id),note=document.getElementById('dnfNote').value.trim(),had=!!(b.dnfWhy||b.dnfNote);
-      if(dnfSel.why)b.dnfWhy=dnfSel.why;else delete b.dnfWhy;if(note)b.dnfNote=note;else delete b.dnfNote;
-      if(!had&&(b.dnfWhy||b.dnfNote))post('dnf','stopped reading',b.title,`at ${stopAt(b)}${b.dnfWhy?` · ${dnfWhyL(b.dnfWhy).toLowerCase()}`:''}${b.dnfNote?`: “${b.dnfNote}”`:''}`);
+      if(dnfSel.why.length)b.dnfWhy=DNF_WHY.map(x=>x[0]).filter(k=>dnfSel.why.includes(k));else delete b.dnfWhy;if(note)b.dnfNote=note;else delete b.dnfNote;
+      if(!had&&(b.dnfWhy||b.dnfNote))post('dnf','stopped reading',b.title,`at ${stopAt(b)}${b.dnfWhy?` · ${dnfWhyL(b.dnfWhy,true)}`:''}${b.dnfNote?`: “${b.dnfNote}”`:''}`);
       save();dnfDlg.close();render();if(bookDlg.open)renderBD();toast(b.dnfWhy||b.dnfNote?'Reason saved.':'Saved.');break}
     case 'dnfClose':dnfDlg.close();break;
     case 'dnfUndo':{const u=dnfSel?.undo;dnfDlg.close();if(u){u();toast('Undone.')}break}
@@ -4339,10 +4451,16 @@ document.addEventListener('click',e=>{
     case 'cpLendGo':{const c=S.copies.find(x=>x.id===a.dataset.id);lendCopy(c,document.getElementById('lendTo').value);bd.lend=null;save();renderBD();toast(`Marked as loaned to ${nameOf(c.loanTo)}.`);break}
     case 'cpReturn':{const c=S.copies.find(x=>x.id===a.dataset.id),w=c.loanTo;c.loanTo=null;(S.loanReqs||[]).filter(r=>r.copyId===c.id&&r.status==='loaned').forEach(r=>{r.status='returned'});post('loan',`got ${titleById(c.titleId)?.title||'a book'} back from ${nameOf(w)}`);save();renderBD();toast(`Marked as returned by ${nameOf(w)}.`);break}
     case 'cpRemove':{const snap=snapshot();S.copies=S.copies.filter(x=>x.id!==a.dataset.id);save();renderBD();toast('Removed your copy.',restoreTo(snap));break}
-    case 'rate':{const r=book(a.dataset.id),v=+a.dataset.v;r.rating=r.rating===v?0:v;save();renderBD();if(nextDlg.open){renderNextDlg();nextBody.querySelector(`[data-act=rate][data-v="${v}"]`)?.focus()}break}
+    case 'rate':{const r=book(a.dataset.id),v=+a.dataset.v;r.rating=r.rating===v?0:v;save();
+      const rb=a.closest('[data-rbox]');if(rb){const id=rb.dataset.rbox;rb.outerHTML=recRateOpt(titleById(r.titleId),id);document.getElementById(id)?.focus();break}renderBD();if(nextDlg.open){renderNextDlg();nextBody.querySelector(`[data-act=rate][data-v="${v}"]`)?.focus()}break}
     case 'bdLog':{if(bookDlg.open)bookDlg.close();if(chDlg.open)chDlg.close();if(nextDlg.open)nextDlg.close();openLog(a.dataset.id);break}
     case 'startTimer':startTimer(id);break;
     case 'stopTimer':stopTimer();break;
+    case 'logYes':logForm.dataset.ok='1';logForm.requestSubmit();break;
+    case 'logFix':{logAskClear();logForm.minutes.focus();break}
+    case 'logSpread':{const m=parseMin(logForm.minutes.value)||0,to=logForm.date.value||today(),n=Math.min(366,Math.max(2,Math.ceil(m/DAY_ASK_MIN)));logForm.cu.checked=true;logForm.from.value=addDays(to,-(n-1));cuShow(true);logAskClear();calcLog();logForm.from.focus();break}
+    case 'resumeTimer':resumeTimer();break;
+    case 'resetTimer':resetTimer();break;
     case 'discardTimer':{const snap=snapshot();S.timer=null;save();render();toast('Timer discarded.',restoreTo(snap));break}
     case 'editBook':openEdit(id);break;
     case 'closeEdit':editDlg.close();break;
@@ -4409,7 +4527,7 @@ document.addEventListener('click',e=>{
     case 'notifGo':{const n=S.notifs.find(x=>x.id===a.dataset.id);n.read=true;save();closeMenus();const L=n.link;
       if(L.type==='ch'){view='challenges';chTab='family';render();window.scrollTo(0,0);openCh(L.id)}
       else if(L.type==='battle'){view='challenges';chTab='battle';render();window.scrollTo(0,0);openBattle(L.id)}
-      else if(L.type==='title'){openTitle(L.id)}
+      else if(L.type==='title'){openTitle(L.id,'copies')}
       else{view='library';lib.tab='discover';lib.rv='from';render();window.scrollTo(0,0)}
       break}
     case 'dismiss':S.notifs=S.notifs.filter(n=>n.id!==a.dataset.id);save();renderHeader();document.getElementById('bellMenu').hidden=false;break;
