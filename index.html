@@ -827,6 +827,9 @@ main section.card .card-h .ico{display:none}
 .bd-tab{padding-left:0;padding-right:0}
 .tab-gap{flex:0 1 24px;min-width:7px}
 .tabs[role=tablist]>.tab-gap{flex-basis:26px;min-width:9px}
+/* Inside windows the tabs spread across the row when there's room (equal gaps, first tab at the left edge, last at
+   the right); on narrow screens the gaps shrink to the minimum as on pages. Pages stay left-aligned. */
+.tab-wrap.in-dlg .tab-gap{flex-grow:1}
 /* status picker, activity filter, recommendation edits, invites */
 .st-btns{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .st-btns .tab[disabled]{opacity:1;cursor:default}

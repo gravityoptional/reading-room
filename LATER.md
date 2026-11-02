@@ -32,7 +32,9 @@ Open Library matching, book descriptions (2i). When merging next into main, next
 - Tab rows that don't fit (book details, Library, Challenges) show a fade and a chevron on the side with hidden
   tabs; the book details tab reads "Activity", with the group name inside the tab (Nov 2). Main has peek only.
 - Tabs use flexible spacing (gaps shrink before scrolling), and windows use a 16 px side margin at 400 px and
-  narrower (main uses 22 px everywhere) (Nov 2). Target: everything fits at 360 px; 320 px still works.
+  narrower (main uses 22 px everywhere) (Nov 2). Target: everything fits at 360 px; 320 px still works. Inside windows, tabs
+  spread across the row when there's room; pages stay left-aligned. James: if the spread look doesn't hold up,
+  leave it for later rather than chase it.
 
 ## Test on /next/ after the push
 
