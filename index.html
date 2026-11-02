@@ -495,6 +495,8 @@ button.cal-d{border:0;font:inherit;color:inherit;cursor:pointer;position:relativ
 .bd-desc{max-height:7.2em;overflow:hidden;position:relative;font-size:14px;line-height:1.55}
 .bd-desc p{margin:0 0 .7em}
 .bd-src a{color:var(--primary)}
+.gb-attr{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
+.gb-attr img{height:30px;width:auto}
 .bd-desc:not(.open):not(.fits)::after{content:'';position:absolute;left:0;right:0;bottom:0;height:2.2em;background:linear-gradient(transparent,var(--surface))}
 .bd-desc.open{max-height:none}
 .bd-more{padding-left:0}
@@ -2635,8 +2637,33 @@ function cleanDesc(raw){
      .replace(/[ \t]+\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
   return s.replace(/\s+/g,' ').length<60?'':s;   // a few words or just a credit: not a description
 }
-const descOf=t=>t.descText?{text:t.descText,src:'member',by:t.descBy}:t.desc?{text:t.desc,src:'ol'}:null;
-const descWaiting=t=>!descOf(t)&&!!t.olKey&&t.desc===undefined;
+const descOf=t=>t.descText?{text:t.descText,src:'member',by:t.descBy}:t.desc?{text:t.desc,src:'ol'}:gbDesc[t.id]?.html?{html:gbDesc[t.id].html,link:gbDesc[t.id].link,src:'gb'}:null;
+const descWaiting=t=>!descOf(t)&&(!!t.olKey&&t.desc===undefined&&!(t.descTried>Date.now()-COVER_RETRY)||gbBusy===t.id);
+/* Google Books, the third source: only when there's no member or Open Library description, fetched when the
+   book's details open, and never saved (Google's terms). Shown unaltered apart from formatting, with the
+   "powered by Google" image and a prominent link to the book's Google Books page. */
+const gbDesc={};let gbBusy=null;
+function gbSafe(raw){
+  // Keep Google's own formatting tags (paragraphs, line breaks, bold, italics); show everything else as text.
+  const doc=new DOMParser().parseFromString(`<div>${raw}</div>`,'text/html'),ok={P:'p',BR:'br',B:'b',STRONG:'b',I:'i',EM:'i'};
+  const walk=n=>[...n.childNodes].map(c=>c.nodeType===3?esc(c.textContent):c.nodeType!==1||/^(SCRIPT|STYLE|TEMPLATE|NOSCRIPT)$/.test(c.tagName)?'':ok[c.tagName]==='br'?'<br>':ok[c.tagName]?`<${ok[c.tagName]}>${walk(c)}</${ok[c.tagName]}>`:walk(c)).join('');
+  return walk(doc.body.firstChild);
+}
+async function gbWant(t){
+  if(!t||descOf(t)||gbDesc[t.id]||gbBusy)return;
+  const au=t.author&&t.author!=='Unknown author'?lastName(t.author.split(',')[0]):'',qt=t.title.split(':')[0].trim();
+  const q=t.isbn?`isbn:${t.isbn}`:`intitle:${qt}${au?` inauthor:${au}`:''}`;
+  gbBusy=t.id;if(bookDlg.open&&bd.id===t.id)renderBD();
+  try{
+    const r=await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=5&printType=books&fields=items(volumeInfo(title,authors,description,infoLink,canonicalVolumeLink))`);
+    if(r.ok){
+      const same=x=>{const a=normT(x),b=normT(qt);return a&&b&&(a===b||a.startsWith(b)||b.startsWith(a))};
+      const v=((await r.json()).items||[]).map(i=>i.volumeInfo||{}).find(v=>v.description&&same(v.title)&&(!au||(v.authors||[]).some(n=>lastName(n).toLowerCase()===au.toLowerCase())));
+      gbDesc[t.id]=v?{html:gbSafe(v.description),link:v.canonicalVolumeLink||v.infoLink||''}:{none:true};
+    }// a refused or failed request isn't remembered, so the next open tries again
+  }catch(e){}finally{gbBusy=null}
+  if(bookDlg.open&&bd.id===t.id)renderBD();
+}
 let descBusy=false;const descTodo=[];
 /* Queue a title's description; books opened in details go to the front. */
 function descWant(t,now){
@@ -2651,7 +2678,7 @@ async function descFill(){
     if(!r.ok){t.descTried=Date.now();save();if(r.status>=500)break;continue}
     const j=await r.json(),d=cleanDesc(j.description);
     if(d)t.desc=d;else t.descTried=Date.now();save();
-    if(bookDlg.open&&bd.id===t.id)renderBD();
+    if(bookDlg.open&&bd.id===t.id){renderBD();if(!d)gbWant(t)}
     await new Promise(z=>setTimeout(z,1000));
   }}finally{descBusy=false}
 }
@@ -2676,7 +2703,7 @@ function descFit(){
 const bookDlg=document.getElementById('bookDlg'),bookBody=document.getElementById('bookBody');
 bookDlg.addEventListener('close',()=>pruneDisc());
 let bd={id:null,tab:'copies',rec:false,lend:null,addCopy:false,reqNote:null};
-function openTitle(id,tab){bd={id,tab:tab||'copies',rec:false,lend:null,addCopy:false,reqNote:null,descOpen:false};descWant(titleById(id),true);renderBD();if(!bookDlg.open){bookDlg.showModal();descFit()}}
+function openTitle(id,tab){bd={id,tab:tab||'copies',rec:false,lend:null,addCopy:false,reqNote:null,descOpen:false};const t0=titleById(id);descWant(t0,true);if(t0&&(!t0.olKey||t0.descTried>Date.now()-COVER_RETRY))gbWant(t0);renderBD();if(!bookDlg.open){bookDlg.showModal();descFit()}}
 function copyRow(c){
   const mine=c.owner==='me',ph=c.format==='physical';
   let act='';
@@ -2746,9 +2773,9 @@ function renderBD(){
   if(bd.tab==='about'){
     // Kept collapsed on purpose: publisher text is marketing copy, and later books in a series can spoil earlier ones.
     const facts=[t.year?`Published ${t.year}`:'',t.pages?`About ${t.pages} pages`:''].filter(Boolean).join(' · ')||`By ${esc(t.author)}`;
-    const src=dsc?.src==='member'?`Description by ${esc(dsc.by==='me'||!dsc.by?S.me.name:nameOf(dsc.by))}`:dsc?`Description from <a href="https://openlibrary.org${esc(t.olKey)}" target="_blank" rel="noopener">Open Library</a>${EXT}`:'';
-    body=(dsc?`<div class="bd-desc ${bd.descOpen?'open':''}" id="bdDesc">${dsc.text.split(/\n{2,}/).map(p=>`<p>${esc(p).replace(/\n/g,'<br>')}</p>`).join('')}</div><button class="link-btn sm bd-more" data-act="bdDescMore" aria-expanded="${!!bd.descOpen}" aria-controls="bdDesc">${bd.descOpen?'Show Less':'Show More'}</button><div class="xs muted bd-src">${src}</div>`
-      :descWaiting(t)&&!(t.descTried>Date.now()-COVER_RETRY)?`<p class="xs muted" role="status">Looking for a description…</p>`:'')
+    const src=dsc?.src==='gb'?`<span class="gb-attr"><img src="https://books.google.com/googlebooks/images/poweredby.png" alt="Powered by Google" width="62" height="30">Description from Google Books${dsc.link?` · <a href="${esc(dsc.link)}" target="_blank" rel="noopener">View on Google Books</a>${EXT}`:''}</span>`:dsc?.src==='member'?`Description by ${esc(dsc.by==='me'||!dsc.by?S.me.name:nameOf(dsc.by))}`:dsc?`Description from <a href="https://openlibrary.org${esc(t.olKey)}" target="_blank" rel="noopener">Open Library</a>${EXT}`:'';
+    body=(dsc?`<div class="bd-desc ${bd.descOpen?'open':''}" id="bdDesc">${dsc.html??dsc.text.split(/\n{2,}/).map(p=>`<p>${esc(p).replace(/\n/g,'<br>')}</p>`).join('')}</div><button class="link-btn sm bd-more" data-act="bdDescMore" aria-expanded="${!!bd.descOpen}" aria-controls="bdDesc">${bd.descOpen?'Show Less':'Show More'}</button><div class="xs muted bd-src">${src}</div>`
+      :descWaiting(t)?`<p class="xs muted" role="status">Looking for a description…</p>`:'')
       +`<div class="small bd-facts">${facts}</div>`
       +(!dsc&&canEditTitle(t)?`<button class="link-btn sm" data-act="teOpen" data-id="${t.id}" data-focus="tDesc">${ic('pencil')}Add a Description</button>`:'');
   }else if(bd.tab==='copies'){
@@ -2773,7 +2800,7 @@ function renderBD(){
     body=`<label class="f"><span>Notes <span class="sub">(only you see these)</span></span><textarea class="inp" id="bdNotes" rows="5" maxlength="5000" data-count="5000" aria-describedby="bdNoteCount" placeholder="Thoughts, favorite quotes, where you left off…">${esc(S.notes[t.id]||'')}</textarea>${charCount('bdNoteCount',(S.notes[t.id]||'').length,5000)}</label><div class="xs muted" style="margin-top:6px">Saved as you type.</div>`;
   }
   bookBody.innerHTML=`<div class="dlg-h bd-h">${libCover(t,84)}<div style="flex:1;min-width:0"><h2 id="bdTitle">${esc(dispT(t.title))}</h2><div class="muted">${esc(t.author)}</div><div class="xs muted" style="margin-top:4px">${[t.series?`${esc(t.series)} #${t.seriesNo??'?'}`:'',t.genre,t.pages?`${t.pages} pages`:''].filter(Boolean).join(' · ')}</div>
- ${dsc&&bd.tab!=='about'?`<div class="bd-prev"><span class="bd-prev-t">${esc(dsc.text.replace(/\s+/g,' '))}</span><button class="link-btn sm" data-act="bdTab" data-v="about">More</button></div>`:''}
+ ${dsc&&dsc.src!=='gb'&&bd.tab!=='about'?`<div class="bd-prev"><span class="bd-prev-t">${esc(dsc.text.replace(/\s+/g,' '))}</span><button class="link-btn sm" data-act="bdTab" data-v="about">More</button></div>`:''}
  <div class="bd-acts">${prim}</div>${getLine(t)}${bdQuiet(t,r)}</div><button type="button" class="icon-btn x" data-act="closeBD" aria-label="Close">${ic('x')}</button></div>
     ${(()=>{const rs=myRecs().filter(r=>r.titleId===t.id);return rs.length?`<div class="rec-box">${rs.map(r=>`<div class="small"><b>${esc(nameOf(r.from))}</b>${r.rating?` (${r.rating}★)`:''} recommended this to you${r.note?`: “${esc(r.note)}”`:'.'}</div>`).join('')}<div class="rec-acts"><button class="link-btn sm" data-act="dismissRec" data-id="${t.id}">Not for Me</button><span class="xs muted">Only you see this; ${esc([...new Set(rs.map(r=>nameOf(r.from)))].join(' and '))} won’t be told.</span></div></div>`:''})()}
     ${bd.rec?`<div class="recf"><div class="small" style="font-weight:600">Recommend To</div><div class="chips">${Object.entries(S.members).map(([k,m])=>{const done=S.recsSent.some(r=>r.titleId===t.id&&r.to===k);return `<label class="chk ${done?'dim':''}"><input type="checkbox" name="recTo" value="${k}" ${done?'disabled':''}> ${esc(m.name)}${done?' <span class="xs muted">(already recommended)</span>':''}</label>`}).join('')}</div><input class="inp sm" id="recNote" maxlength="140" placeholder="Add a note (optional)" aria-label="Note">${recRateOpt(t,'recRate')}<div class="err" id="recErr" role="alert"></div><div class="dlg-f"><button class="btn btn-ghost sm" data-act="bdRec">Cancel</button><button class="btn btn-primary sm" data-act="bdRecGo">Send Recommendation</button></div></div>`:''}

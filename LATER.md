@@ -35,11 +35,13 @@ Open Library matching, book descriptions (2i). When merging next into main, next
 
 ## Planned
 
-- **Book descriptions (2i)**: built Nov 2, 2026 (plan: `plans/Book_Descriptions.md`) with member-written and Open
-  Library descriptions, the About tab, the preview, and display-only title case. **Google Books is not built yet**:
-  the plan requires reading Google's current Books API terms first, and developers.google.com isn't reachable from
-  the build session. Allow it in the environment's network settings, then add it. Coverage test (20 family books)
-  still to do on /next/.
+- **Book descriptions (2i)**: built Nov 2, 2026 (plan: `plans/Book_Descriptions.md`): member-written, Open Library
+  (saved), and Google Books (fetched when a book opens and no other description exists, never saved, shown as given
+  with the "powered by Google" image and a link to the book's Google Books page; no preview of Google text away from
+  that attribution). Google's Books API terms and branding guidelines read Nov 2. Test on /next/: a book with no
+  Open Library description (A Whale of the Wild) should show a Google Books description.
+- **Before the live beta (Google Books terms):** rights holders must be able to ask for content removal, so the
+  live site needs a contact for that (the Send Feedback address could serve). No fees may be charged for the app.
 
 ## Issues
 
