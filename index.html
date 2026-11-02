@@ -1506,7 +1506,7 @@ function tourSteps(mode){
     final:()=>S.books.length?{act:'tourLog',label:'Log Your Reading'}:{act:'tourFind',label:'Add Your First Book'}};
   if(mode==='group')return [
     {id:'gwelcome',page:'dashboard',title:`Welcome to ${G}`,text:()=>'You’re reading with a group now. Here’s what’s new, in a few quick stops. Your reading stays yours and counts in every group you join.'},
-    {id:'glib',page:'library',sel:'[data-tour=lib-family]',title:`The ${G} Library`,text:()=>'Books members own, in one place. See who has a copy and ask to borrow it.'},
+    {id:'glib',page:'library',tab:'family',sel:'[data-tour=lib-family]',title:`The ${G} Library`,text:()=>'Books members own, in one place. See who has a copy and ask to borrow it.'},
     {id:'gact',page:'dashboard',sel:'[data-tour=activity]',title:'Group Activity',text:()=>'What your group is reading and finishing. Cheer people on with a reaction. Only members who share appear here.'},
     {id:'gch',page:'challenges',sel:'[data-tour=ch-family]',title:'Group Challenges and Battle of the Books',text:()=>'Join a challenge your group started, or organize a Battle of the Books, where everyone adds books to a shared list, reads them all, and then meets for an in-person quiz.'},
     {id:'gpriv',page:'dashboard',sel:'[data-tour=account]',title:'Your Privacy',text:()=>'Choose what your group sees. You can change this anytime in your account menu.',extra:privacyExtra,final:()=>({act:'tourEnd',label:'Done'})}];
@@ -1518,7 +1518,7 @@ function tourSteps(mode){
     {id:'current',page:'dashboard',sel:'[data-tour=current]',title:'Currently Reading',text:()=>noBooks()?'Books you’re reading will show up here, each with its progress, finish estimate, and its own Log Reading button.':'Each book you’re reading shows its progress, finish estimate, and its own Log Reading button.'},
     {id:'queue',page:'dashboard',sel:'[data-tour=queue]',title:'Reading Queue',text:()=>`${upList().length?'Your next few books, in order.':'Your next few books will line up here, in order.'} Add up to 10 from your To Read list with Add to Reading Queue, and use the arrows there to put them in order. The first one also appears in Currently Reading, so you always know what’s next.`},
     {id:'activity',cond:!solo,page:'dashboard',sel:'[data-tour=activity]',title:'Group Activity',text:()=>'What your group is reading and finishing. Cheer people on with a reaction. Only members who share appear here.'},
-    {id:'library',page:'library',sel:'[data-tour=library]',title:'Your Library',text:()=>`${solo?'My Books holds every book connected to you, from To Read to Finished.':`My Books holds every book connected to you, and the ${G} Library shows what everyone owns.`} Add a Book searches by title, author, or ISBN.${S.books.length?'':' Books you add will show up here.'} Tap any book, wherever you see it, to open it: from there you can start or log reading, change its status, rate it, add notes, add your copy${solo?', or edit its details':', edit its details, recommend it to someone, or ask to borrow it'}.`},
+    {id:'library',page:'library',tab:solo?'mybooks':'family',sel:'[data-tour=library]',title:'Your Library',text:()=>`${solo?'My Books holds every book connected to you, from To Read to Finished.':`My Books holds every book connected to you, and the ${G} Library shows what everyone owns.`} Add a Book searches by title, author, or ISBN.${S.books.length?'':' Books you add will show up here.'} Tap any book, wherever you see it, to open it: from there you can start or log reading, change its status, rate it, add notes, add your copy${solo?', or edit its details':', edit its details, recommend it to someone, or ask to borrow it'}.`},
     {id:'challenges',page:'challenges',sel:'[data-tour=challenge-tabs]',title:'Challenges and Trophies',text:()=>solo?'Set personal challenges, like 12 books this year. Trophies you earn collect on the Trophy Wall.':'Join group challenges, set personal goals, or organize a Battle of the Books, where everyone adds books to a shared list, reads them all, and then meets for an in-person quiz. Trophies you earn collect on the Trophy Wall, where you can also give awards to each other, like Read-Aloud Star or Most Improved.'},
     {id:'admin',cond:!solo&&admin,page:'challenges',sel:'[data-tour=groups]',title:'For Group Admins',text:()=>`You’re an admin of ${G}. That means you can also correct shared book details with Edit Book on any book, and record the winner when a Battle of the Books ends. Everyone can join and start battles and challenges.`},
     {id:'history',page:'history',sel:'[data-tour=calendar]',title:'History',text:()=>S.sessions.length?'Your reading over time. Darker days mean more reading; tap a day to see what you read. Records and yearly totals are below.':'Each day you read will fill in here, darker for more reading. Tap a day to see what you read; records and yearly totals are below.'},
@@ -1556,6 +1556,8 @@ async function tourShow(i,dir){
     if(nb){tourRender({title:`Next: ${PAGE_L[st.page]}`,text:()=>'',hint:true},nb);await new Promise(r=>setTimeout(r,reducedMotion()?600:900));if(!tour)return}
     view=st.page;if(st.page==='library'&&S.settings.solo&&lib.tab!=='mybooks')lib.tab='mybooks';render();
   }
+  // Library stops open on their own tab (the Library otherwise reopens on the last tab used).
+  if(st.tab&&view==='library'&&lib.tab!==st.tab){lib.tab=st.tab;render()}
   const el=st.sel?document.querySelector(st.sel):null;
   if(st.sel&&(!el||!el.offsetParent)){tour.i=i;return tourShow(i+dir,dir)}
   tour.i=i;
@@ -1568,9 +1570,10 @@ function tourRender(st,el){
   tour.el=el;tour.hint=!!st.hint;
   if(st.hint){card.innerHTML=`<div class="tour-hint">${ic('chevR')}<b>${esc(st.title)}</b></div>`;card.classList.add('hint')}
   else{card.classList.remove('hint');const fin=st.final?st.final():null;
-    card.innerHTML=`<div class="tour-step xs muted">${k+1} of ${n}</div><h2 id="tourT">${esc(st.title)}</h2><p id="tourB" class="small">${st.text()}</p>${st.extra?st.extra():''}
+    const num=n===13&&k===12?14:k+1,of=n===13?14:n; // no stop 13, for the superstitious
+    card.innerHTML=`<div class="tour-step xs muted">${num} of ${of}</div><h2 id="tourT">${esc(st.title)}</h2><p id="tourB" class="small">${st.text()}</p>${st.extra?st.extra():''}
     <div class="tour-nav">${k>0?'<button class="btn btn-ghost sm" data-act="tourBack">Back</button>':''}<span style="flex:1"></span>${fin?(fin.act==='tourEnd'?'':'<button class="link-btn sm" data-act="tourEnd">Done</button>'):'<button class="link-btn sm" data-act="tourEnd">Skip Tour</button>'}<button class="btn btn-primary sm" data-act="${fin?fin.act:'tourNext'}">${fin?fin.label:'Next'}</button></div>`;
-    document.getElementById('tourLive').textContent=`Step ${k+1} of ${n}: ${st.title}`;
+    document.getElementById('tourLive').textContent=`Step ${num} of ${of}: ${st.title}`;
     setTimeout(()=>card.querySelector('.tour-nav .btn-primary')?.focus(),20);}
   root.classList.toggle('nospot',!el);
   tourPlace();
