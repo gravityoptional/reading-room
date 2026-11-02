@@ -31,6 +31,8 @@ Open Library matching, book descriptions (2i). When merging next into main, next
   close any window (Nov 2). Main windows don't close on outside clicks.
 - Tab rows that don't fit (book details, Library, Challenges) show a fade and a chevron on the side with hidden
   tabs; the book details tab reads "Activity", with the group name inside the tab (Nov 2). Main has peek only.
+- Tabs use flexible spacing (gaps shrink before scrolling), and windows use a 16 px side margin at 400 px and
+  narrower (main uses 22 px everywhere) (Nov 2). Target: everything fits at 360 px; 320 px still works.
 
 ## Test on /next/ after the push
 
