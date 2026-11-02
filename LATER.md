@@ -2,6 +2,22 @@
 
 Known issues and follow-ups for the next prototype. Not published; the site only serves index.html.
 
+## Merging into main
+
+Running list, so merges between main and next need no guesswork. Shared fixes go to main first, then merge into
+next; next-only features wait for James's approval to merge into main.
+
+**Shared fixes (already on both):**
+- Toast Undo stays on one line (main 339c9a2, merged Oct 31). Same code on both.
+- Tour: Library stop opens its own tab; elevator numbering for 13 stops (main 4f67823, merged Nov 2). **next's
+  version wins**: it adds the Discover and Your Next Read stops and resets the Discover view (`lib.rv='disc'`),
+  which main doesn't have.
+
+**next-only (waiting to merge into main):** Discover release 1 (2a–2h) and later changes: Discover as a Library
+tab, lean cards, ghost card, finish window (queue, rate, thank, recommend), finished-only ratings, Did Not Finish
+reasons, include my rating, rating label follows sharing, Recommend a Book on every tab, English editions and
+Open Library matching, book descriptions (2i). When merging next into main, next's version wins everywhere.
+
 ## Test on /next/ after the push
 
 - ~~Undo in the finish window~~: tested by James Oct 31, 2026, working.
