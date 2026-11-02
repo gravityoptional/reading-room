@@ -4182,7 +4182,8 @@ document.addEventListener('click',e=>{
     case 'ghostUndo':{clearTimeout(ghostT);S.discHide=(S.discHide||[]).filter(x=>x!==a.dataset.k);save();refreshLib();break}
     case 'discUnhide':{const t=titleById(a.dataset.id),ks=[t&&'t:'+t.id,t?.olKey].filter(Boolean);S.discHide=(S.discHide||[]).filter(k=>!ks.includes(k));save();refreshLib();break}
     case 'discOpen':{const it=discIdx[a.dataset.k];if(!it)break;let t=it.t;if(!t){const n=S.titles.length;t=olTitleFrom(it.x);if(S.titles.length>n)t.fromDisc=true}if(nextDlg.open)nextDlg.close();openTitle(t.id,'about');break}
-    case 'readIt':{const t=titleById(a.dataset.id);if(!t)break;const snap=snapshot();(S.readIt=S.readIt||{})[t.id]=today();save();refreshLib();toast(`Marked ${t.title} as already read.`,restoreTo(snap),'It won’t be suggested, and it isn’t counted in your stats.');break}
+    // Quiet, like Not for Me: the line in the window confirms it and offers Undo.
+    case 'readIt':{const t=titleById(a.dataset.id);if(!t)break;(S.readIt=S.readIt||{})[t.id]=today();save();refreshLib();bookBody.querySelector('[data-act=readItUndo]')?.focus();break}
     case 'readItUndo':if(S.readIt)delete S.readIt[a.dataset.id];save();refreshLib();break;
     case 'surprise':{const w=wantList().filter(b=>b.id!==surprise&&!hiddenT(titleById(b.titleId)));if(w.length)surprise=w[Math.floor(Math.random()*w.length)].id;refreshLib();document.getElementById('dcSurprise')?.closest('.dc-row')?.querySelector('.lc-open')?.focus();break}
     case 'getBorrow':{if(nextDlg.open)nextDlg.close();if(!bookDlg.open||bd.id!==a.dataset.id)openTitle(a.dataset.id);bd.tab='copies';bd.reqNote=a.dataset.c;renderBD();setTimeout(()=>document.getElementById('reqNoteTx')?.focus(),30);break}
