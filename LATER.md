@@ -54,6 +54,10 @@ Open Library matching, book descriptions (2i). When merging next into main, next
 - **Before the live beta (Google Books terms):** rights holders must be able to ask for content removal, so the
   live site needs a contact for that (the Send Feedback address could serve). No fees may be charged for the app.
 
+- **Premade challenges** (James, Nov 2; separate from Discover, discuss later): ready-made challenges a member can
+  start in one step (for example a month of reading days, a genre or series list, a books-this-year goal), alongside
+  Create Challenge and the planned way to duplicate any challenge.
+
 ## Issues
 
 - **Tall card rows on phones (Discover).** Cards in a row share row heights so their buttons line up. In a
