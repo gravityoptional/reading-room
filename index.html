@@ -2671,6 +2671,9 @@ function edgeState(w,row){
   w.classList.toggle('more-l',max>0.5&&row.scrollLeft>0.5);
 }
 addEventListener('resize',()=>tabEdges());
+// Any tab row, wherever it's drawn (book, challenge, or battle windows, pages), gets its spacing before the screen
+// paints, so tabs never show squeezed together.
+new MutationObserver(()=>{if(document.querySelector('.bd-tabs:not(:has(>.tab-gap)),.tabs[role=tablist]:not(:has(>.tab-gap))'))tabEdges()}).observe(document.body,{childList:true,subtree:true});
 
 /* ---------- did not finish ----------
    Books you stop don't get a rating; instead, an optional reason and note. When you share your activity, your group
