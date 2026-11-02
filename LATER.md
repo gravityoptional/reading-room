@@ -40,11 +40,8 @@ Open Library matching, book descriptions (2i). When merging next into main, next
 
 - ~~Undo in the finish window~~: tested by James Oct 31, 2026, working.
 - ~~More by This Author with real data~~: tested by James Oct 31, 2026, working.
-- **Borrow Free on Open Library / Read Free Online** now link to the first English edition with a scan, found in
-  the background (the main page still chose foreign editions: a Dutch Judy Moody, a French Martian). Recheck
-  Judy Moody, M.D. and The Martian; the link updates a moment after the card first appears.
-- **Read Free Online**: not yet tested with a real free book (James couldn't find one, Oct 31). The This Side of Paradise cover and scan were a
-  wrong match (an American Film magazine scan); matching is fixed and old matches are re-checked once. Recheck it.
+- ~~English editions~~: Judy Moody, M.D. and The Martian passed (James, Nov 2).
+- ~~Read Free Online~~: passed with This Side of Paradise on the Internet Archive (James, Nov 2).
 
 ## Planned
 
@@ -66,8 +63,12 @@ Open Library matching, book descriptions (2i). When merging next into main, next
 - **WorldCat "Error 1015" on the first Find at Your Library click** (seen Oct 31, 2026; the same link worked on
   retry). WorldCat's traffic protection, not Reading Room. If it recurs, switch the link target.
 - **Ghost card after Not for Me** (trying it, Oct 31): faded in place with "Hidden · Undo" for 5 seconds, paused
-  while the pointer rests on it or the keyboard is on Undo (Nov 2). Also on group recommendation cards. Judge on /next/.
-- **Language setting** (James agreed Oct 31): Open Library lookups prefer English editions, fixed in code. Add a
+  while the pointer rests on it or the keyboard is on Undo (Nov 2). Also on group recommendation cards. James (Nov 2):
+  5 seconds acceptable, 6 better; the mouse pause can look stuck; idea to discuss: after the pointer leaves, a
+  short 2-second ghost. Don't change yet.
+- **Battle window tabs look airy** on desktop (three tabs spread across the window). Discuss: cap the gap and
+  center the group instead.
+- **Language setting** (James agreed Oct 31; do it at the very end): Open Library lookups prefer English editions, fixed in code. Add a
   member setting (for example Spanish) that sets the preferred edition language. The same setting should set Google Books' country
   (`GB_COUNTRY`, fixed to US for now).
 - **Did Not Finish reasons** (James, Oct 31): the list is fine for now (Not for me, Too slow, Not the right time,
