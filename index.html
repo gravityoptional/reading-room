@@ -2667,11 +2667,16 @@ function dispT(x){
   return w.map((s,i)=>!/^[a-z]/.test(s)||i>0&&i<w.length-1&&SMALLW.has(s)&&!/[:—–]$/.test(w[i-1])?s:s[0].toUpperCase()+s.slice(1)).join(' ');
 }
 
+/* Show More only when the description is actually cut off. Measured once the window is on screen. */
+function descFit(){
+  const dd=document.getElementById('bdDesc');
+  if(dd&&!bd.descOpen&&dd.scrollHeight<=dd.clientHeight+2){dd.classList.add('fits');bookBody.querySelector('.bd-more')?.remove()}
+}
 /* ---------- book detail ---------- */
 const bookDlg=document.getElementById('bookDlg'),bookBody=document.getElementById('bookBody');
 bookDlg.addEventListener('close',()=>pruneDisc());
 let bd={id:null,tab:'copies',rec:false,lend:null,addCopy:false,reqNote:null};
-function openTitle(id,tab){bd={id,tab:tab||'copies',rec:false,lend:null,addCopy:false,reqNote:null,descOpen:false};descWant(titleById(id),true);renderBD();if(!bookDlg.open)bookDlg.showModal()}
+function openTitle(id,tab){bd={id,tab:tab||'copies',rec:false,lend:null,addCopy:false,reqNote:null,descOpen:false};descWant(titleById(id),true);renderBD();if(!bookDlg.open){bookDlg.showModal();descFit()}}
 function copyRow(c){
   const mine=c.owner==='me',ph=c.format==='physical';
   let act='';
@@ -2774,8 +2779,7 @@ function renderBD(){
     ${bd.rec?`<div class="recf"><div class="small" style="font-weight:600">Recommend To</div><div class="chips">${Object.entries(S.members).map(([k,m])=>{const done=S.recsSent.some(r=>r.titleId===t.id&&r.to===k);return `<label class="chk ${done?'dim':''}"><input type="checkbox" name="recTo" value="${k}" ${done?'disabled':''}> ${esc(m.name)}${done?' <span class="xs muted">(already recommended)</span>':''}</label>`}).join('')}</div><input class="inp sm" id="recNote" maxlength="140" placeholder="Add a note (optional)" aria-label="Note">${recRateOpt(t,'recRate')}<div class="err" id="recErr" role="alert"></div><div class="dlg-f"><button class="btn btn-ghost sm" data-act="bdRec">Cancel</button><button class="btn btn-primary sm" data-act="bdRecGo">Send Recommendation</button></div></div>`:''}
     <div class="bd-tabs" role="tablist">${tabs.map(([k,l])=>`<button class="bd-tab" role="tab" aria-selected="${bd.tab===k}" data-act="bdTab" data-v="${k}">${l}</button>`).join('')}</div>
     <div class="bd-body">${body}</div>`;
-  const dd=document.getElementById('bdDesc');
-  if(dd&&!bd.descOpen&&dd.scrollHeight<=dd.clientHeight+2){dd.classList.add('fits');bookBody.querySelector('.bd-more')?.remove()}
+  if(bookDlg.open)descFit();
 }
 
 /* ---------- edit a library entry ---------- */
