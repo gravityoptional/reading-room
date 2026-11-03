@@ -558,6 +558,11 @@ button.cal-d{border:0;font:inherit;color:inherit;cursor:pointer;position:relativ
 .timer-actions .btn{white-space:nowrap}
 .cu-from[hidden],.cu-note[hidden],.log-ask[hidden]{display:none}
 .rt summary{cursor:pointer;list-style:none;display:inline-block}.rt summary::-webkit-details-marker{display:none}textarea.lg-note{height:44px;min-height:44px;resize:none;overflow-y:auto;max-height:160px}.lg-when{display:flex;flex-wrap:wrap;align-items:end;gap:6px 16px}.lg-when .cu-dates{flex:1 1 300px;margin:0}.lg-when .cu-dates:has(.cu-from[hidden]){flex:0 1 190px;grid-template-columns:minmax(0,1fr)}.lg-when>.chk{margin-bottom:10px}.lg-when .cu-note{flex-basis:100%}.calc .edit-goal{color:var(--primary);border-color:color-mix(in srgb,var(--primary) 55%,var(--border));font-weight:600;font-size:13px;padding:5px 12px}
+.sh-opts{display:grid;gap:10px}.sh-opt{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--border);border-radius:12px;padding:12px 14px;background:var(--surface);cursor:pointer}
+.sh-opt:has(input:checked){border-color:var(--primary);box-shadow:0 0 0 1px var(--primary);background:var(--primary-light)}.sh-opt input{margin-top:3px;accent-color:var(--primary)}.sh-opt b{display:block;font-size:15px}.sh-opt span span{font-size:13px;color:var(--text-2)}
+#shDlg{width:min(480px,calc(100vw - 24px))}#shBody{display:grid;gap:12px}#shBody .dlg-h{margin-bottom:0}
+.sh-nudge{display:flex;gap:12px 14px;align-items:center;flex-wrap:wrap;border:1px solid color-mix(in srgb,var(--primary) 35%,var(--border));background:var(--primary-light);border-radius:14px;padding:14px 16px;margin:0 0 14px}
+.sh-nudge .t{flex:1 1 240px}.sh-nudge .t b{display:block;font-family:var(--serif);font-size:17px}.sh-nudge .t span{font-size:13px;color:var(--text-2)}.sh-nudge .a{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .min-hint{margin:-2px 0 -10px;line-height:1.2}.min-hint:empty{display:none}.f3:has(.min-hint){align-items:start}.cf-warn{color:var(--warn,#9a5b00)}.cf-warn:empty{display:none}.log-ask{border:1px solid var(--border);background:var(--surface-2,var(--surface));border-radius:12px;padding:10px 12px;display:grid;gap:8px}.log-ask p{margin:0}.log-ask-b{display:flex;flex-wrap:wrap;gap:8px}.cu-dates{margin-bottom:6px}.timer-actions{align-items:flex-start}.timer-actions>.btn,.hero2-acts .timer-actions>.btn{flex:0 0 auto}.timer-redo .link-btn{white-space:nowrap}.ta-main{flex:1;min-width:0;display:grid;gap:4px}.ta-main .btn-primary{width:100%}.timer-redo{display:flex;gap:6px;align-items:center;justify-content:center}
 .timer-pill{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:8;display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:6px 6px 6px 14px;box-shadow:0 10px 30px rgba(15,23,42,.18);font-variant-numeric:tabular-nums;font-weight:600}
 .timer-pill .tp-t{font-weight:400;color:var(--text-2);max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1205,6 +1210,7 @@ a.btn{text-decoration:none}
 
 <input id="heroUpload" type="file" accept="image/png,image/jpeg,image/webp" hidden aria-label="Choose a dashboard photo">
 <dialog id="logDlg" aria-labelledby="logTitle"><form class="dlg" id="logForm" method="dialog" novalidate></form></dialog>
+<dialog id="shDlg" aria-labelledby="shT"><div class="dlg" id="shBody"></div></dialog>
 <dialog id="goalDlg" aria-labelledby="goalTitle"><form class="dlg" id="goalForm" method="dialog" novalidate></form></dialog>
 <dialog id="editDlg" aria-labelledby="editTitle"><form class="dlg" id="editForm" method="dialog" novalidate></form></dialog>
 <dialog id="bookDlg" aria-labelledby="bdTitle"><div class="dlg" id="bookBody"></div></dialog>
@@ -2198,9 +2204,27 @@ function filtersPanel(){
     <div class="f-end"><button class="link-btn" data-act="libClear">Clear Filters</button><button class="btn btn-primary sm" data-act="libFilters">Show ${libTitles().length} Book${libTitles().length===1?'':'s'}</button></div>
   </div>`;
 }
+/* Sharing: the first copy you add in a group asks whether your books show in the group library; the answer sets
+   "New Copies Start As". A nudge in the group library appears when all your copies are private (Not Now: back after
+   30 days; Don't Show Again). */
+const shareDefault=()=>S.settings.copyDefault!=='private';
+const shDlg=document.getElementById('shDlg'),shBody=document.getElementById('shBody');let shSel=null;
+function shareAsk(cid){if(S.settings.solo||S.settings.copyDefault)return;const c=S.copies.find(x=>x.id===cid);if(!c)return;
+  shSel={cid,v:c.private?'private':'shared'};renderSh();if(!shDlg.open)shDlg.showModal();shBody.querySelector('input:checked')?.focus()}
+function renderSh(){const c=S.copies.find(x=>x.id===shSel.cid),t=titleById(c?.titleId),o=(v,b,d)=>`<label class="sh-opt"><input type="radio" name="shV" value="${v}" ${shSel.v===v?'checked':''}><span><b>${b}</b><span>${d}</span></span></label>`;
+  shBody.innerHTML=`<div class="dlg-h"><div style="flex:1;min-width:0"><h2 id="shT">Show your books in the ${esc(GN())} Library?</h2>${t?`<div class="muted small">You just added your first copy, <i>${esc(t.title)}</i>.</div>`:''}</div></div>
+  <p class="small" style="margin:0">Books you share appear in the group library, where everyone can see them and ask to borrow. Your reading stays your own either way.</p>
+  <div class="sh-opts" role="radiogroup" aria-labelledby="shT">${o('shared','Share My Books','Family can browse your shelf and ask to borrow. Best for a family library.')}${o('private','Keep Them Private','Only you see them. You can share any book later.')}</div>
+  <p class="xs muted" style="margin:0">This sets how new copies start. Change it anytime in Settings, or switch any single book in its Copies tab.</p>
+  <div class="dlg-f"><button class="btn btn-primary" data-act="shGo">Continue</button></div>`}
+shDlg.addEventListener('cancel',e=>e.preventDefault());
+function shareNudge(){if(S.settings.solo||S.settings.shareNudgeOff||Date.now()-(S.settings.shareNudgeAt||0)<30*864e5)return '';
+  const mine=S.copies.filter(c=>c.owner==='me');if(!mine.length||mine.some(c=>!c.private))return '';const n=new Set(mine.map(c=>c.titleId)).size;
+  return `<div class="sh-nudge" role="region" aria-label="Share your books"><div class="t"><b>Your ${n} book${n===1?' is':'s are'} private</b><span>Share a few so your family has something to browse and borrow. You choose which.</span></div><div class="a"><button class="btn btn-primary" data-act="shareStart">Choose Books to Share</button><button class="btn btn-ghost" data-act="shNudge" data-v="later">Not Now</button><button class="link-btn sm" data-act="shNudge" data-v="off">Don’t Show Again</button></div></div>`}
 function libEmpty(){
   if(lib.q.trim()||nFilters())return `<div class="empty">${ic('search')}<h3>No Books Found</h3><p>Try a different search or clear your filters.</p><button class="btn btn-ghost" data-act="libClear">Clear Filters</button></div>`;
   if(lib.tab==='mybooks'&&lib.mb!=='all')return `<div class="empty">${ic('book')}<h3>No Books Here Yet</h3><p>Books with this status will show up here.</p></div>`;
+  if(lib.tab==='family'&&!S.settings.solo&&S.copies.some(c=>c.owner==='me'))return `<div class="empty">${ic('library')}<h3>The ${esc(GN())} Library Is Empty</h3><p>When people share books they own, they show up here for everyone to browse and borrow.</p><button class="btn btn-primary" data-act="shareStart">Share Books I Own</button></div>`;
   const E={family:['library','Your Library Is Empty','Add your first book to get started. Search for it, add it yourself, or import a list.'],
     mybooks:['book','Your Books Will Show Up Here','Everything you’ve read, are reading, want to read, or own appears here.'],
     recs:['send','No Recommendations Yet','When someone in your group recommends a book to you, it shows up here.']}[lib.tab];
@@ -2337,6 +2361,7 @@ function libResults(){
   const head=`<div class="lib-count"><span class="small muted">${list.length} book${list.length===1?'':'s'}</span>${lib.tab==='mybooks'&&!S.settings.solo&&S.copies.some(c=>c.owner==='me')?`<button class="btn btn-ghost sm" data-act="shareSel">${ic('users')}Choose Books to Share</button>`:''}${shelf&&list.length?`<label class="sortl"><span class="small muted">Group by</span><select class="inp sm" data-lsel="group">${gs.map(([v,l])=>`<option value="${v}" ${lib.group===v?'selected':''}>${l}</option>`).join('')}</select></label>`:''}${fgrid&&list.length?`<label class="sortl"><span class="small muted">Group by</span><select class="inp sm" data-lsel="fgroup">${[['year','Year'],['month','Month'],['week','Week'],['none','None']].map(([v,l])=>`<option value="${v}" ${lib.fgroup===v?'selected':''}>${l}</option>`).join('')}</select></label>`:''}</div>`;
   const upTop=lib.tab==='mybooks'&&lib.mb==='want'&&!lib.q.trim()&&!nFilters()?upNextPanel():'';
   if(!list.length)return upTop+head+libEmpty();
+  if(lib.tab==='family'){const nd=shareNudge();if(nd)return nd+head+(shelf?shelfView(list):`<div class="lib-grid">${list.map(t=>lcard(t,'')).join('')}</div>`)}
   if(upTop&&!shelf)return upTop+head+`<div class="lib-grid">${list.map(mbCard).join('')}</div>`;
   const card=lib.tab==='mybooks'?mbCard:t=>lcard(t,lib.tab==='recs'?recExtra(t)+getLine(t):'');
   if(fgrid&&lib.fgroup!=='none')return head+periodGroups(list,lib.fgroup).map(([k,ts])=>`<section class="shelf-g"><h3 class="shelf-l">${esc(perLabel(lib.fgroup,k))} <span class="count">(${ts.length} book${ts.length===1?'':'s'})</span></h3><div class="lib-grid">${ts.map(card).join('')}</div></section>`).join('');
@@ -2931,7 +2956,7 @@ function renderBD0(){
       +(!dsc&&canEditTitle(t)?`<button class="link-btn sm" data-act="teOpen" data-id="${t.id}" data-focus="tDesc">${ic('pencil')}Add a Description</button>`:'');
   }else if(bd.tab==='copies'){
     body=(cs.length?cs.map(copyRow).join(''):`<p class="small muted">${S.settings.solo?'You haven’t added a copy of this book.':'Nobody in your group owns a copy yet.'}</p>`)+
-      (bd.addCopy?`<div class="addcopy"><select class="inp sm" id="acFmt" aria-label="Format"><option value="physical">Physical</option><option value="ebook">Ebook</option><option value="audio">Audiobook</option></select><input class="inp sm" id="acWhere" placeholder="Where is it? (optional)" aria-label="Where is it">${S.settings.solo?'':`<label class="chk xs"><input type="checkbox" id="acShare" checked> Show in ${esc(GN())} Library</label>`}<button class="btn btn-primary sm" data-act="bdAddCopyGo">Add My Copy</button><button class="link-btn sm" data-act="bdAddCopy">Cancel</button></div>`
+      (bd.addCopy?`<div class="addcopy"><select class="inp sm" id="acFmt" aria-label="Format"><option value="physical">Physical</option><option value="ebook">Ebook</option><option value="audio">Audiobook</option></select><input class="inp sm" id="acWhere" placeholder="Where is it? (optional)" aria-label="Where is it">${S.settings.solo?'':`<label class="chk xs"><input type="checkbox" id="acShare" ${shareDefault()?'checked':''}> Show in ${esc(GN())} Library</label>`}<button class="btn btn-primary sm" data-act="bdAddCopyGo">Add My Copy</button><button class="link-btn sm" data-act="bdAddCopy">Cancel</button></div>`
       :`<button class="link-btn" data-act="bdAddCopy">${ic('plus')}I Own a Copy</button>`);
   }else if(bd.tab==='mine'){
     if(!r)body=`<p class="small muted">You haven’t read this book yet. Add it to your To Read list to keep it handy.</p>`;
@@ -3070,7 +3095,7 @@ titleForm.addEventListener('submit',e=>{
 /* ---------- add a book ---------- */
 const addDlg=document.getElementById('addDlg'),addBody=document.getElementById('addBody');
 let ad={tab:'search',q:'',own:null};
-function openAdd(){ad={tab:'search',q:'',own:null,olOwn:null,ol:null};renderAdd();addDlg.showModal();setTimeout(()=>document.getElementById('adQ')?.focus(),30)}
+function openAdd(){ad={tab:'search',q:'',own:null,olOwn:null,ol:null,share:shareDefault()};renderAdd();addDlg.showModal();setTimeout(()=>document.getElementById('adQ')?.focus(),30)}
 function adResults(){
   const raw=ad.q.trim(),q=raw.toLowerCase(),isbn=raw.replace(/[-\s]/g,'');
   if(!q)return `<p class="xs muted" style="margin:0">Type a title, author, or ISBN. Books already in Reading Room show first, then matches from Open Library with covers and details.</p>`;
@@ -3216,7 +3241,7 @@ function olTitleFrom(x){
   olSave(t,x);
   S.titles.push(t);return t;
 }
-function addCopy(tid,f){const t=titleById(tid);const sh=!S.settings.solo&&ad.share!==false,had=copiesOf(t.id).some(c=>!c.private);S.copies.push({id:'c'+uid(),titleId:t.id,owner:'me',format:f,where:'',loanTo:null,private:!sh||undefined});if(sh)post('library',had?`added a${f==='physical'?'':'n'} ${FMT[f].toLowerCase()} copy of`:'added a book to the group library:',t.title);ad.own=null;ad.olOwn=null;save();refreshLib();toast(`Added your ${FMT[f].toLowerCase()} copy of ${t.title}.`)}
+function addCopy(tid,f){const t=titleById(tid);const sh=!S.settings.solo&&ad.share!==false,had=copiesOf(t.id).some(c=>!c.private);const nc={id:'c'+uid(),titleId:t.id,owner:'me',format:f,where:'',loanTo:null,private:!sh||undefined};S.copies.push(nc);setTimeout(()=>shareAsk(nc.id),0);if(sh)post('library',had?`added a${f==='physical'?'':'n'} ${FMT[f].toLowerCase()} copy of`:'added a book to the group library:',t.title);ad.own=null;ad.olOwn=null;save();refreshLib();toast(`Added your ${FMT[f].toLowerCase()} copy of ${t.title}.`)}
 function renderAdd(keep){
   if(keep&&ad.tab==='search'){const el=document.getElementById('adRes');if(el){el.innerHTML=adResults();return}}
   const tabs=[['search','Search'],['manual','Add It Yourself'],['import','Import']];
@@ -3243,7 +3268,7 @@ function addManual(mode){
   if(S.titles.some(t=>t.title.toLowerCase()===title.toLowerCase()))return er('That title is already in Reading Room. Use Search to find it.');
   const t={id:'t'+uid(),title,author:v('amAuthor')||'Unknown author',pages:+pages,genre:v('amGenre'),c:hashStr(title)%COVERS.length,added:Date.now()};
   S.titles.push(t);
-  if(mode==='own'){const sh=!S.settings.solo&&ad.share!==false;S.copies.push({id:'c'+uid(),titleId:t.id,owner:'me',format:v('amFmt'),where:'',loanTo:null,private:!sh||undefined});if(sh)post('library','added a book to the group library:',title);toast(`Added ${title} to My Collection.`)}
+  if(mode==='own'){const sh=!S.settings.solo&&ad.share!==false;const nc={id:'c'+uid(),titleId:t.id,owner:'me',format:v('amFmt'),where:'',loanTo:null,private:!sh||undefined};S.copies.push(nc);setTimeout(()=>shareAsk(nc.id),0);if(sh)post('library','added a book to the group library:',title);toast(`Added ${title} to My Collection.`)}
   else{S.books.push({id:'r'+uid(),titleId:t.id,title,author:t.author,format:'print',total:t.pages,pos:0,status:'want',c:t.c,wantSince:today()});toast(`Added ${title} to your To Read list.`)}
   save();addDlg.close();lib.tab='mybooks';lib.mb=mode==='own'?'owned':'want';refreshLib();setTimeout(coverFill,500);
 }
@@ -3255,6 +3280,7 @@ document.addEventListener('input',e=>{
 document.addEventListener('change',e=>{
   if(e.target.dataset?.sel){const id=e.target.dataset.sel;if(e.target.checked)lib.sel.add(id);else lib.sel.delete(id);const y=window.scrollY;refreshLib();window.scrollTo(0,y);return}
   if(e.target.id==='adShare'){ad.share=e.target.checked;return}
+  if(e.target.dataset?.copydef){S.settings.copyDefault=e.target.value;save();toast(e.target.value==='shared'?'New copies will show in the group library.':'New copies will start private.');return}
   if(e.target.dataset?.pref){S.settings[e.target.dataset.pref]=e.target.value;save();applyPrefs();toast('Appearance updated.');return}
   if(e.target.dataset?.cfrule!==undefined&&chMode==='form'){captureCf();renderChForm();return}
   const k=e.target.dataset?.lsel;if(!k)return;
@@ -3871,6 +3897,7 @@ function renderHeader(){
     <div class="row"><label class="small" for="palSel">Color Palette</label><select class="inp sm" id="palSel" data-pref="palette">${PALETTES.map(([k,l])=>`<option value="${k}" ${(S.settings.palette||'sage')===k?'selected':''}>${l}</option>`).join('')}</select></div>
     <div class="row"><label class="small" for="hfSel">Heading Font</label><select class="inp sm" id="hfSel" data-pref="hfont">${HFONTS.map(([k,l])=>`<option value="${k}" ${(S.settings.hfont||'source')===k?'selected':''}>${l}</option>`).join('')}</select></div>
     <div class="row"><label class="small" for="bfSel">Body Font</label><select class="inp sm" id="bfSel" data-pref="bfont">${BFONTS.map(([k,l])=>`<option value="${k}" ${(S.settings.bfont||'inter')===k?'selected':''}>${l}</option>`).join('')}</select></div>
+    ${S.settings.solo?'':`<div class="row"><label class="small" for="cdSel">New Copies Start As</label><select class="inp sm" id="cdSel" data-copydef="1"><option value="shared" ${shareDefault()?'selected':''}>Shared</option><option value="private" ${shareDefault()?'':'selected'}>Private</option></select></div>`}
     <div class="row"><span class="small">Dashboard Photo</span><span><button class="link-btn sm" data-act="heroPhoto">${heroPhoto()?'Change':'Add'}</button>${heroPhoto()?` <button class="link-btn sm" data-act="heroRemove">Remove</button>`:''}</span></div>
     <button class="link" data-act="tourStart">Take the Tour</button>${S.settings.solo?'':'<button class="link" data-act="tourGroup">Take the Group Tour</button>'}
     ${S.settings.gsHidden?'<button class="link" data-act="gsShow">Show Get Started</button>':''}
@@ -4448,7 +4475,7 @@ document.addEventListener('click',e=>{
       const t=titleById(nextDone.tid);sendRec(t,to,document.getElementById('nxRecNote').value.trim(),recRateOn('nxRecRate'));nextDone.rec=false;nextDone.sent=to;save();renderNextDlg();nextBody.querySelector('.nx-sent')?.focus();break}
     case 'nxThank':{const w=a.dataset.w;(S.thanks=S.thanks||[]).push({id:uid(),titleId:nextDone.tid,to:w,ts:Date.now()});save();renderNextDlg();nextBody.querySelector('.nx-thanked')?.focus();break}
     case 'bdAddCopy':bd.addCopy=!bd.addCopy;renderBD();break;
-    case 'bdAddCopyGo':{const f=document.getElementById('acFmt').value,w=document.getElementById('acWhere').value.trim();const sh=!S.settings.solo&&document.getElementById('acShare')?.checked!==false,had=copiesOf(bd.id).some(c=>!c.private);S.copies.push({id:'c'+uid(),titleId:bd.id,owner:'me',format:f,where:w,loanTo:null,private:!sh||undefined});if(sh)post('library',had?`added a${f==='audio'||f==='ebook'?'n':''} ${FMT[f].toLowerCase()} copy of`:'added a book to the group library:',titleById(bd.id).title);bd.addCopy=false;save();renderBD();toast(`Added your ${FMT[f].toLowerCase()} copy.`);break}
+    case 'bdAddCopyGo':{const f=document.getElementById('acFmt').value,w=document.getElementById('acWhere').value.trim();const sh=!S.settings.solo&&document.getElementById('acShare')?.checked!==false,had=copiesOf(bd.id).some(c=>!c.private);const nc={id:'c'+uid(),titleId:bd.id,owner:'me',format:f,where:w,loanTo:null,private:!sh||undefined};S.copies.push(nc);setTimeout(()=>shareAsk(nc.id),0);if(sh)post('library',had?`added a${f==='audio'||f==='ebook'?'n':''} ${FMT[f].toLowerCase()} copy of`:'added a book to the group library:',titleById(bd.id).title);bd.addCopy=false;save();renderBD();toast(`Added your ${FMT[f].toLowerCase()} copy.`);break}
     case 'reqNoteOpen':bd.reqNote=a.dataset.id||null;renderBD();if(bd.reqNote)document.getElementById('reqNoteTx')?.focus();break;
     case 'reqBorrow':{const c=S.copies.find(x=>x.id===a.dataset.id),t=titleById(c.titleId);if(c.loanTo==='me'||myReqFor(c))break;const free=copyFree(c);
       const note=bd.reqNote===c.id?(document.getElementById('reqNoteTx')?.value.trim().slice(0,200)||''):'';bd.reqNote=null;
@@ -4504,6 +4531,12 @@ document.addEventListener('click',e=>{
     case 'tourChooseBooks':tourEnd();view='library';lib.tab='mybooks';lib.sel=new Set();render();window.scrollTo(0,0);break;
     case 'tourFind':tourEnd();view='dashboard';render();drawNew();logDlg.showModal();setTimeout(()=>document.getElementById('newQ')?.focus(),30);break;
     case 'tourLog':tourEnd();view='dashboard';render();openLog();break;
+    case 'shGo':{const v=shBody.querySelector('input[name=shV]:checked')?.value||'shared',c=S.copies.find(x=>x.id===shSel.cid);S.settings.copyDefault=v;
+      if(c){const was=!c.private;if(v==='private'&&was){c.private=true;const t=titleById(c.titleId);const i=S.activity.map(x=>x.kind==='library'&&x.who==='me'&&x.book===t?.title&&Date.now()-x.ts<6e5).lastIndexOf(true);if(i>=0)S.activity.splice(i,1)}
+        else if(v==='shared'&&!was){delete c.private;post('library','added a book to the group library:',titleById(c.titleId)?.title)}}
+      save();shDlg.close();render();if(bookDlg.open)renderBD();toast(v==='shared'?'Your books will show in the group library.':'Your books will stay private. Share any of them later.');break}
+    case 'shareStart':{if(addDlg.open)addDlg.close();if(bookDlg.open)bookDlg.close();view='library';lib.tab='mybooks';lib.sel=new Set();render();window.scrollTo(0,0);break}
+    case 'shNudge':{if(a.dataset.v==='off')S.settings.shareNudgeOff=true;else S.settings.shareNudgeAt=Date.now();save();refreshLib();toast(a.dataset.v==='off'?'Got it. That reminder won’t show again.':'We’ll remind you in a month.');break}
     case 'shareSel':lib.sel=lib.sel?null:new Set();refreshLib();if(!lib.sel)window.scrollTo(0,0);break;
     case 'shareAll':{const owned=S.titles.filter(t=>S.copies.some(c=>c.titleId===t.id&&c.owner==='me')).map(t=>t.id);lib.sel=new Set(a.dataset.v==='1'?owned:[]);refreshLib();break}
     case 'shareGo':{const on=a.dataset.v==='1',ids=[...lib.sel],snap=snapshot(),n=setShared(ids,on);if(on&&n)post('library',`added ${n} book${n===1?'':'s'} to the group library`);lib.sel=new Set();save();refreshLib();
