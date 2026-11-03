@@ -557,6 +557,7 @@ button.cal-d{border:0;font:inherit;color:inherit;cursor:pointer;position:relativ
 .timer-actions{display:flex;gap:8px}.timer-actions .btn-primary{flex:1}
 .timer-actions .btn{white-space:nowrap}
 .cu-from[hidden],.cu-note[hidden],.log-ask[hidden]{display:none}
+.rt summary{cursor:pointer;list-style:none;display:inline-block}.rt summary::-webkit-details-marker{display:none}.lg-note{min-height:44px;resize:none;overflow-y:auto;field-sizing:content;max-height:160px}.lg-when{display:flex;flex-wrap:wrap;align-items:end;gap:6px 16px}.lg-when .cu-dates{flex:1 1 300px;margin:0}.lg-when .cu-dates:has(.cu-from[hidden]){flex:0 1 190px;grid-template-columns:minmax(0,1fr)}.lg-when>.chk{margin-bottom:10px}.lg-when .cu-note{flex-basis:100%}.calc .edit-goal{color:var(--primary);border-color:color-mix(in srgb,var(--primary) 55%,var(--border));font-weight:600;font-size:13px;padding:5px 12px}
 .min-hint{margin:-2px 0 -10px;line-height:1.2}.min-hint:empty{display:none}.f3:has(.min-hint){align-items:start}.cf-warn{color:var(--warn,#9a5b00)}.cf-warn:empty{display:none}.log-ask{border:1px solid var(--border);background:var(--surface-2,var(--surface));border-radius:12px;padding:10px 12px;display:grid;gap:8px}.log-ask p{margin:0}.log-ask-b{display:flex;flex-wrap:wrap;gap:8px}.cu-dates{margin-bottom:6px}.timer-actions{align-items:flex-start}.timer-actions>.btn,.hero2-acts .timer-actions>.btn{flex:0 0 auto}.timer-redo .link-btn{white-space:nowrap}.ta-main{flex:1;min-width:0;display:grid;gap:4px}.ta-main .btn-primary{width:100%}.timer-redo{display:flex;gap:6px;align-items:center;justify-content:center}
 .timer-pill{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:8;display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:6px 6px 6px 14px;box-shadow:0 10px 30px rgba(15,23,42,.18);font-variant-numeric:tabular-nums;font-weight:600}
 .timer-pill .tp-t{font-weight:400;color:var(--text-2);max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1468,6 +1469,9 @@ function day(date){
   for(const s of ss){if(s.minutes)rec+=s.minutes;else if(s.est)est+=s.est;pages+=s.pages||0}
   return {active:ss.length>0,rec,est,pages};
 }
+/* What's left of today's goal: "20 more minutes to reach today's goal." or, with both, "20 minutes or 15 pages to go today." */
+function goalLeft(st){const g=S.settings,m=Math.max(1,Math.ceil(g.goalMinutes-st.mins)),p=Math.max(1,g.goalPages-st.pages),u=(n,w)=>`${n} ${w}${n===1?'':'s'}`;
+  return g.goalType==='both'?`${u(m,'minute')} or ${u(p,'page')} to go today.`:g.goalType==='pages'?`${u(p,'more page')} to reach today’s goal.`:`${u(m,'more minute')} to reach today’s goal.`}
 function goalState(date){
   const d=day(date),g=S.settings;
   const mins=d.rec+(g.estimate?d.est:0);
@@ -1535,10 +1539,7 @@ function goalCard(){
   if(st.both)note=`<div class="goal-note ok">Both goals met today. Bonus!${estNote}</div>`;
   else if(st.met)note=`<div class="goal-note ok">Goal met for today.${estNote}</div>`;
   else{
-    const parts=[];
-    if(g.goalType!=='pages')parts.push(`${Math.max(0,Math.ceil(g.goalMinutes-st.mins))} more minutes`);
-    if(g.goalType!=='minutes')parts.push(`${Math.max(0,g.goalPages-st.pages)} more pages`);
-    note=`<div class="goal-note">Just ${parts.join(' or ')} to reach your goal.${estNote}</div>`;
+    note=`<div class="goal-note">${goalLeft(st)}${estNote}</div>`;
   }
   const wk=weekDays(),{rest}=streakInfo();
   const dots=wk.map(d=>{
@@ -1869,7 +1870,7 @@ function heroDash(){
   let note;
   if(st.both)note=`Both goals met today. Bonus!${estNote}`;
   else if(st.met)note=`You’ve met today’s goal.${estNote}`;
-  else{const parts=[];if(g.goalType!=='pages')parts.push(`${Math.max(0,Math.ceil(g.goalMinutes-st.mins))} more minutes`);if(g.goalType!=='minutes')parts.push(`${Math.max(0,g.goalPages-st.pages)} more pages`);note=`Just ${parts.join(' or ')} to reach today’s goal.${estNote}`}
+  else note=`${goalLeft(st)}${estNote}`;
   const wk=weekDays(),{rest}=streakInfo();
   const dots=wk.map(d=>{if(d>t)return `<span class="dot future" title="${fmtDate(d)}"></span>`;const s=goalState(d);const r=!s.active&&rest.has(d);const cls=s.met?'met':s.active?'active':r?'rest':'';return `<span class="dot ${cls} ${d===t?'today':''}" title="${fmtDate(d)}: ${s.met?'goal met':s.active?'read':r?'rest day':'no reading'}">${s.met?ic('check'):r?ic('moon'):''}</span>`}).join('');
   const activeDays=wk.filter(d=>d<=t&&day(d).active).length,allow=S.settings.restDays??1,restLeft=Math.max(0,allow-wk.filter(d=>rest.has(d)).length);
@@ -2349,7 +2350,7 @@ function libraryView(){
   const H={family:[`${esc(GN())} Library`,`Books everyone in ${esc(GN())} can borrow and read.`],mybooks:['My Books','Every book connected to you, from To Read to Finished.'],discover:['Discover','Books you might like, why each one is here, and where to get it.']}[lib.tab];
   return `<div class="lib">
   <div class="lib-h" data-tour="library"><div><h1 class="page-h">${H[0]}</h1><p class="muted" style="margin:4px 0 0">${H[1]}</p></div><span class="lib-acts">${S.settings.solo?'':`<button class="btn btn-ghost" data-act="recPick">${ic('send')}Recommend a Book</button>`}<button class="btn btn-primary" data-act="addBook">${ic('plus')}Add a Book</button></span></div>
-  <div class="tabs" role="tablist" aria-label="Library sections">${tabs.map(([k,l])=>`<button class="tab" role="tab" data-tour="lib-${k}" aria-selected="${lib.tab===k}" data-act="libTab" data-v="${k}">${l}${k==='discover'&&toMe?` <span class="tab-n" aria-label="${toMe} recommended to you">${toMe}</span>`:''}</button>`).join('')}</div>
+  <div class="tabs" role="tablist" aria-label="Library sections">${tabs.map(([k,l])=>`<button class="tab" role="tab" id="tab-lib-${k}" aria-controls="libPanel" tabindex="${lib.tab===k?0:-1}" data-tour="lib-${k}" aria-selected="${lib.tab===k}" data-act="libTab" data-v="${k}">${l}${k==='discover'&&toMe?` <span class="tab-n" aria-label="${toMe} recommended to you">${toMe}</span>`:''}</button>`).join('')}</div><div role="tabpanel" id="libPanel" aria-labelledby="tab-lib-${lib.tab}">
   ${disc?discoverBody():''}
   ${lib.tab==='mybooks'?mbChips():''}
   ${tools?`<div class="lib-tools">
@@ -2359,7 +2360,7 @@ function libraryView(){
     <span class="vseg" role="group" aria-label="View"><button aria-pressed="${!shelf}" data-act="libView" data-v="grid">${ic('grid')}Grid</button><button aria-pressed="${shelf}" data-act="libView" data-v="shelf">${ic('shelf')}Shelf</button></span>
   </div>
   ${lib.open?filtersPanel():''}`:''}
-  ${disc?'':`<div id="libResults">${libResults()}</div>`}</div>`;
+  ${disc?'':`<div id="libResults">${libResults()}</div>`}</div></div>`;
 }
 function toggleWant(tid){
   const t=titleById(tid),r=myReading(tid);if(!t)return;
@@ -2899,8 +2900,10 @@ function bdQuiet(t,r){
 }
 function renderBD(){
   // Redraws (a description arriving, a rating) keep what's been chosen and typed in the Recommend form.
+  const fa=document.activeElement,fk=fa&&fa!==bookBody&&bookBody.contains(fa)?(fa.id?'#'+CSS.escape(fa.id):fa.dataset?.act?`[data-act="${fa.dataset.act}"]${fa.dataset.v!=null?`[data-v="${fa.dataset.v}"]`:''}${fa.dataset.id?`[data-id="${fa.dataset.id}"]`:''}`:null):null;
   const keep=bookBody.querySelector('.recf')?{to:[...bookBody.querySelectorAll('[name=recTo]:checked')].map(x=>x.value),note:document.getElementById('recNote')?.value||'',rate:!!document.getElementById('recRate')?.checked,focus:document.activeElement?.id||''}:null;
   renderBD0();
+  if(fk&&(!document.activeElement||document.activeElement===document.body||!document.activeElement.isConnected))bookBody.querySelector(fk)?.focus({preventScroll:true});
   if(keep&&bd.rec){keep.to.forEach(v=>{const c=bookBody.querySelector(`[name=recTo][value="${v}"]`);if(c&&!c.disabled)c.checked=true});const n=document.getElementById('recNote');if(n)n.value=keep.note;const r=document.getElementById('recRate');if(r&&r.type==='checkbox'&&keep.rate)r.checked=true;if(keep.focus)document.getElementById(keep.focus)?.focus()}
 }
 function renderBD0(){
@@ -2952,8 +2955,8 @@ function renderBD0(){
  <div class="bd-acts">${prim}</div>${getLine(t)}${bdQuiet(t,r)}</div><button type="button" class="icon-btn x" data-act="closeBD" aria-label="Close">${ic('x')}</button></div>
     ${(()=>{const rs=myRecs().filter(r=>r.titleId===t.id);return rs.length?`<div class="rec-box">${rs.map(r=>`<div class="small"><b>${esc(nameOf(r.from))}</b>${r.rating?` (${r.rating}★)`:''} recommended this to you${r.note?`: “${esc(r.note)}”`:'.'}</div>`).join('')}<div class="rec-acts"><button class="link-btn sm" data-act="dismissRec" data-id="${t.id}">Not for Me</button><span class="xs muted">Only you see this; ${esc([...new Set(rs.map(r=>nameOf(r.from)))].join(' and '))} won’t be told.</span></div></div>`:''})()}
     ${bd.rec?`<div class="recf"><div class="small" style="font-weight:600">Recommend To</div><div class="chips">${Object.entries(S.members).map(([k,m])=>{const done=S.recsSent.some(r=>r.titleId===t.id&&r.to===k);return `<label class="chk ${done?'dim':''}"><input type="checkbox" name="recTo" value="${k}" ${done?'disabled':''}> ${esc(m.name)}${done?' <span class="xs muted">(already recommended)</span>':''}</label>`}).join('')}</div><input class="inp sm" id="recNote" maxlength="140" placeholder="Add a note (optional)" aria-label="Note">${recRateOpt(t,'recRate')}<div class="err" id="recErr" role="alert"></div><div class="dlg-f"><button class="btn btn-ghost sm" data-act="bdRec">Cancel</button><button class="btn btn-primary sm" data-act="bdRecGo">Send Recommendation</button></div></div>`:''}
-    <div class="bd-tabs" role="tablist">${tabs.map(([k,l])=>`<button class="bd-tab" role="tab" aria-selected="${bd.tab===k}" data-act="bdTab" data-v="${k}">${l}</button>`).join('')}</div>
-    <div class="bd-body">${body}</div>`;
+    <div class="bd-tabs" role="tablist" aria-label="Book details">${tabs.map(([k,l])=>`<button class="bd-tab" role="tab" id="tab-bd-${k}" aria-controls="bdPanel" tabindex="${bd.tab===k?0:-1}" aria-selected="${bd.tab===k}" data-act="bdTab" data-v="${k}">${l}</button>`).join('')}</div>
+    <div class="bd-body" role="tabpanel" id="bdPanel" aria-labelledby="tab-bd-${bd.tab}">${body}</div>`;
   if(bookDlg.open)descFit();
   tabEdges(bookBody);
 }
@@ -2981,7 +2984,7 @@ function openTitleEdit(id){
     <label class="f"><span>Description <span class="sub">(optional, shown in About)</span></span><textarea class="inp" name="tDesc" rows="5" maxlength="3000" placeholder="What the book is about, without spoilers">${esc(t.descText||'')}</textarea></label>
     <div class="section-t">Cover</div>
     <div class="te-cover"><div class="te-prev"><div id="tePrev"></div><span class="xs muted" id="teSrc" aria-live="polite"></span><button type="button" class="link-btn sm" data-act="teGen">Use Generated Cover</button></div>
-      <div class="te-panel"><div class="vseg ad-tabs" role="tablist" aria-label="Cover source">${[['url','Web Address'],['upload','Upload'],['ol','Open Library']].map(([k,l])=>`<button type="button" role="tab" aria-pressed="${te.tab===k}" data-act="teTab" data-v="${k}">${l}</button>`).join('')}</div><div id="tePanel"></div></div></div>
+      <div class="te-panel"><div class="vseg ad-tabs" role="group" aria-label="Cover source">${[['url','Web Address'],['upload','Upload'],['ol','Open Library']].map(([k,l])=>`<button type="button" aria-pressed="${te.tab===k}" data-act="teTab" data-v="${k}">${l}</button>`).join('')}</div><div id="tePanel"></div></div></div>
     <div class="err" id="teErr" role="alert"></div>
     <div class="dlg-f"><button type="button" class="btn btn-ghost" data-act="teClose">Cancel</button><button type="submit" class="btn btn-primary">Save Changes</button></div>
   </div>`;
@@ -3228,7 +3231,7 @@ function renderAdd(keep){
     <div class="dlg-f"><button class="btn btn-ghost" data-act="adManualGo" data-v="want">Add to To Read</button><button class="btn btn-primary" data-act="adManualGo" data-v="own">I Own It</button></div></div>`;
   else body=`<div class="empty">${ic('library')}<h3>Import a List</h3><p>Bring in a book collection or your reading history from a CSV or Excel file, or a Goodreads or StoryGraph export. You’ll preview everything, choose ownership and format, and skip duplicates before anything is added.</p><p class="xs">Import arrives once Reading Room is on its own host.</p></div>`;
   addBody.innerHTML=`<div class="dlg-h"><h2 id="adTitle">Add a Book</h2><button type="button" class="icon-btn x" data-act="closeAdd" aria-label="Close">${ic('x')}</button></div>
-  <div class="vseg ad-tabs" role="tablist">${tabs.map(([k,l])=>`<button role="tab" aria-pressed="${ad.tab===k}" data-act="adTab" data-v="${k}">${l}</button>`).join('')}</div>
+  <div class="vseg ad-tabs" role="group" aria-label="How to add the book">${tabs.map(([k,l])=>`<button aria-pressed="${ad.tab===k}" data-act="adTab" data-v="${k}">${l}</button>`).join('')}</div>
   ${S.settings.solo||ad.tab==='import'?'':`<label class="chk small ad-share"><input type="checkbox" id="adShare" ${ad.share!==false?'checked':''}> Show books I own in the ${esc(GN())} Library</label>`}
   <div style="margin-top:14px">${body}</div>`;
 }
@@ -3583,8 +3586,8 @@ function challengesView(){
     body=`<div class="tw-head"><span class="small muted">The battle happens in person. Reading Room keeps the shared list and everyone’s progress.</span><button class="btn btn-ghost" data-act="bNew">${ic('plus')}Start a Battle</button></div>${bs.length?`<div class="b-list">${bs.map(battleCard).join('')}</div>`:`<div class="empty">${ic('library')}<h3>No Battles Yet</h3><p>Start one to build a shared reading list.</p></div>`}${nh?`<button class="link-btn sm b-hidden-t" data-act="bShowHidden" style="margin-top:12px">${showHiddenB?'Hide':'Show'} ${nh} Hidden Battle${nh===1?'':'s'}</button>`:''}`}
   else body=trophyWall();
   return `<div class="lib"><div class="lib-h"><div><h1 class="page-h">Challenges</h1><p class="muted" style="margin:2px 0 0">Personal and group reading challenges to keep you motivated.</p></div><button class="btn btn-primary" data-act="chNew">${ic('plus')}Create Challenge</button></div>
-  <div class="tabs" role="tablist" aria-label="Challenge sections" data-tour="challenge-tabs">${tabs.map(([k,l,n])=>`<button class="tab" role="tab" data-tour="ch-${k}" aria-selected="${chTab===k}" data-act="chTab" data-v="${k}">${l} <span class="cnt">${n}</span></button>`).join('')}</div>
-  <div style="margin-top:16px">${body}</div></div>`;
+  <div class="tabs" role="tablist" aria-label="Challenge sections" data-tour="challenge-tabs">${tabs.map(([k,l,n])=>`<button class="tab" role="tab" id="tab-ch-${k}" aria-controls="chPanel" tabindex="${chTab===k?0:-1}" data-tour="ch-${k}" aria-selected="${chTab===k}" data-act="chTab" data-v="${k}">${l} <span class="cnt">${n}</span></button>`).join('')}</div>
+  <div style="margin-top:16px" role="tabpanel" id="chPanel" aria-labelledby="tab-ch-${chTab}">${body}</div></div>`;
 }
 /* challenge detail */
 /* Group challenges work like battles: the starter can delete one only before it's completed or ended, after a confirmation naming who joined; finished ones stay as history and can be hidden from your own lists. */
@@ -3786,7 +3789,7 @@ function renderBattle(){
   else body=`<p class="small" style="margin-top:0">${esc(b.desc||'')}</p><div class="small muted">Reading starts ${fmtDateY(b.readStart)} · Battle on ${fmtDateY(b.event)}</div><ul class="small muted" style="padding-left:18px"><li>Each reader adds one or more books; no book can be picked twice.</li><li>Everyone reads every book on the list.</li><li>The moderator runs the in-person battle and doesn’t pick books.</li><li>Reading progress comes from your normal reading logs.</li></ul>`;
   chBody.innerHTML=`<div class="dlg-h"><span class="chc-ic">${ic('library')}</span><div style="flex:1;min-width:0"><h2 id="chTitle">${esc(b.name)}</h2><div class="xs muted">Reading from ${fmtDateY(b.readStart)} · Battle on ${fmtDateY(b.event)}</div><div style="margin-top:6px"><span class="st ${st==='active'?'st-reading':st==='completed'?'st-finished':''}">${BST[st]}</span> <span class="xs muted">Started by ${esc(bCreator(b)==='me'?'You':nameOf(bCreator(b)))} · Moderator: ${b.moderator?esc(nameOf(b.moderator)):'none yet'}</span></div></div><button type="button" class="icon-btn x" data-act="closeCh" aria-label="Close">${ic('x')}</button></div>
   ${acts?`<div class="bd-acts">${acts}</div>`:''}${confirmBox}${adder}
-  <div class="bd-tabs" role="tablist">${tabs.map(([k,l])=>`<button class="bd-tab" role="tab" aria-selected="${bv.tab===k}" data-act="bTab" data-v="${k}">${l}</button>`).join('')}</div><div class="bd-body">${body}</div>`;
+  <div class="bd-tabs" role="tablist" aria-label="Battle sections">${tabs.map(([k,l])=>`<button class="bd-tab" role="tab" id="tab-bt-${k}" aria-controls="btPanel" tabindex="${bv.tab===k?0:-1}" aria-selected="${bv.tab===k}" data-act="bTab" data-v="${k}">${l}</button>`).join('')}</div><div class="bd-body" role="tabpanel" id="btPanel" aria-labelledby="tab-bt-${bv.tab}">${body}</div>`;
 }
 function bResults(b){const q=bv.q.trim().toLowerCase();if(!q)return '<span class="xs muted">Type a title or author.</span>';const taken=new Set(bList(b).map(x=>x.id));
   return S.titles.filter(t=>!taken.has(t.id)&&(t.title+' '+t.author).toLowerCase().includes(q)).slice(0,6).map(t=>`<button type="button" class="pick" data-act="bPick" data-id="${t.id}">${libCover(t)}<span><span class="pick-t">${esc(t.title)}</span><span class="xs muted">${esc(t.author)}</span></span></button>`).join('')||'<span class="xs muted">No matches. Add the book in the Library first.</span>'}
@@ -3914,7 +3917,7 @@ function drawLog(b,focus,preMin){
   const status=(b.status==='paused'||isNew)?'reading':b.status;
   logForm.innerHTML=`
   <div class="dlg-h">${cover(b,58)}<div style="flex:1;min-width:0"><h2 id="logTitle">Log Reading</h2>
-    <label class="f" style="margin-top:8px"><span class="sub">Book</span><select class="inp" name="book">${list.map(x=>`<option value="${x.id}" ${x.id===b.id?'selected':''}>${esc(x.title)}${x.format==='audio'?' (audiobook)':''}${x.status==='paused'?' — paused':''}${x===b&&isNew?' — new':''}</option>`).join('')}<option value="__new">Start a New Book…</option></select></label></div>
+    <label class="f" style="margin-top:8px"><select class="inp" name="book" aria-label="Book">${list.map(x=>`<option value="${x.id}" ${x.id===b.id?'selected':''}>${esc(x.title)}${x.format==='audio'?' (audiobook)':''}${x.status==='paused'?' — paused':''}${x===b&&isNew?' — new':''}</option>`).join('')}<option value="__new">Start a New Book…</option></select></label></div>
     <button type="button" class="icon-btn x" data-act="closeLog" aria-label="Close">${ic('x')}</button></div>
   <div class="form">
     <label class="f">Status<select class="inp" name="status">
@@ -3927,17 +3930,17 @@ function drawLog(b,focus,preMin){
       <label class="f"><span>Minutes <span class="sub" data-opt="min" hidden>(optional)</span></span><input class="inp" name="minutes" inputmode="text" autocomplete="off" value="${preMin||''}" placeholder="${audio?'Time spent':'Minutes'}" aria-describedby="minHint"><span class="xs muted min-hint" id="minHint" aria-live="polite"></span></label>
     </div>
     <div class="calc" id="calc"></div>
-    <div class="xs muted" style="margin-top:-8px">${audio?`Total length ${fmtPos(b.total)}. Enter positions as h:mm. Add minutes for the time you actually spent listening; otherwise the change in position counts as estimated time.`:(isNew?`New book: the starting page is 0, so reading pages 1–20 counts as 20 pages. Saving starts the book even if you don’t log pages yet.`:`The starting page is where you left off. Enter pages, minutes, or both.`)}</div>
-    <div class="f"><span class="fl" style="margin:0">Read Together <span class="sub">(optional)</span></span><div class="chips">${Object.entries(S.members).map(([k,m])=>`<label class="tog"><input type="checkbox" name="with" value="${k}"><span>${esc(m.name)}</span></label>`).join('')}</div><span class="xs muted">Reading aloud or side by side? Everyone you choose gets credit for this session too.</span></div>
-    <div class="f"><div class="f2 cu-dates"><label class="f cu-from" hidden>From<input class="inp" type="date" name="from" max="${today()}"></label><label class="f"><span class="cu-to">Date</span><input class="inp" type="date" name="date" value="${today()}" max="${today()}"></label></div>
+    <div class="xs muted" style="margin-top:-8px" ${!audio&&!isNew?'hidden':''}>${audio?`Total length ${fmtPos(b.total)}. Enter positions as h:mm. Add minutes for the time you actually spent listening; otherwise the change in position counts as estimated time.`:(isNew?`New book: the starting page is 0, so reading pages 1–20 counts as 20 pages. Saving starts the book even if you don’t log pages yet.`:`The starting page is where you left off. Enter pages, minutes, or both.`)}</div>
+    <details class="rt"><summary class="link-btn sm">Read with someone?</summary><div class="chips" style="margin-top:8px">${Object.entries(S.members).map(([k,m])=>`<label class="tog"><input type="checkbox" name="with" value="${k}"><span>${esc(m.name)}</span></label>`).join('')}</div><span class="xs muted">Reading aloud or side by side? Everyone you choose gets credit for this session too.</span></details>
+    <div class="f lg-when"><div class="f2 cu-dates"><label class="f cu-from" hidden>From<input class="inp" type="date" name="from" max="${today()}"></label><label class="f"><span class="cu-to">Date</span><input class="inp" type="date" name="date" value="${today()}" max="${today()}"></label></div>
       <label class="chk"><input type="checkbox" name="cu"> Covers more than one day</label><span class="xs muted cu-note" hidden>Counts toward totals and challenges, but not streaks or daily goals.</span></div>
-    <label class="f"><span>Add a Note <span class="sub">(optional, only you see it)</span></span><textarea class="inp" name="note" maxlength="200" data-count="200" aria-describedby="logNoteCount" placeholder="What did you read today?"></textarea>${charCount('logNoteCount',0,200)}</label>
-    <label class="chk"><input type="checkbox" name="finished"> Mark as finished</label>
+    <label class="f"><span>Add a Note <span class="sub">(optional, only you see it)</span></span><textarea class="inp lg-note" name="note" rows="1" maxlength="200" data-count="200" aria-describedby="logNoteCount" placeholder="What did you read today?"></textarea><span class="lg-cnt" hidden>${charCount('logNoteCount',0,200)}</span></label>
+    <input type="checkbox" name="finished" hidden tabindex="-1" aria-hidden="true">
     <div class="err" id="logErr" role="alert"></div><div class="log-ask" id="logAsk" hidden></div>
     <div class="dlg-f"><button type="button" class="btn btn-ghost" data-act="cancelLog">Cancel</button><button type="submit" class="btn btn-primary">Save Reading</button></div>
   </div>`;
-  logForm.dataset.book=b.id;logForm.dataset.mode='log';logForm.dataset.ok='';
-  if(S.settings.solo)logForm.querySelector('[name=with]')?.closest('.f')?.remove();
+  logForm.dataset.book=b.id;logForm.dataset.mode='log';logForm.dataset.ok='';logForm.dataset.autoFin='';
+  if(S.settings.solo)logForm.querySelector('.rt')?.remove();
   draftAttach(logForm,'log:'+(b.titleId||b.id),'reading entry',preMin?['minutes']:null);
   setLogOpt();calcLog();
 }
@@ -4047,10 +4050,14 @@ logForm.addEventListener('input',e=>{
   if(logForm.dataset.mode==='new'){if(e.target.id==='newQ'){nwQueue(e.target.value);renderNewResults(e.target.value)}return}
   if(logForm.dataset.mode==='manual'){if(e.target.name==='mFormat'){const a=e.target.value==='audio';document.getElementById('mTotalL').textContent=a?'Length (h:mm)':'Number of Pages';logForm.mTotal.placeholder=a?'h:mm':'Pages';logForm.mTotal.inputMode=a?'text':'numeric'}return}
   if(e.target.name==='book'){if(e.target.value==='__new'){drawNew();setTimeout(()=>document.getElementById('newQ')?.focus(),30)}else drawLog(findB(e.target.value));return}
-  if(e.target.name==='end'){const {b,end}=readLog();if(end!=null&&end>=b.total)logForm.finished.checked=true}
+  if(e.target.name==='end'){const {b,end}=readLog(),fin=end!=null&&!isNaN(end)&&end>=b.total;
+    if(fin&&logForm.status.value!=='finished'){logForm.dataset.autoFin=logForm.status.value;logForm.status.value='finished';logForm.finished.checked=true}
+    else if(!fin&&logForm.dataset.autoFin){logForm.status.value=logForm.dataset.autoFin;logForm.dataset.autoFin='';logForm.finished.checked=false}}
+  if(e.target.name==='status')logForm.dataset.autoFin='';
   if(e.target.name==='finished'&&e.target.checked)logForm.status.value='finished';
   if(e.target.name==='status')logForm.finished.checked=e.target.value==='finished';
   if(e.target.name==='cu')cuShow(e.target.checked);
+  if(e.target.name==='note'){const t=e.target;t.style.height='auto';t.style.height=t.scrollHeight+2+'px';logForm.querySelector('.lg-cnt').hidden=t.value.length<150}
   logAskClear();
   calcLog();
 });
@@ -4131,7 +4138,7 @@ function openGoal(){
   const g=S.settings;
   goalForm.innerHTML=`<div class="dlg-h"><h2 id="goalTitle">My Reading Goals</h2><button type="button" class="icon-btn x" data-act="closeGoal" aria-label="Close">${ic('x')}</button></div>
   <div class="form"><div class="small muted">How would you like to measure your daily goal?</div>
-  ${[['minutes','Minutes per day'],['pages','Pages per day'],['both','Both minutes and pages (meeting either one counts)']].map(([v,l])=>`<label class="radio"><input type="radio" name="type" value="${v}" ${g.goalType===v?'checked':''}>${l}</label>`).join('')}
+  ${[['minutes','Minutes per day'],['pages','Pages per day'],['both','Minutes or pages, whichever I reach first']].map(([v,l])=>`<label class="radio"><input type="radio" name="type" value="${v}" ${g.goalType===v?'checked':''}>${l}</label>`).join('')}
   <div class="f2"><label class="f">Daily Minutes<input class="inp" name="gm" inputmode="numeric" value="${g.goalMinutes}"></label><label class="f">Daily Pages<input class="inp" name="gp" inputmode="numeric" value="${g.goalPages}"></label></div>
   <label class="f">Rest Days per Week <span class="sub">Missing a day uses a rest day instead of breaking your streak.</span><select class="inp" name="rest">${[0,1,2].map(n=>`<option value="${n}" ${(g.restDays??1)===n?'selected':''}>${n===0?'None':n}</option>`).join('')}</select></label>
   <label class="chk"><input type="checkbox" name="est" ${g.estimate?'checked':''}> Estimate missing reading time from my reading speed</label>
@@ -4195,6 +4202,18 @@ editForm.addEventListener('submit',e=>{
   const tt=titleById(b.titleId);if(tt){tt.title=b.title;tt.author=b.author;if(b.format!=='audio')tt.pages=b.total;const sn=(f.series||'').trim();tt.series=sn||undefined;tt.seriesNo=sn&&String(f.seriesNo||'').trim()!==''&&!isNaN(+f.seriesNo)?+f.seriesNo:undefined;if(sn&&/^\d+$/.test(String(f.seriesLen||'').trim()))(S.seriesLen=S.seriesLen||{})[sn]=+f.seriesLen}
   save();editDlg.close();render();toast(`Saved changes to ${b.title}.`);
 });
+/* Tabs: Left/Right (and Home/End) move between tabs and switch to them; only the selected tab is a Tab-key stop.
+   Switching redraws the page or window, so focus goes back to the newly selected tab instead of falling to the page. */
+const tabKey=t=>`[role=tab][data-act="${t.dataset.act}"][data-v="${t.dataset.v}"]`;
+function tabRefocus(sel){const n=document.querySelector(sel);if(n&&document.activeElement!==n)n.focus({preventScroll:true})}
+document.addEventListener('keydown',e=>{
+  const t=e.target.closest?.('[role=tab]');if(!t||!['ArrowLeft','ArrowRight','Home','End'].includes(e.key)||e.altKey||e.ctrlKey||e.metaKey)return;
+  const list=[...t.closest('[role=tablist]').querySelectorAll('[role=tab]')].filter(x=>!x.disabled&&x.offsetParent!==null),i=list.indexOf(t);if(i<0)return;
+  e.preventDefault();const n=e.key==='Home'?list[0]:e.key==='End'?list.at(-1):list[(i+(e.key==='ArrowRight'?1:-1)+list.length)%list.length];
+  const sel=tabKey(n);n.click();tabRefocus(sel);n.scrollIntoView?.({block:'nearest',inline:'nearest'});
+});
+document.addEventListener('click',e=>{const t=e.target.closest?.('[role=tab]');if(!t)return;const sel=tabKey(t);
+  setTimeout(()=>{const a=document.activeElement;if(!a||a===document.body||!a.isConnected)tabRefocus(sel)},0)});
 setInterval(()=>{if(S.timer&&!S.timer.stop){const v=fmtClock(tElapsed());document.querySelectorAll('[data-timer]').forEach(x=>x.textContent=v)}},1000);
 
 /* ---------- events ---------- */

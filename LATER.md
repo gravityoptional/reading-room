@@ -26,6 +26,14 @@ next; next-only features wait for James's approval to merge into main.
   in the form; sample audiobooks (Project Hail Mary in progress, The Martian finished and unrated, Pride and
   Prejudice to read), added once to saved data. Same code on both, except next keeps "Finished, date unknown" in
   the Add Progress list.
+- Polish bundle (main, merged Nov 3): tabs (Library, Challenges, book details, Battle) work with arrow keys,
+  Home and End, keep focus after switching, and name their panels; Add a Book and cover source switches are toggle
+  buttons; the goal option reads "Minutes or pages, whichever I reach first"; the greeting drops "Just" ("20 more
+  minutes to reach today's goal." / "20 minutes or 15 pages to go today."); Edit Goal is green; shorter Log
+  Reading form (no Book label, no Mark as finished checkbox since Status does it, help line only for audiobooks and
+  new books, Read with someone? folds the names, Date and Covers more than one day share a row, the note is one
+  line that grows, its count shows from 150 characters). next's own book details and Library templates carry the
+  same tab attributes; next also keeps focus through any book details redraw.
 
 **next-only (waiting to merge into main):** Discover release 1 (2a–2h), "Finished, date unknown", and later changes: Discover as a Library
 tab, lean cards, ghost card, finish window (queue, rate, thank, recommend), finished-only ratings, Did Not Finish
