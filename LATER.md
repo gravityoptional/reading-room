@@ -43,6 +43,13 @@ next; next-only features wait for James's approval to merge into main.
   Terracotta, Teal, Paper and Ink, Ivory and Ink, Blueprint (16 in all); the three high-contrast palettes get 2 px
   borders and 3 px focus outlines. Terracotta's selected tint lightened (#F6E2D6) to reach 4.5:1. Color Palette
   menu: Default, then around the color wheel, then a High Contrast group.
+- Fonts (main, merged Nov 3): Source Sans 3 and DM Sans as heading fonts (sans fallback), DM Sans as a body font;
+  Manrope was added and then replaced by DM Sans (saved Manrope choices move to DM Sans).
+- Log Reading row and note prompts (main, merged Nov 3): Start Page / End Page / Minutes on one row at every width
+  (labels above; "Optional" as the placeholder in whichever box is optional; Start / End for audiobooks; same in
+  Edit Session; tighter padding under 400 px). Note prompts: 15 general, plus 2 story or 2 nonfiction (by genre:
+  Nonfiction, Memoir, Science, Religion, History), 1 reread, 4 finishing; one per opening, shuffled with no repeats
+  until all have shown; kept with an unsaved draft; the empty note box grows to two lines when a prompt wraps.
 
 **next-only (waiting to merge into main):** Discover release 1 (2a–2h), "Finished, date unknown", and later changes: Discover as a Library
 tab, lean cards, ghost card, finish window (queue, rate, thank, recommend), finished-only ratings, Did Not Finish
