@@ -39,6 +39,10 @@ next; next-only features wait for James's approval to merge into main.
   the stored key sage; new Sage (sage-green), Espresso and Forest; Dashboard scene follows the palette. Contrast
   checked on all 22 combinations: Lavender, Meadow, Slate and Amber light were nudged darker to reach 4.5:1; Default
   is unchanged (its secondary text on the alternate surface is 4.25:1 light, 4.04:1 dark, as before).
+- Sweet16 palettes (main, merged Nov 3; from James's Sweet16Palettes package, prepared in the ChatGPT copy):
+  Terracotta, Teal, Paper and Ink, Ivory and Ink, Blueprint (16 in all); the three high-contrast palettes get 2 px
+  borders and 3 px focus outlines. Terracotta's selected tint lightened (#F6E2D6) to reach 4.5:1. Color Palette
+  menu: Default, then around the color wheel, then a High Contrast group.
 
 **next-only (waiting to merge into main):** Discover release 1 (2a–2h), "Finished, date unknown", and later changes: Discover as a Library
 tab, lean cards, ghost card, finish window (queue, rate, thank, recommend), finished-only ratings, Did Not Finish
