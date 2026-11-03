@@ -83,6 +83,14 @@ choices when the window redraws. When merging next into main, next's version win
   Idea: Adjust Photo beside Change and Remove: drag it up, down or sideways, Flip (mirror) and possibly Rotate.
   Shared with main. Book covers stay as they are.
 
+- **Sharing prompts** (designed Nov 3, mockups in previews/b3/share-*): (1) first copy asks "Show your books in
+  the [group] Library?" with Share My Books pre-selected, Keep Them Private, Continue; sets (5) the setting "New
+  Copies Start As: Shared / Private"; never asked in solo. (2) **After a Goodreads import (live beta):** "Imported
+  N Books from Goodreads. M of them are marked as books you own." Share All M (pre-selected), Let Me Choose, Keep
+  All Private; imports always ask; unowned books never appear. (3) Nudge in the group library when all your copies
+  are private: "Your N books are private..." Choose Books to Share, Not Now (back after a month), Don't Show Again.
+  (4) Empty group library: "The [group] Library Is Empty" with Share Books I Own. James: wording fine for now.
+
 ## Issues
 
 - **Tall card rows on phones (Discover).** Cards in a row share row heights so their buttons line up. In a
