@@ -89,6 +89,9 @@ choices when the window redraws. When merging next into main, next's version win
   sideways-scrolling phone row, one long title off screen makes every card in that row taller, leaving empty
   space above the buttons. Not acceptable as a permanent solution. Likely fix: cap titles at three lines with
   the full title in book details, and size rows to what's visible.
+  **Closed Nov 3 (James: not much to gain):** titles and reasons are capped at three lines (Nov 2). Measured at
+  320–1440 px: it happens only below about 600 px (phones held upright), at most about 38 px, at about 1 in 5
+  scroll positions in a row. Fixed card spaces on phones were considered and set aside.
 - **WorldCat "Error 1015" on the first Find at Your Library click** (seen Oct 31, 2026; the same link worked on
   retry). WorldCat's traffic protection, not Reading Room. If it recurs, switch the link target.
 - **Ghost card after Not for Me** (trying it, Oct 31): faded in place with "Hidden · Undo" for 5 seconds, paused
