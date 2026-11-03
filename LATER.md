@@ -90,6 +90,7 @@ choices when the window redraws. When merging next into main, next's version win
   All Private; imports always ask; unowned books never appear. (3) Nudge in the group library when all your copies
   are private: "Your N books are private..." Choose Books to Share, Not Now (back after a month), Don't Show Again.
   (4) Empty group library: "The [group] Library Is Empty" with Share Books I Own. James: wording fine for now.
+  **Built Nov 3 on main (merged into next): 1, 3, 4, 5.** Waiting: 2, with the Goodreads import.
 
 ## Issues
 
