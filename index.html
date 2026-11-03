@@ -3373,7 +3373,7 @@ function calcLog(){
     }
     if(end>=b.total)parts.push(`<b>That’s the end of the book!</b>`);
   }else parts.push('Pages read <b>—</b>');
-  const mh=document.getElementById('minHint');if(mh)mh.textContent=minutes==null||(minutes<60&&/^\d+$/.test(String(logForm.minutes.value).trim()))?'':isNaN(minutes)?'Try 90, 1:30, or 2h 30m':`= ${fmtMin(minutes)}`;
+  const mh=document.getElementById('minHint');if(mh)mh.textContent=minutes==null?'':isNaN(minutes)?'Try 90, 1:30, or 2h 30m':`= ${fmtMin(minutes)}`;
   const cu=logForm.cu?.checked;
   const dt=logForm.querySelector('[name=date]')?.value||today();const ts=cu?{mins:0,pages:0}:goalState(dt);
   let addP=0,addM=0;
