@@ -543,7 +543,7 @@ button.cal-d{border:0;font:inherit;color:inherit;cursor:pointer;position:relativ
 .timer-actions{display:flex;gap:8px}.timer-actions .btn-primary{flex:1}
 .timer-actions .btn{white-space:nowrap}
 .cu-from[hidden],.cu-note[hidden],.log-ask[hidden]{display:none}
-.rt summary{cursor:pointer;list-style:none;display:inline-block}.rt summary::-webkit-details-marker{display:none}textarea.lg-note{height:44px;min-height:44px;resize:none;overflow-y:auto;max-height:160px}.lg-when{display:flex;flex-wrap:wrap;align-items:end;gap:6px 16px}.lg-when .cu-dates{flex:1 1 300px;margin:0}.lg-when .cu-dates:has(.cu-from[hidden]){flex:0 1 190px;grid-template-columns:minmax(0,1fr)}.lg-when>.chk{margin-bottom:10px}.lg-when .cu-note{flex-basis:100%}.calc .edit-goal{color:var(--primary);border-color:color-mix(in srgb,var(--primary) 55%,var(--border));font-weight:600;font-size:13px;padding:5px 12px}
+.rt summary{cursor:pointer;list-style:none;display:inline-block}.rt summary::-webkit-details-marker{display:none}textarea.lg-note{min-height:0;resize:none;overflow-y:hidden;max-height:160px}.lg-when{display:flex;flex-wrap:wrap;align-items:end;gap:6px 16px}.lg-when .cu-dates{flex:1 1 300px;margin:0}.lg-when .cu-dates:has(.cu-from[hidden]){flex:0 1 190px;grid-template-columns:minmax(0,1fr)}.lg-when>.chk{margin-bottom:10px}.lg-when .cu-note{flex-basis:100%}.calc .edit-goal{color:var(--primary);border-color:color-mix(in srgb,var(--primary) 55%,var(--border));font-weight:600;font-size:13px;padding:5px 12px}
 .sh-opts{display:grid;gap:10px}.sh-opt{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--border);border-radius:12px;padding:12px 14px;background:var(--surface);cursor:pointer}
 .sh-opt:has(input:checked){border-color:var(--primary);box-shadow:0 0 0 1px var(--primary);background:var(--primary-light)}.sh-opt input{margin-top:3px;accent-color:var(--primary)}.sh-opt b{display:block;font-size:15px}.sh-opt span span{font-size:13px;color:var(--text-2)}
 #shDlg{width:min(480px,calc(100vw - 24px))}#shBody{display:grid;gap:12px}#shBody .dlg-h{margin-bottom:0}
@@ -3218,11 +3218,13 @@ function notePromptSet(b,dk,hadDraft){
   else{const g=(titleById(b.titleId)?.genre||b.genre||'').trim(),re=S.books.some(x=>x!==b&&b.titleId&&x.titleId===b.titleId&&x.status==='finished'),
       deck=!g?'general':NP_NONFIC_GENRES.includes(g)?'nonfic':'story',R=re?NP_REREAD:[];
     np=npPick([...NP_GEN,...(deck==='nonfic'?NP_NONFIC:deck==='story'?NP_STORY:[]),...R],'npSeen_'+deck);fin=npPick([...NP_FIN,...R],'npSeen_fin');S.npLast={key:dk,np,fin};save()}
-  logForm.dataset.np=np;logForm.dataset.npf=fin;noteHint()}
+  logForm.dataset.np=np;logForm.dataset.npf=fin;const n=logForm.querySelector('[name=note]');if(n){n.placeholder=logForm.status?.value==='finished'?fin:np;requestAnimationFrame(()=>noteFit(n))}noteHint()}
+/* Grows the note box with its text (or a wrapping prompt) up to 160 px; only then can it scroll. */
+function noteFit(n){n.style.height='auto';const h=n.scrollHeight+2;n.style.height=Math.min(h,160)+'px';n.style.overflowY=h>160?'auto':'hidden'}
 function noteHint(){const n=logForm.querySelector('[name=note]');if(!n||n.value)return;// never change the prompt under someone's writing
   n.placeholder=logForm.status?.value==='finished'?logForm.dataset.npf:logForm.dataset.np;
   // On narrow phones a longer prompt wraps; let the empty box grow to show all of it.
-  requestAnimationFrame(()=>{if(n.value)return;n.style.height='';if(n.scrollHeight>n.clientHeight+2)n.style.height=n.scrollHeight+2+'px'})}
+  requestAnimationFrame(()=>noteFit(n))}
 function setLogOpt(){
   const f=logForm.dataset.focus||'',gt=S.settings.goalType;
   // Whichever box is optional says so as its placeholder, which keeps the three boxes on one row on any phone.
@@ -3381,7 +3383,7 @@ logForm.addEventListener('input',e=>{
   if(e.target.name==='finished'&&e.target.checked)logForm.status.value='finished';
   if(e.target.name==='status')logForm.finished.checked=e.target.value==='finished';
   if(e.target.name==='cu')cuShow(e.target.checked);
-  if(e.target.name==='note'){const t=e.target;t.style.height='auto';t.style.height=t.scrollHeight+2+'px';logForm.querySelector('.lg-cnt').hidden=t.value.length<150}
+  if(e.target.name==='note'){const t=e.target;noteFit(t);logForm.querySelector('.lg-cnt').hidden=t.value.length<150}
   logAskClear();
   calcLog();
 });
