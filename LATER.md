@@ -50,6 +50,12 @@ next; next-only features wait for James's approval to merge into main.
   Edit Session; tighter padding under 400 px). Note prompts: 15 general, plus 2 story or 2 nonfiction (by genre:
   Nonfiction, Memoir, Science, Religion, History), 1 reread, 4 finishing; one per opening, shuffled with no repeats
   until all have shown; kept with an unsaved draft; the empty note box grows to two lines when a prompt wraps.
+  Revised Nov 3 (James): separate decks for stories, nonfiction, general (no genre on record) and finishing; the
+  reread question added once per deck; the finishing prompt appears only while the note is empty (never under
+  someone's writing); changing the book while the note is empty picks a prompt for that book; "optional" stays in
+  the field's name for screen readers after a value hides the placeholder. Note box no longer shows scroll arrows.
+- **Standing check (James, Nov 3): watch for scroll arrows after every change.** Test script: scratch scroll.js
+  scans text fields, selects, and small panels at 320/390/1280 px, light and dark, for content taller than its box.
 
 **next-only (waiting to merge into main):** Discover release 1 (2a–2h), "Finished, date unknown", and later changes: Discover as a Library
 tab, lean cards, ghost card, finish window (queue, rate, thank, recommend), finished-only ratings, Did Not Finish
