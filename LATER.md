@@ -56,6 +56,10 @@ next; next-only features wait for James's approval to merge into main.
   the field's name for screen readers after a value hides the placeholder. Note box no longer shows scroll arrows.
 - Genre (main, merged Nov 3): Edit Book and Add a Book use a real list (common genres plus any in the library,
   None, Other… to type one). The Princess Bride's sample genre was Nonfiction; now Fantasy (fixed once in saved data).
+- Text boxes (main, merged Nov 3): one shared rule (fitTA): each multi-line box starts at its own rows, grows with
+  its text up to its max-height (240 px; book notes 320; Log Reading note 160), then scrolls; no resize handle.
+  Starting rows: Log Reading note 1, book description 2 (next), History note 2, session note 2, challenge and Battle
+  descriptions 2, borrow and reply notes 2, book notes 3.
 - **Standing check (James, Nov 3): watch for scroll arrows after every change.** Test script: scratch scroll.js
   scans text fields, selects, and small panels at 320/390/1280 px, light and dark, for content taller than its box.
 
