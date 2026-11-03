@@ -3049,7 +3049,7 @@ function openTitleEdit(id){
     <div class="f2"><label class="f"><span>Series Name <span class="sub">(optional)</span></span><input class="inp" name="tSeries" list="teSeries" value="${esc(t.series||'')}" autocomplete="off"><datalist id="teSeries">${series.map(n=>`<option value="${esc(n)}">`).join('')}</datalist></label>
     <label class="f">Book Number<input class="inp" name="tSeriesNo" inputmode="decimal" value="${t.seriesNo??''}"></label></div>
     <label class="f"><span>Books in the Series <span class="sub">(if known)</span></span><input class="inp" name="tSeriesLen" inputmode="numeric" value="${t.series?(S.seriesLen?.[t.series]??''):''}"></label>
-    <label class="f"><span>Description <span class="sub">(optional, shown in About)</span></span><textarea class="inp" name="tDesc" rows="5" maxlength="3000" placeholder="What the book is about, without spoilers">${esc(t.descText||'')}</textarea></label>
+    <label class="f"><span>Description <span class="sub">(optional, shown in About)</span></span><textarea class="inp" name="tDesc" rows="2" maxlength="3000" placeholder="What the book is about, without spoilers">${esc(t.descText||'')}</textarea></label>
     <div class="section-t">Cover</div>
     <div class="te-cover"><div class="te-prev"><div id="tePrev"></div><span class="xs muted" id="teSrc" aria-live="polite"></span><button type="button" class="link-btn sm" data-act="teGen">Use Generated Cover</button></div>
       <div class="te-panel"><div class="vseg ad-tabs" role="group" aria-label="Cover source">${[['url','Web Address'],['upload','Upload'],['ol','Open Library']].map(([k,l])=>`<button type="button" aria-pressed="${te.tab===k}" data-act="teTab" data-v="${k}">${l}</button>`).join('')}</div><div id="tePanel"></div></div></div>
