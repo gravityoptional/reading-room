@@ -54,6 +54,8 @@ next; next-only features wait for James's approval to merge into main.
   reread question added once per deck; the finishing prompt appears only while the note is empty (never under
   someone's writing); changing the book while the note is empty picks a prompt for that book; "optional" stays in
   the field's name for screen readers after a value hides the placeholder. Note box no longer shows scroll arrows.
+- Genre (main, merged Nov 3): Edit Book and Add a Book use a real list (common genres plus any in the library,
+  None, Other… to type one). The Princess Bride's sample genre was Nonfiction; now Fantasy (fixed once in saved data).
 - **Standing check (James, Nov 3): watch for scroll arrows after every change.** Test script: scratch scroll.js
   scans text fields, selects, and small panels at 320/390/1280 px, light and dark, for content taller than its box.
 
