@@ -268,6 +268,7 @@ dialog::backdrop{background:rgba(15,23,42,.45)}
 .f2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
 .f3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .f2 .inp,.f3 .inp{min-width:0;width:100%;box-sizing:border-box}
+.f3>label.f{white-space:nowrap;min-width:0}@media (max-width:400px){.f3{gap:6px}.f3 .inp{padding-left:9px;padding-right:4px}}.f3 .min-hint{white-space:normal}
 label.f{display:grid;gap:5px;font-size:13px;font-weight:500}
 label.f .sub{font-weight:400;color:var(--text-2)}
 .inp{width:100%;border:1px solid var(--border);background:var(--surface);border-radius:10px;padding:10px 12px;font-size:15px}
@@ -647,7 +648,7 @@ button.cal-d{border:0;font:inherit;color:inherit;cursor:pointer;position:relativ
   .side-acts-m .sa{border-radius:999px;padding:4px 10px}
   .d-stats{grid-template-columns:1fr 1fr}
   .d-title{font-size:22px}
-  .f3{grid-template-columns:1fr 1fr}
+  .f3{gap:8px}
   .bnav{display:grid;grid-template-columns:repeat(4,1fr);position:fixed;left:0;right:0;bottom:0;z-index:9;background:var(--surface);border-top:1px solid var(--border);padding-bottom:env(safe-area-inset-bottom,0px)}
   .bnav button{border:0;background:none;display:grid;justify-items:center;gap:3px;padding:9px 4px 8px;font-size:11px;color:var(--text-2)}
   .bnav button svg.i{width:22px;height:22px}
@@ -3377,7 +3378,7 @@ function openSess(id){
   const x=S.sessions.find(y=>y.id===id);if(!x)return;const b=book(x.bookId),audio=b?.format==='audio',v=n=>n==null?'':audio?fmtPos(n):n;
   sessForm.dataset.id=id;
   sessForm.innerHTML=`<div class="dlg-h"><div style="flex:1;min-width:0"><h2 id="seTitle">Edit Session</h2><div class="small muted">${esc(b?b.title:'')}</div></div><button type="button" class="icon-btn x" data-act="closeSess" aria-label="Close">${ic('x')}</button></div>
-  <div class="form"><div class="f3"><label class="f">${audio?'Start Position':'Starting Page'}<input class="inp" name="start" value="${v(x.start)}" inputmode="${audio?'text':'numeric'}"></label><label class="f">${audio?'End Position':'Ending Page'}<input class="inp" name="end" value="${v(x.end)}" inputmode="${audio?'text':'numeric'}"></label><label class="f">Minutes<input class="inp" name="minutes" value="${x.minutes??''}" inputmode="text" placeholder="90 or 1:30"></label></div>
+  <div class="form"><div class="f3"><label class="f">${audio?'Start':'Start Page'}<input class="inp" name="start" value="${v(x.start)}" inputmode="${audio?'text':'numeric'}" placeholder="${audio?'h:mm':''}"></label><label class="f">${audio?'End':'End Page'}<input class="inp" name="end" value="${v(x.end)}" inputmode="${audio?'text':'numeric'}" placeholder="${audio?'h:mm':''}"></label><label class="f">Minutes<input class="inp" name="minutes" value="${x.minutes??''}" inputmode="text" placeholder="1:30"></label></div>
   ${x.start==null&&x.pages?`<label class="f">Pages Read<input class="inp" name="pagesOnly" value="${x.pages}" inputmode="numeric"></label>`:''}
   ${isCU(x)?`<div class="f2"><label class="f">From<input class="inp" type="date" name="from" value="${x.from}" max="${today()}"></label><label class="f">To<input class="inp" type="date" name="date" value="${x.date}" max="${today()}"></label></div><span class="xs muted">Catch-up reading counts toward totals and challenges, but not streaks or daily goals.</span>`:`<label class="f">Date<input class="inp" type="date" name="date" value="${x.date}" max="${today()}"></label>`}
   <label class="f"><span>Note <span class="sub">(optional, only you see it)</span></span><textarea class="inp" name="note" maxlength="200" data-count="200" aria-describedby="sessNoteCount">${esc(x.note||'')}</textarea>${charCount('sessNoteCount',(x.note||'').length,200)}</label>
@@ -3962,10 +3963,29 @@ function openLog(bookId,focus,preMin){
 let pendingNew=null;
 const findB=id=>book(id)||(pendingNew&&pendingNew.id===id?pendingNew:null);
 /* Log Pages marks Minutes optional and Log Time marks the ending page optional; from Log Reading the goal type decides, and Both marks neither. */
+/* Note prompts: one per opening, shuffled so every prompt shows before any repeats. Stories and nonfiction (by
+   genre) each add their own two; rereads add one; finishing the book switches to a finishing prompt. Coming back to
+   an unsaved entry keeps the prompt it had. The field's label stays "Add a Note"; the prompt is only a hint. */
+const NP_GEN=['What stayed with you?','What surprised you?','A line worth remembering?','How did this part feel?','What are you wondering about?','What made you pause?','A thought to come back to?','Tell a friend about this part?','Did anything change your mind?','What would you ask the author?','What did this remind you of?','Something you’d underline?','Who did this make you think of?','What will you remember tomorrow?','A word or idea you looked up?'],
+  NP_STORY=['What do you think happens next?','Who are you rooting for?'],NP_NONFIC=['What idea will you try?','Anything you disagreed with?'],
+  NP_REREAD=['What did you notice this time?'],NP_FIN=['How did it end for you?','Who should read this next?','Will you remember this one?','What will stay with you?'],
+  NP_NONFIC_GENRES=['Nonfiction','Memoir','Science','Religion','History'];
+function npPick(pool,seenKey){const seen=S[seenKey]=(S[seenKey]||[]).filter(x=>pool.includes(x));let left=pool.filter(x=>!seen.includes(x));
+  if(!left.length){S[seenKey]=seen.slice(-1);left=pool.filter(x=>!S[seenKey].includes(x))}const p=left[Math.floor(Math.random()*left.length)];S[seenKey].push(p);return p}
+function notePromptSet(b,dk,hadDraft){
+  const last=S.npLast;let np,fin;
+  if(hadDraft&&last&&last.key===dk){np=last.np;fin=last.fin}
+  else{const g=titleById(b.titleId)?.genre||b.genre||'',re=S.books.some(x=>x!==b&&b.titleId&&x.titleId===b.titleId&&x.status==='finished');
+    np=npPick([...NP_GEN,...(NP_NONFIC_GENRES.includes(g)?NP_NONFIC:NP_STORY),...(re?NP_REREAD:[])],'npSeen');fin=npPick(NP_FIN,'npFinSeen');S.npLast={key:dk,np,fin};save()}
+  logForm.dataset.np=np;logForm.dataset.npf=fin;noteHint()}
+function noteHint(){const n=logForm.querySelector('[name=note]');if(!n)return;n.placeholder=logForm.status?.value==='finished'?logForm.dataset.npf:logForm.dataset.np;
+  // On narrow phones a longer prompt wraps; let the empty box grow to show all of it.
+  requestAnimationFrame(()=>{if(n.value)return;n.style.height='';if(n.scrollHeight>n.clientHeight+2)n.style.height=n.scrollHeight+2+'px'})}
 function setLogOpt(){
   const f=logForm.dataset.focus||'',gt=S.settings.goalType;
-  logForm.querySelector('[data-opt=end]')?.toggleAttribute('hidden',!(f==='minutes'||(!f&&gt==='minutes')));
-  logForm.querySelector('[data-opt=min]')?.toggleAttribute('hidden',!(f==='end'||f==='audio'||(!f&&gt==='pages')));
+  // Whichever box is optional says so as its placeholder, which keeps the three boxes on one row on any phone.
+  const ph=(n,opt)=>{const el=logForm.querySelector(`[name=${n}]`);if(el)el.placeholder=opt?'Optional':el.dataset.ph||''};
+  ph('end',f==='minutes'||(!f&&gt==='minutes'));ph('minutes',f==='end'||f==='audio'||(!f&&gt==='pages'));
 }
 function drawLog(b,focus,preMin){
   if(logDlg.open&&logForm.dataset.mode==='log')draftSave(logForm);
@@ -3985,23 +4005,24 @@ function drawLog(b,focus,preMin){
       <option value="paused">Paused</option><option value="finished">Finished</option><option value="dnf">Did Not Finish</option></select></label>
     <div class="section-t">${audio?'Listening Progress':'Reading Progress'}</div>
     <div class="f3">
-      <label class="f">${audio?'Start Position':'Starting Page'}<input class="inp" name="start" inputmode="${audio?'text':'numeric'}" value="${audio?fmtPos(b.pos):b.pos}" placeholder="${audio?'h:mm':''}"></label>
-      <label class="f"><span>${audio?'End Position':'Ending Page'} <span class="sub" data-opt="end" hidden>(optional)</span></span><input class="inp" name="end" inputmode="${audio?'text':'numeric'}" placeholder="${audio?'h:mm':'Page'}"></label>
-      <label class="f"><span>Minutes <span class="sub" data-opt="min" hidden>(optional)</span></span><input class="inp" name="minutes" inputmode="text" autocomplete="off" value="${preMin||''}" placeholder="${audio?'Time spent':'Minutes'}" aria-describedby="minHint"><span class="xs muted min-hint" id="minHint" aria-live="polite"></span></label>
+      <label class="f">${audio?'Start':'Start Page'}<input class="inp" name="start" inputmode="${audio?'text':'numeric'}" value="${audio?fmtPos(b.pos):b.pos}" placeholder="${audio?'h:mm':''}"></label>
+      <label class="f">${audio?'End':'End Page'}<input class="inp" name="end" inputmode="${audio?'text':'numeric'}" placeholder="${audio?'h:mm':''}" data-ph="${audio?'h:mm':''}"></label>
+      <label class="f">Minutes<input class="inp" name="minutes" inputmode="text" autocomplete="off" value="${preMin||''}" placeholder="" data-ph="" aria-describedby="minHint"><span class="xs muted min-hint" id="minHint" aria-live="polite"></span></label>
     </div>
     <div class="calc" id="calc"></div>
     <div class="xs muted" style="margin-top:-8px" ${!audio&&!isNew?'hidden':''}>${audio?`Total length ${fmtPos(b.total)}. Enter positions as h:mm. Add minutes for the time you actually spent listening; otherwise the change in position counts as estimated time.`:(isNew?`New book: the starting page is 0, so reading pages 1–20 counts as 20 pages. Saving starts the book even if you don’t log pages yet.`:`The starting page is where you left off. Enter pages, minutes, or both.`)}</div>
     <details class="rt"><summary class="link-btn sm">Read with someone?</summary><div class="chips" style="margin-top:8px">${Object.entries(S.members).map(([k,m])=>`<label class="tog"><input type="checkbox" name="with" value="${k}"><span>${esc(m.name)}</span></label>`).join('')}</div><span class="xs muted">Reading aloud or side by side? Everyone you choose gets credit for this session too.</span></details>
     <div class="f lg-when"><div class="f2 cu-dates"><label class="f cu-from" hidden>From<input class="inp" type="date" name="from" max="${today()}"></label><label class="f"><span class="cu-to">Date</span><input class="inp" type="date" name="date" value="${today()}" max="${today()}"></label></div>
       <label class="chk"><input type="checkbox" name="cu"> Covers more than one day</label><span class="xs muted cu-note" hidden>Counts toward totals and challenges, but not streaks or daily goals.</span></div>
-    <label class="f"><span>Add a Note <span class="sub">(optional, only you see it)</span></span><textarea class="inp lg-note" name="note" rows="1" maxlength="200" data-count="200" aria-describedby="logNoteCount" placeholder="What did you read today?"></textarea><span class="lg-cnt" hidden>${charCount('logNoteCount',0,200)}</span></label>
+    <label class="f"><span>Add a Note <span class="sub">(optional, only you see it)</span></span><textarea class="inp lg-note" name="note" rows="1" maxlength="200" data-count="200" aria-describedby="logNoteCount" placeholder=""></textarea><span class="lg-cnt" hidden>${charCount('logNoteCount',0,200)}</span></label>
     <input type="checkbox" name="finished" hidden tabindex="-1" aria-hidden="true">
     <div class="err" id="logErr" role="alert"></div><div class="log-ask" id="logAsk" hidden></div>
     <div class="dlg-f"><button type="button" class="btn btn-ghost" data-act="cancelLog">Cancel</button><button type="submit" class="btn btn-primary">Save Reading</button></div>
   </div>`;
   logForm.dataset.book=b.id;logForm.dataset.mode='log';logForm.dataset.ok='';logForm.dataset.autoFin='';
   if(S.settings.solo)logForm.querySelector('.rt')?.remove();
-  draftAttach(logForm,'log:'+(b.titleId||b.id),'reading entry',preMin?['minutes']:null);
+  const dk='log:'+(b.titleId||b.id),hadDraft=draftAttach(logForm,dk,'reading entry',preMin?['minutes']:null);
+  notePromptSet(b,dk,hadDraft);
   setLogOpt();calcLog();
 }
 function cuShow(on){
@@ -4114,6 +4135,7 @@ logForm.addEventListener('input',e=>{
     if(fin&&logForm.status.value!=='finished'){logForm.dataset.autoFin=logForm.status.value;logForm.status.value='finished';logForm.finished.checked=true}
     else if(!fin&&logForm.dataset.autoFin){logForm.status.value=logForm.dataset.autoFin;logForm.dataset.autoFin='';logForm.finished.checked=false}}
   if(e.target.name==='status')logForm.dataset.autoFin='';
+  if(e.target.name==='status'||e.target.name==='end'||e.target.name==='finished')noteHint();
   if(e.target.name==='finished'&&e.target.checked)logForm.status.value='finished';
   if(e.target.name==='status')logForm.finished.checked=e.target.value==='finished';
   if(e.target.name==='cu')cuShow(e.target.checked);
