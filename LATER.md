@@ -34,6 +34,11 @@ next; next-only features wait for James's approval to merge into main.
   new books, Read with someone? folds the names, Date and Covers more than one day share a row, the note is one
   line that grows, its count shows from 150 characters). next's own book details and Library templates carry the
   same tab attributes; next also keeps focus through any book details redraw.
+- Appearance package (main, merged Nov 3; colors and lineup from James's Appearance Package, prepared in the
+  ChatGPT copy): each palette recolors the whole app and has its own dark version; Default keeps today's look under
+  the stored key sage; new Sage (sage-green), Espresso and Forest; Dashboard scene follows the palette. Contrast
+  checked on all 22 combinations: Lavender, Meadow, Slate and Amber light were nudged darker to reach 4.5:1; Default
+  is unchanged (its secondary text on the alternate surface is 4.25:1 light, 4.04:1 dark, as before).
 
 **next-only (waiting to merge into main):** Discover release 1 (2a–2h), "Finished, date unknown", and later changes: Discover as a Library
 tab, lean cards, ghost card, finish window (queue, rate, thank, recommend), finished-only ratings, Did Not Finish
