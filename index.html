@@ -3972,19 +3972,23 @@ const NP_GEN=['What stayed with you?','What surprised you?','A line worth rememb
   NP_NONFIC_GENRES=['Nonfiction','Memoir','Science','Religion','History'];
 function npPick(pool,seenKey){const seen=S[seenKey]=(S[seenKey]||[]).filter(x=>pool.includes(x));let left=pool.filter(x=>!seen.includes(x));
   if(!left.length){S[seenKey]=seen.slice(-1);left=pool.filter(x=>!S[seenKey].includes(x))}const p=left[Math.floor(Math.random()*left.length)];S[seenKey].push(p);return p}
+/* Separate shuffled decks: stories, nonfiction, general (no genre on record), and finishing. A reread adds its
+   question once to whichever decks apply. */
 function notePromptSet(b,dk,hadDraft){
   const last=S.npLast;let np,fin;
   if(hadDraft&&last&&last.key===dk){np=last.np;fin=last.fin}
-  else{const g=titleById(b.titleId)?.genre||b.genre||'',re=S.books.some(x=>x!==b&&b.titleId&&x.titleId===b.titleId&&x.status==='finished');
-    np=npPick([...NP_GEN,...(NP_NONFIC_GENRES.includes(g)?NP_NONFIC:NP_STORY),...(re?NP_REREAD:[])],'npSeen');fin=npPick(NP_FIN,'npFinSeen');S.npLast={key:dk,np,fin};save()}
+  else{const g=(titleById(b.titleId)?.genre||b.genre||'').trim(),re=S.books.some(x=>x!==b&&b.titleId&&x.titleId===b.titleId&&x.status==='finished'),
+      deck=!g?'general':NP_NONFIC_GENRES.includes(g)?'nonfic':'story',R=re?NP_REREAD:[];
+    np=npPick([...NP_GEN,...(deck==='nonfic'?NP_NONFIC:deck==='story'?NP_STORY:[]),...R],'npSeen_'+deck);fin=npPick([...NP_FIN,...R],'npSeen_fin');S.npLast={key:dk,np,fin};save()}
   logForm.dataset.np=np;logForm.dataset.npf=fin;noteHint()}
-function noteHint(){const n=logForm.querySelector('[name=note]');if(!n)return;n.placeholder=logForm.status?.value==='finished'?logForm.dataset.npf:logForm.dataset.np;
+function noteHint(){const n=logForm.querySelector('[name=note]');if(!n||n.value)return;// never change the prompt under someone's writing
+  n.placeholder=logForm.status?.value==='finished'?logForm.dataset.npf:logForm.dataset.np;
   // On narrow phones a longer prompt wraps; let the empty box grow to show all of it.
   requestAnimationFrame(()=>{if(n.value)return;n.style.height='';if(n.scrollHeight>n.clientHeight+2)n.style.height=n.scrollHeight+2+'px'})}
 function setLogOpt(){
   const f=logForm.dataset.focus||'',gt=S.settings.goalType;
   // Whichever box is optional says so as its placeholder, which keeps the three boxes on one row on any phone.
-  const ph=(n,opt)=>{const el=logForm.querySelector(`[name=${n}]`);if(el)el.placeholder=opt?'Optional':el.dataset.ph||''};
+  const ph=(n,opt)=>{const el=logForm.querySelector(`[name=${n}]`);if(!el)return;el.placeholder=opt?'Optional':el.dataset.ph||'';const sr=el.closest('label')?.querySelector('.opt-sr');if(sr)sr.textContent=opt?', optional':''};// the label keeps "optional" for screen readers once a value hides the placeholder
   ph('end',f==='minutes'||(!f&&gt==='minutes'));ph('minutes',f==='end'||f==='audio'||(!f&&gt==='pages'));
 }
 function drawLog(b,focus,preMin){
@@ -4006,8 +4010,8 @@ function drawLog(b,focus,preMin){
     <div class="section-t">${audio?'Listening Progress':'Reading Progress'}</div>
     <div class="f3">
       <label class="f">${audio?'Start':'Start Page'}<input class="inp" name="start" inputmode="${audio?'text':'numeric'}" value="${audio?fmtPos(b.pos):b.pos}" placeholder="${audio?'h:mm':''}"></label>
-      <label class="f">${audio?'End':'End Page'}<input class="inp" name="end" inputmode="${audio?'text':'numeric'}" placeholder="${audio?'h:mm':''}" data-ph="${audio?'h:mm':''}"></label>
-      <label class="f">Minutes<input class="inp" name="minutes" inputmode="text" autocomplete="off" value="${preMin||''}" placeholder="" data-ph="" aria-describedby="minHint"><span class="xs muted min-hint" id="minHint" aria-live="polite"></span></label>
+      <label class="f">${audio?'End':'End Page'}<span class="sr-only opt-sr"></span><input class="inp" name="end" inputmode="${audio?'text':'numeric'}" placeholder="${audio?'h:mm':''}" data-ph="${audio?'h:mm':''}"></label>
+      <label class="f">Minutes<span class="sr-only opt-sr"></span><input class="inp" name="minutes" inputmode="text" autocomplete="off" value="${preMin||''}" placeholder="" data-ph="" aria-describedby="minHint"><span class="xs muted min-hint" id="minHint" aria-live="polite"></span></label>
     </div>
     <div class="calc" id="calc"></div>
     <div class="xs muted" style="margin-top:-8px" ${!audio&&!isNew?'hidden':''}>${audio?`Total length ${fmtPos(b.total)}. Enter positions as h:mm. Add minutes for the time you actually spent listening; otherwise the change in position counts as estimated time.`:(isNew?`New book: the starting page is 0, so reading pages 1–20 counts as 20 pages. Saving starts the book even if you don’t log pages yet.`:`The starting page is where you left off. Enter pages, minutes, or both.`)}</div>
