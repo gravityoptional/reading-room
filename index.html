@@ -3222,11 +3222,13 @@ function npPick(pool,seenKey){const seen=S[seenKey]=(S[seenKey]||[]).filter(x=>p
 /* Separate shuffled decks: stories, nonfiction, general (no genre on record), and finishing. A reread adds its
    question once to whichever decks apply. */
 function notePromptSet(b,dk,hadDraft){
-  const last=S.npLast;let np,fin;
-  if(hadDraft&&last&&last.key===dk){np=last.np;fin=last.fin}
+  // Prompts are remembered per book draft (like the drafts themselves), so switching books never changes another draft's prompt.
+  const keep=S.npKeep=S.npKeep||{},drafts=draftsAll();for(const k in keep)if(!drafts[k]&&k!==dk)delete keep[k];
+  const last=keep[dk];let np,fin;
+  if(hadDraft&&last){np=last.np;fin=last.fin}
   else{const g=(titleById(b.titleId)?.genre||b.genre||'').trim(),re=S.books.some(x=>x!==b&&b.titleId&&x.titleId===b.titleId&&x.status==='finished'),
       deck=!g?'general':NP_NONFIC_GENRES.includes(g)?'nonfic':'story',R=re?NP_REREAD:[];
-    np=npPick([...NP_GEN,...(deck==='nonfic'?NP_NONFIC:deck==='story'?NP_STORY:[]),...R],'npSeen_'+deck);fin=npPick([...NP_FIN,...R],'npSeen_fin');S.npLast={key:dk,np,fin};save()}
+    np=npPick([...NP_GEN,...(deck==='nonfic'?NP_NONFIC:deck==='story'?NP_STORY:[]),...R],'npSeen_'+deck);fin=npPick([...NP_FIN,...R],'npSeen_fin');keep[dk]={np,fin};save()}
   logForm.dataset.np=np;logForm.dataset.npf=fin;const n=logForm.querySelector('[name=note]');if(n){n.placeholder=logForm.status?.value==='finished'?fin:np;requestAnimationFrame(()=>noteFit(n))}noteHint()}
 /* Every multi-line box starts at its own height (its rows), grows with its text up to its limit (max-height), and
    only scrolls past that, so no box shows scroll arrows while there's room. */
