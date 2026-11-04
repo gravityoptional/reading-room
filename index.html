@@ -904,6 +904,7 @@ main section.card .card-h .ico{display:none}
 @media (max-width:720px){.sel-bar{bottom:calc(72px + env(safe-area-inset-bottom,0px))}}
 .req-st{font-size:12px;color:var(--text-2)}.req-st.ok{color:var(--primary);font-weight:600}
 .req-msg{display:block;margin-top:3px;font-style:italic;color:var(--text-2)}.notif p.req-msg{margin:2px 0 0;font-size:13px}
+.beta-tag{background:#EAB308!important;color:#1F2937!important}
 .next-tag{font:600 11px/1 Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:var(--accent,#F97316);border-radius:999px;padding:4px 8px;vertical-align:middle}
 .req-back{font-size:13px;color:var(--text);font-style:italic}
 .notif-req .req-compose{margin-top:8px}.req-reply{flex-basis:100%}
@@ -1392,8 +1393,14 @@ function seed(){
   };
 }
 /* The test-bed copy published at /next/ keeps its own saved data, so it never reads or overwrites the main prototype's. */
-const NEXT=/\/next\//.test(location.pathname);
-if(NEXT){document.title=document.title.replace('Reading Room','Reading Room Next');document.querySelector('.brand').insertAdjacentHTML('beforeend',' <span class="next-tag">Next</span>')}
+/* Alpha (the site address) and Beta (/beta/, the test bed) run the same code; the address decides the label and the
+   saved data. Beta keeps the test bed's data (the rr-next names it has always used). Alpha took over from the main
+   prototype on Nov 4, 2026: the first time Alpha opens in a browser that has the test bed's data, it carries that
+   data over once, keeping the old main data as a "-before-alpha" backup. */
+const BETA=/\/beta\//.test(location.pathname),NEXT=BETA;
+document.title=document.title.replace('Reading Room',BETA?'Reading Room Beta':'Reading Room Alpha');
+document.querySelector('.brand').insertAdjacentHTML('beforeend',BETA?' <span class="next-tag beta-tag">Beta</span>':' <span class="next-tag">Alpha</span>');
+if(!BETA){try{const ls=localStorage;if(!ls.getItem('rr-alpha-carried')){if(ls.getItem('rr-next-v1'))[['rr-next-v1','rr-editorial-proto-v1'],['rr_next_hero_v1','rr_editorial_hero_v1'],['rr_next_drafts_v1','rr_drafts_v1'],['rr-next-disc-v1','rr-disc-v1']].forEach(([from,to])=>{const v=ls.getItem(from);if(v==null)return;try{const old=ls.getItem(to);if(old!=null)ls.setItem(to+'-before-alpha',old)}catch(e){}try{ls.setItem(to,v)}catch(e){}});ls.setItem('rr-alpha-carried','1')}}catch(e){}}
 const KEY=NEXT?'rr-next-v1':'rr-editorial-proto-v1';
 let S;
 try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){S=null}

@@ -1,4 +1,4 @@
-# Publishes the main prototype at the site address and the next branch (the test bed) at /next/.
+# Publishes Alpha (the main branch) at the site address and Beta (the next branch, the test bed) at /beta/.
 name: Publish site
 on:
   push:
@@ -29,9 +29,9 @@ jobs:
         continue-on-error: true
       - name: Assemble the site
         run: |
-          mkdir -p _site/next
+          mkdir -p _site/beta
           cp main/index.html _site/
-          if [ -f next/index.html ]; then cp next/index.html _site/next/; else rm -rf _site/next; fi
+          if [ -f next/index.html ]; then cp next/index.html _site/beta/; else rm -rf _site/beta; fi
           touch _site/.nojekyll
       - uses: actions/upload-pages-artifact@v3
       - id: deploy

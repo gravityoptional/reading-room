@@ -1,5 +1,24 @@
 # Later
 
+## Roles from Nov 4, 2026 (read this first, RC session)
+
+- **Alpha** = the `main` branch, published at the site address (gravityoptional.github.io/reading-room/). Orange-red
+  ALPHA label. It replaced the old main prototype on Nov 4: main was fast-forwarded to next (Discover release 1 and
+  everything after it). The old main session is packaged in the private repo `reading-room-notes`.
+- **Beta** = the `next` branch, the test bed, published at **/beta/** (no longer /next/; no redirect). Yellow BETA
+  label. New work goes to Beta first and moves to Alpha only with James's approval, as next and main did before.
+- Same code on both: the address decides the label and the saved data. Beta keeps the test bed's data (the
+  `rr-next-*` / `rr_next_*` names). Alpha uses `rr-editorial-proto-v1` and friends; the first time Alpha opens in a
+  browser with test-bed data it copies it over once (flag `rr-alpha-carried`, old main data kept as
+  `...-before-alpha`).
+- Branch names stay `main` and `next` so the publishing workflow keeps working. Shared fixes: Alpha (main) first,
+  then merge into Beta (next), as before.
+- ChatGPT copy sync recipe: the identity lines are now the `BETA` block (not `NEXT`); swap that block for the
+  ChatGPT identity and keep the copy's `rr-chatgpt-*` storage names.
+- Standing checks after every change: scroll arrows (text fields, selects, small panels at 320/390/1280, light and
+  dark), page errors, tap count, phone and desktop previews before publishing.
+- Phase 3 (live beta) planning and bug chasing continue in the new session, RC.
+
 Known issues and follow-ups for the next prototype. Not published; the site only serves index.html.
 
 ## Merging into main
