@@ -564,7 +564,15 @@ button.cal-d{border:0;font:inherit;color:inherit;cursor:pointer;position:relativ
 #shDlg{width:min(480px,calc(100vw - 24px))}#shBody{display:grid;gap:12px}#shBody .dlg-h{margin-bottom:0}
 .sh-nudge{display:flex;gap:12px 14px;align-items:center;flex-wrap:wrap;border:1px solid color-mix(in srgb,var(--primary) 35%,var(--border));background:var(--primary-light);border-radius:14px;padding:14px 16px;margin:0 0 14px}
 .sh-nudge .t{flex:1 1 240px}.sh-nudge .t b{display:block;font-family:var(--serif);font-size:17px}.sh-nudge .t span{font-size:13px;color:var(--text-2)}.sh-nudge .a{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.inp[hidden]{display:none}.genre-other{margin-top:6px}
+.inp[hidden]{display:none}
+.gt .fl{font-size:13px;font-weight:500;margin:0}.gt{display:grid;gap:6px}
+.gt-type{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%;max-width:380px;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--surface)}
+.gt-seg{position:relative;cursor:pointer}.gt-seg input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}.gt-seg span{display:block;padding:8px 6px;font-size:14px;color:var(--text-2);text-align:center;white-space:nowrap}
+.gt-seg+.gt-seg span{border-left:1px solid var(--border)}.gt-seg input:checked+span{background:var(--primary-light);color:var(--primary);font-weight:600}.gt-seg input:focus-visible+span{outline:2px solid var(--primary);outline-offset:-3px}
+.gt-combo{position:relative}.gt-combo .inp{padding-right:40px}.gt-tog{position:absolute;right:4px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--text-2);padding:8px;cursor:pointer;display:flex}.gt-tog svg.i{width:16px;height:16px}
+.gt-list{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:30;margin:0;padding:4px;list-style:none;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 30px rgba(15,23,42,.18);max-height:228px;overflow-y:auto}
+.gt-list li{padding:9px 10px;border-radius:7px;cursor:pointer;font-size:15px}.gt-list li[aria-selected=true]{background:var(--primary-light);color:var(--primary)}.gt-list li.gt-cur{font-weight:600}.gt-list li.gt-cur::after{content:"  ✓"}.gt-list .gt-use{font-style:italic}.gt-list .gt-none{color:var(--text-2);cursor:default}
+.gt-msg{color:var(--red,#B42318)}.gt-msg:empty{display:none}.gt-bad .gt-combo .inp{border-color:var(--red,#B42318)}
 /* Placeholder text (examples and prompts inside boxes) is quieter than what people type: italic, 14 px, secondary color. */
 .inp::placeholder,input.search::placeholder,.search input::placeholder{font-style:italic;font-size:14px;color:var(--text-2);opacity:1}
 .min-hint{margin:-2px 0 -10px;line-height:1.2}.min-hint:empty{display:none}.f3:has(.min-hint){align-items:start}.cf-warn{color:var(--warn,#9a5b00)}.cf-warn:empty{display:none}.log-ask{border:1px solid var(--border);background:var(--surface-2,var(--surface));border-radius:12px;padding:10px 12px;display:grid;gap:8px}.log-ask p{margin:0}.log-ask-b{display:flex;flex-wrap:wrap;gap:8px}.cu-dates{margin-bottom:6px}.timer-actions{align-items:flex-start}.timer-actions>.btn,.hero2-acts .timer-actions>.btn{flex:0 0 auto}.timer-redo .link-btn{white-space:nowrap}.ta-main{flex:1;min-width:0;display:grid;gap:4px}.ta-main .btn-primary{width:100%}.timer-redo{display:flex;gap:6px;align-items:center;justify-content:center}
@@ -1391,6 +1399,54 @@ let S;
 try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){S=null}
 if(!S||S.v!==6)S=seed();
 /* Fill in anything the saved or freshly seeded data is missing. Runs on load and again after Restore Sample Data or the new-member view, which replace S. */
+/* Genre and Type. GENRE_GROUPS classifies each listed genre (fiction, nonfiction, or either). genreKey matches genres
+   regardless of case, spacing, and apostrophe style, and genreValue saves a typed genre in the spelling already used.
+   Type (Fiction / Nonfiction / Not Set) is optional and stored on the book; it settles genres that can be either. */
+const GENRE_GROUPS={fiction:['Fantasy','Fiction','Historical Fiction','Horror','Mystery','Romance','Science Fiction','Thriller'],
+  nonfiction:['Biography','Business','History','Memoir','Nonfiction','Religion','Science','Self-Help'],
+  either:['Classics','Children’s','Young Adult','Graphic Novel','Poetry','Humor']};
+const GENRES=Object.values(GENRE_GROUPS).flat().sort((a,b)=>a.localeCompare(b));
+const genreKey=g=>String(g||'').trim().replace(/\s+/g,' ').replace(/[’‘]/g,"'").toLowerCase();
+function genreClass(g){const k=genreKey(g);if(!k)return 'none';return Object.keys(GENRE_GROUPS).find(c=>GENRE_GROUPS[c].some(x=>genreKey(x)===k))||'unknown'}
+function genreValue(g){const v=String(g||'').trim().replace(/\s+/g,' '),k=genreKey(v);return [...GENRES,...S.titles.map(t=>t.genre).filter(Boolean)].find(x=>genreKey(x)===k)||v}
+const genreAll=()=>{const seen=new Set();return [...GENRES,...S.titles.map(t=>t.genre).filter(Boolean)].map(genreValue).filter(g=>{const k=genreKey(g);if(!k||seen.has(k))return false;seen.add(k);return true}).sort((a,b)=>a.localeCompare(b))};
+const bookType=t=>t?.type||(['fiction','nonfiction'].includes(genreClass(t?.genre))?genreClass(t.genre):'');
+const TYPE_L={fiction:'Fiction',nonfiction:'Nonfiction'};
+function genreConflict(type,g){const c=genreClass(g);return type&&(c==='fiction'||c==='nonfiction')&&c!==type?`${genreValue(g)} is a ${c} genre. Choose a ${type} genre, or set Type back to ${TYPE_L[c]} or Not Set.`:''}
+function genreField(p,genre,type){type=type||'';
+  return `<div class="f gt" data-gt="${p}"><span class="fl" id="${p}TypeL">Type <span class="sub">(optional)</span></span>
+  <div class="gt-type" role="radiogroup" aria-labelledby="${p}TypeL">${[['fiction','Fiction'],['nonfiction','Nonfiction'],['','Not Set']].map(([v,l])=>`<label class="gt-seg"><input type="radio" name="${p}TypeR" value="${v}" ${type===v?'checked':''}><span>${l}</span></label>`).join('')}</div>
+  <input type="hidden" id="${p}Type" name="${p}Type" value="${type}">
+  <label class="fl" for="${p}Genre" id="${p}GenreL" style="margin-top:4px">Genre <span class="sub">(optional)</span></label>
+  <div class="gt-combo"><input class="inp" id="${p}Genre" name="${p}Genre" role="combobox" aria-expanded="false" aria-controls="${p}GenreList" aria-autocomplete="list" aria-describedby="${p}GenreMsg" autocomplete="off" value="${esc(genre||'')}" placeholder="Search or type a genre"><button type="button" class="gt-tog" tabindex="-1" aria-hidden="true" data-gt-tog>${ic('chev')}</button>
+  <ul class="gt-list" id="${p}GenreList" role="listbox" aria-labelledby="${p}GenreL" hidden></ul></div>
+  <div class="xs gt-msg" id="${p}GenreMsg" role="status">${esc(genreConflict(type,genre))}</div></div>`}
+const gtParts=root=>({inp:root.querySelector('[role=combobox]'),list:root.querySelector('[role=listbox]'),type:root.querySelector('input[type=hidden]'),msg:root.querySelector('.gt-msg')});
+function gtItems(root,q){const {type}=gtParts(root),t=type.value,all=genreAll();
+  let items=t?all.filter(g=>{const c=genreClass(g);return c===t||c==='either'||c==='unknown'}):all;
+  if(q!=null){const k=genreKey(q);items=items.filter(g=>genreKey(g).includes(k));if(k&&!all.some(g=>genreKey(g)===k))items.push({use:q.trim().replace(/\s+/g,' ')})}
+  return items}
+function gtOpen(root,q){const {inp,list}=gtParts(root),items=gtItems(root,q),cur=genreKey(inp.value),id=list.id;
+  list.innerHTML=items.length?items.map((g,i)=>typeof g==='string'?`<li role="option" id="${id}-${i}" data-v="${esc(g)}" aria-selected="false" class="${genreKey(g)===cur?'gt-cur':''}">${esc(g)}</li>`:`<li role="option" id="${id}-${i}" data-v="${esc(g.use)}" aria-selected="false" class="gt-use">Use “${esc(g.use)}”</li>`).join(''):'<li class="gt-none" aria-disabled="true">No matching genres</li>';
+  list.hidden=false;inp.setAttribute('aria-expanded','true');const c=list.querySelector('.gt-cur');if(c&&q==null){gtAct(root,c);c.scrollIntoView({block:'nearest'})}else inp.removeAttribute('aria-activedescendant')}
+function gtClose(root){const {inp,list}=gtParts(root);list.hidden=true;inp.setAttribute('aria-expanded','false');inp.removeAttribute('aria-activedescendant')}
+function gtAct(root,li){const {inp,list}=gtParts(root);list.querySelectorAll('[aria-selected=true]').forEach(x=>x.setAttribute('aria-selected','false'));if(!li)return;li.setAttribute('aria-selected','true');inp.setAttribute('aria-activedescendant',li.id);li.scrollIntoView({block:'nearest'})}
+function gtCheck(root){const {inp,type,msg}=gtParts(root);msg.textContent=genreConflict(type.value,inp.value);root.classList.toggle('gt-bad',!!msg.textContent)}
+function gtPick(root,v){const {inp,type}=gtParts(root);inp.value=genreValue(v);gtClose(root);
+  const c=genreClass(inp.value);if(!type.value&&(c==='fiction'||c==='nonfiction')){type.value=c;root.querySelector(`input[type=radio][value="${c}"]`).checked=true}// a clearly typed genre fills in Type (shown, and changeable)
+  gtCheck(root)}
+document.addEventListener('focusin',e=>{const r=e.target.closest?.('[data-gt]');if(r&&e.target.getAttribute('role')==='combobox')gtOpen(r)});
+document.addEventListener('input',e=>{const r=e.target.closest?.('[data-gt]');if(!r)return;if(e.target.getAttribute('role')==='combobox'){gtOpen(r,e.target.value);gtCheck(r)}
+  else if(e.target.type==='radio'){gtParts(r).type.value=e.target.value;gtCheck(r);if(!gtParts(r).list.hidden)gtOpen(r)}});
+document.addEventListener('keydown',e=>{const r=e.target.closest?.('[data-gt]');if(!r||e.target.getAttribute('role')!=='combobox')return;const {inp,list}=gtParts(r),opts=[...list.querySelectorAll('[role=option]')];
+  if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();if(list.hidden)gtOpen(r);const o=[...list.querySelectorAll('[role=option]')],i=o.findIndex(x=>x.getAttribute('aria-selected')==='true');gtAct(r,o[e.key==='ArrowDown'?Math.min(o.length-1,i+1):Math.max(0,i-1)]);return}
+  if(e.key==='Enter'&&!list.hidden){const a=opts.find(x=>x.getAttribute('aria-selected')==='true');if(a){e.preventDefault();gtPick(r,a.dataset.v)}else gtClose(r);return}
+  if(e.key==='Escape'&&!list.hidden){e.preventDefault();e.stopPropagation();gtClose(r)}
+  if(e.key==='Tab')gtClose(r)},true);
+document.addEventListener('pointerdown',e=>{const li=e.target.closest?.('.gt-list [role=option]');if(li){e.preventDefault();gtPick(li.closest('[data-gt]'),li.dataset.v);return}
+  const tg=e.target.closest?.('[data-gt-tog]');if(tg){e.preventDefault();const r=tg.closest('[data-gt]'),{inp,list}=gtParts(r);if(list.hidden){inp.focus();gtOpen(r)}else gtClose(r);return}
+  document.querySelectorAll('[data-gt]').forEach(r=>{if(!r.contains(e.target))gtClose(r)})},true);
+document.addEventListener('focusout',e=>{const r=e.target.closest?.('[data-gt]');if(r&&!r.contains(e.relatedTarget))setTimeout(()=>{if(!r.contains(document.activeElement))gtClose(r)},0)});
 function prepState(){
 S.me.admin=true;
 S.settings.hideAct=S.settings.hideAct||[];
@@ -1398,6 +1454,7 @@ if(!S.seriesSeeded){S.seriesSeeded=true;['Wool','Shift','Dust'].forEach((n,i)=>{
 if(!S.invSeeded){S.invSeeded=true;const ph=(S.titles||[]).find(t=>t.title==='Project Hail Mary');if(ph){S.challenges.push({id:'inv1',name:'Read Project Hail Mary Before Thanksgiving',desc:'Want to read this one with me?',mode:'coop',type:'list',titleIds:[ph.id],target:null,start:today(),end:'2026-11-26',creator:'keng',participants:['keng'],inviteOnly:true,invited:['me'],sample:{keng:0},rule:'all'});(S.notifs=S.notifs||[]).unshift({id:'n4',text:'Keng invited you to a challenge: Read Project Hail Mary Before Thanksgiving.',ts:Date.now()-2*3600e3,link:{type:'ch',id:'inv1'}})}}
 /* Audiobooks for testing (added once, also to saved data): Project Hail Mary in progress, The Martian finished and unrated, Pride and Prejudice to read. */
 if(!S.pbGenreFix){S.pbGenreFix=true;(S.titles||[]).forEach(t=>{if(t.title==='The Princess Bride'&&/Goldman/.test(t.author||'')&&t.genre==='Nonfiction')t.genre='Fantasy'})}// sample data had it as Nonfiction
+if(!S.typeSeeded){S.typeSeeded=true;(S.titles||[]).forEach(t=>{if(!t.type){const c=genreClass(t.genre);if(c==='fiction'||c==='nonfiction')t.type=c}})}// Type filled only where the genre clearly decides it
 if(!S.audSeeded){S.audSeeded=true;const T=today(),hc=x=>[...x].reduce((a,c)=>(a*31+c.charCodeAt(0))>>>0,7)%10;
   const tOf=(title,author,pages,genre)=>{let t=(S.titles||[]).find(x=>x.title===title);if(!t){t={id:'t'+uid(),title,author,pages,genre,c:hc(title),added:Date.now()};S.titles.push(t)}return t};
   const ph=S.books.find(b=>b.title==='Project Hail Mary'&&b.status==='want'&&!S.sessions.some(x=>x.bookId===b.id));
@@ -2186,7 +2243,7 @@ function libTitles(){
     if(f.format!=='all'&&!cs.some(c=>c.format===f.format))return false;
     if(f.avail==='available'&&avail(t.id)?.t!=='Available')return false;
     if(f.avail==='loan'&&!cs.some(c=>c.loanTo))return false;
-    if(f.genre!=='all'&&t.genre!==f.genre)return false;
+    if(f.genre!=='all'&&genreKey(t.genre)!==genreKey(f.genre))return false;
     if(lib.tab==='family'&&f.status!=='any'){const r=myReading(t.id);if(f.status==='none'?!!r:r?.status!==f.status)return false}
     return true;
   });
@@ -2232,7 +2289,7 @@ function fromMe(){
     <p class="xs muted" style="margin-top:12px">Progress shows only for group members who share their activity; otherwise it stays at Sent. Withdrawing a recommendation takes it off their list without notifying them.</p>`;
 }
 function filtersPanel(){
-  const f=lib.f,genres=[...new Set(S.titles.map(t=>t.genre).filter(Boolean))].sort();
+  const f=lib.f,genres=(()=>{const seen=new Set();return S.titles.map(t=>t.genre).filter(Boolean).map(genreValue).filter(g=>{const k=genreKey(g);if(seen.has(k))return false;seen.add(k);return true}).sort((a,b)=>a.localeCompare(b))})();
   const chips=(k,opts)=>opts.map(([v,l])=>`<button class="tab sm" aria-pressed="${f[k]===v}" data-act="libF" data-k="${k}" data-v="${v}">${l}</button>`).join('');
   return `<div class="filters card" id="libFilters">
     <div class="fg"><div class="fl">Format</div><div class="chips">${chips('format',[['all','All'],['physical','Physical'],['ebook','Ebook'],['audio','Audiobook']])}</div></div>
@@ -2259,13 +2316,6 @@ shDlg.addEventListener('cancel',e=>e.preventDefault());
 function shareNudge(){if(S.settings.solo||S.settings.shareNudgeOff||Date.now()-(S.settings.shareNudgeAt||0)<30*864e5)return '';
   const mine=S.copies.filter(c=>c.owner==='me');if(!mine.length||mine.some(c=>!c.private))return '';const n=new Set(mine.map(c=>c.titleId)).size;
   return `<div class="sh-nudge" role="region" aria-label="Share your books"><div class="t"><b>Your ${n} book${n===1?' is':'s are'} private</b><span>Share a few so your family has something to browse and borrow. You choose which.</span></div><div class="a"><button class="btn btn-primary" data-act="shareStart">Choose Books to Share</button><button class="btn btn-ghost" data-act="shNudge" data-v="later">Not Now</button><button class="link-btn sm" data-act="shNudge" data-v="off">Don’t Show Again</button></div></div>`}
-/* Genre: a real list (common genres plus any already in the library) with None and Other…; Other shows a box to
-   type one. The value saved is always the hidden-or-shown text box, so saving code reads it as before. */
-const GENRES=['Biography','Business','Children’s','Classics','Fantasy','Fiction','Graphic Novel','Historical Fiction','History','Horror','Humor','Memoir','Mystery','Nonfiction','Poetry','Religion','Romance','Science','Science Fiction','Self-Help','Thriller','Young Adult'];
-function genrePick(attr,cur){cur=(cur||'').trim();const list=[...new Set([...GENRES,...S.titles.map(t=>t.genre).filter(Boolean)])].sort((a,b)=>a.localeCompare(b)),known=!cur||list.includes(cur);
-  return `<select class="inp" data-genre-sel><option value="">None</option>${list.map(g=>`<option ${g===cur?'selected':''}>${esc(g)}</option>`).join('')}<option value="__other" ${known?'':'selected'}>Other…</option></select><input class="inp genre-other" ${attr} value="${esc(cur)}" ${known?'hidden':''} placeholder="Type a genre" aria-label="Other genre" autocomplete="off">`}
-document.addEventListener('change',e=>{const g=e.target.closest?.('[data-genre-sel]');if(!g)return;const inp=g.nextElementSibling;
-  if(g.value==='__other'){inp.hidden=false;inp.value='';inp.focus()}else{inp.hidden=true;inp.value=g.value}});
 function libEmpty(){
   if(lib.q.trim()||nFilters())return `<div class="empty">${ic('search')}<h3>No Books Found</h3><p>Try a different search or clear your filters.</p><button class="btn btn-ghost" data-act="libClear">Clear Filters</button></div>`;
   if(lib.tab==='mybooks'&&lib.mb!=='all')return `<div class="empty">${ic('book')}<h3>No Books Here Yet</h3><p>Books with this status will show up here.</p></div>`;
@@ -3047,7 +3097,7 @@ function openTitleEdit(id){
     <label class="f">Author<input class="inp" name="tAuthor" value="${esc(t.author==='Unknown author'?'':t.author)}" placeholder="Unknown author" autocomplete="off"></label>
     <div class="f2"><label class="f"><span>Number of Pages <span class="sub">(if known)</span></span><input class="inp" name="tPages" inputmode="numeric" value="${t.pages||''}"></label>
     <label class="f"><span>ISBN <span class="sub">(optional)</span></span><input class="inp" name="tIsbn" inputmode="numeric" value="${esc(t.isbn||'')}" autocomplete="off"></label></div>
-    <label class="f"><span>Genre <span class="sub">(optional)</span></span>${genrePick('name="tGenre"',t.genre)}</label>
+    ${genreField('t',t.genre,t.type)}
     <div class="f2"><label class="f"><span>Series Name <span class="sub">(optional)</span></span><input class="inp" name="tSeries" list="teSeries" value="${esc(t.series||'')}" autocomplete="off"><datalist id="teSeries">${series.map(n=>`<option value="${esc(n)}">`).join('')}</datalist></label>
     <label class="f">Book Number<input class="inp" name="tSeriesNo" inputmode="decimal" value="${t.seriesNo??''}"></label></div>
     <label class="f"><span>Books in the Series <span class="sub">(if known)</span></span><input class="inp" name="tSeriesLen" inputmode="numeric" value="${t.series?(S.seriesLen?.[t.series]??''):''}"></label>
@@ -3126,8 +3176,9 @@ titleForm.addEventListener('submit',e=>{
   if(no&&(!sn||isNaN(+no)||+no<=0))return er(sn?'Enter the book number as a number, for example 2.':'Add a series name to go with the book number.');
   if(len&&(!sn||!/^\d+$/.test(len)||+len<=0))return er(sn?'Enter how many books are in the series as a whole number.':'Add a series name to go with the series length.');
   if(te.bad)return er('The cover image didn’t load. Choose a different one, or use the generated cover.');
+  {const gc=genreConflict(v('tType'),v('tGenre'));if(gc)return er(gc)}
   const old=t.title;
-  Object.assign(t,{title,author,pages:pages?+pages:undefined,isbn:isbn||undefined,genre:v('tGenre'),series:sn||undefined,seriesNo:sn&&no?+no:undefined});
+  Object.assign(t,{title,author,pages:pages?+pages:undefined,isbn:isbn||undefined,genre:genreValue(v('tGenre')),type:v('tType')||undefined,series:sn||undefined,seriesNo:sn&&no?+no:undefined});
   if(sn&&len)(S.seriesLen=S.seriesLen||{})[sn]=+len;
   {const d=v('tDesc');if(d!==(t.descText||'')){if(d){t.descText=d;t.descBy='me'}else{delete t.descText;delete t.descBy}}}
   if(te.touched){if(te.cover){t.cover=te.cover;t.coverPicked=true;delete t.noAutoCover}else{delete t.cover;t.noAutoCover=true}}
@@ -3295,7 +3346,7 @@ function renderAdd(keep){
   else if(ad.tab==='manual')body=`<div class="form">
     <label class="f">Title<input class="inp" id="amTitle" autocomplete="off"></label>
     <label class="f"><span>Author <span class="sub">(optional)</span></span><input class="inp" id="amAuthor" autocomplete="off"></label>
-    <div class="f2"><label class="f">Number of Pages<input class="inp" id="amPages" inputmode="numeric"></label><label class="f"><span>Genre <span class="sub">(optional)</span></span>${genrePick('id="amGenre"','')}</label></div>
+    <label class="f">Number of Pages<input class="inp" id="amPages" inputmode="numeric"></label>${genreField('am','','')}
     <label class="f">If You Own It, Which Format?<select class="inp" id="amFmt"><option value="physical">Physical</option><option value="ebook">Ebook</option><option value="audio">Audiobook</option></select></label>
     <div class="err" id="amErr" role="alert"></div>
     <div class="dlg-f"><button class="btn btn-ghost" data-act="adManualGo" data-v="want">Add to To Read</button><button class="btn btn-primary" data-act="adManualGo" data-v="own">I Own It</button></div></div>`;
@@ -3310,8 +3361,9 @@ function addManual(mode){
   const title=v('amTitle'),pages=v('amPages');
   if(!title)return er('Enter the book’s title.');
   if(!/^\d+$/.test(pages)||+pages<=0)return er('Enter the number of pages.');
+  {const gc=genreConflict(v('amType'),v('amGenre'));if(gc)return er(gc)}
   if(S.titles.some(t=>t.title.toLowerCase()===title.toLowerCase()))return er('That title is already in Reading Room. Use Search to find it.');
-  const t={id:'t'+uid(),title,author:v('amAuthor')||'Unknown author',pages:+pages,genre:v('amGenre'),c:hashStr(title)%COVERS.length,added:Date.now()};
+  const t={id:'t'+uid(),title,author:v('amAuthor')||'Unknown author',pages:+pages,genre:genreValue(v('amGenre')),type:v('amType')||undefined,c:hashStr(title)%COVERS.length,added:Date.now()};
   S.titles.push(t);
   if(mode==='own'){const sh=!S.settings.solo&&ad.share!==false;const nc={id:'c'+uid(),titleId:t.id,owner:'me',format:v('amFmt'),where:'',loanTo:null,private:!sh||undefined};S.copies.push(nc);setTimeout(()=>shareAsk(nc.id),0);if(sh)post('library','added a book to the group library:',title);toast(`Added ${title} to My Collection.`)}
   else{S.books.push({id:'r'+uid(),titleId:t.id,title,author:t.author,format:'print',total:t.pages,pos:0,status:'want',c:t.c,wantSince:today()});toast(`Added ${title} to your To Read list.`)}
@@ -3442,7 +3494,7 @@ const isMine=c=>c.mode==='personal'?c.creator==='me':(c.participants||[]).includ
 const daysBetween=(a,b)=>Math.round((new Date(b+'T12:00:00')-new Date(a+'T12:00:00'))/864e5);
 const ordinal=n=>{const x=['th','st','nd','rd'],v=n%100;return n+(x[(v-20)%10]||x[v]||x[0])};
 function ruleOk(c,tid){const r=c.rule||'all';if(r==='none')return false;if(r==='all')return true;const t=titleById(tid);if(!t)return false;
-  if(r==='author')return t.author.toLowerCase().includes((c.ruleVal||'').trim().toLowerCase());if(r==='genre')return t.genre===c.ruleVal;return true}
+  if(r==='author')return t.author.toLowerCase().includes((c.ruleVal||'').trim().toLowerCase());if(r==='genre')return genreKey(t.genre)===genreKey(c.ruleVal);return true}
 const inWin=(c,d)=>!!d&&d<=today()&&(!c.end||d<=c.end)&&(c.countPrior||!c.start||d>=c.start);
 const titleOfSession=x=>book(x.bookId)?.titleId;
 function contrib(c){
@@ -3979,8 +4031,7 @@ const findB=id=>book(id)||(pendingNew&&pendingNew.id===id?pendingNew:null);
    an unsaved entry keeps the prompt it had. The field's label stays "Add a Note"; the prompt is only a hint. */
 const NP_GEN=['What stayed with you?','What surprised you?','A line worth remembering?','How did this part feel?','What are you wondering about?','What made you pause?','A thought to come back to?','Tell a friend about this part?','Did anything change your mind?','What would you ask the author?','What did this remind you of?','Something you’d underline?','Who did this make you think of?','What will you remember tomorrow?','A word or idea you looked up?'],
   NP_STORY=['What do you think happens next?','Who are you rooting for?'],NP_NONFIC=['What idea will you try?','Anything you disagreed with?'],
-  NP_REREAD=['What did you notice this time?'],NP_FIN=['How did it end for you?','Who should read this next?','Will you remember this one?','What will stay with you?'],
-  NP_NONFIC_GENRES=['Nonfiction','Memoir','Science','Religion','History'];
+  NP_REREAD=['What did you notice this time?'],NP_FIN=['How did it end for you?','Who should read this next?','Will you remember this one?','What will stay with you?'];
 function npPick(pool,seenKey){const seen=S[seenKey]=(S[seenKey]||[]).filter(x=>pool.includes(x));let left=pool.filter(x=>!seen.includes(x));
   if(!left.length){S[seenKey]=seen.slice(-1);left=pool.filter(x=>!S[seenKey].includes(x))}const p=left[Math.floor(Math.random()*left.length)];S[seenKey].push(p);return p}
 /* Separate shuffled decks: stories, nonfiction, general (no genre on record), and finishing. A reread adds its
@@ -3991,7 +4042,7 @@ function notePromptSet(b,dk,hadDraft){
   const last=keep[dk];let np,fin;
   if(hadDraft&&last){np=last.np;fin=last.fin}
   else{const g=(titleById(b.titleId)?.genre||b.genre||'').trim(),re=S.books.some(x=>x!==b&&b.titleId&&x.titleId===b.titleId&&x.status==='finished'),
-      deck=!g?'general':NP_NONFIC_GENRES.includes(g)?'nonfic':'story',R=re?NP_REREAD:[];
+      bt=bookType(titleById(b.titleId)||{genre:g}),deck=bt==='nonfiction'?'nonfic':bt==='fiction'?'story':'general',R=re?NP_REREAD:[];
     np=npPick([...NP_GEN,...(deck==='nonfic'?NP_NONFIC:deck==='story'?NP_STORY:[]),...R],'npSeen_'+deck);fin=npPick([...NP_FIN,...R],'npSeen_fin');keep[dk]={np,fin};save()}
   logForm.dataset.np=np;logForm.dataset.npf=fin;const n=logForm.querySelector('[name=note]');if(n){n.placeholder=logForm.status?.value==='finished'?fin:np;requestAnimationFrame(()=>noteFit(n))}noteHint()}
 /* Every multi-line box starts at its own height (its rows), grows with its text up to its limit (max-height), and
