@@ -1,177 +1,18 @@
 # Later
 
-## Roles from Nov 4, 2026 (read this first, RC session)
+Plans, decisions, issues, and ideas saved for later now live in the **Requirements doc** (Build plan and Later
+sections), kept in the private repository `gravityoptional/reading-room-notes`:
+`Initial Prototype Session - ReadingRoom/Reading Room — Requirements.md`. This file keeps only the merge log
+between the two sites. Not published; the site only serves index.html.
 
-- **Alpha** = the `main` branch, published at the site address (gravityoptional.github.io/reading-room/). Orange-red
-  ALPHA label. It replaced the old main prototype on Nov 4: main was fast-forwarded to next (Discover release 1 and
-  everything after it). The old main session is packaged in the private repo `reading-room-notes`.
-- **Beta** = the `next` branch, the test bed, published at **/beta/** (no longer /next/; no redirect). Yellow BETA
-  label. New work goes to Beta first and moves to Alpha only with James's approval, as next and main did before.
-- Same code on both: the address decides the label and the saved data. Beta keeps the test bed's data (the
-  `rr-next-*` / `rr_next_*` names). Alpha uses `rr-editorial-proto-v1` and friends; the first time Alpha opens in a
-  browser with test-bed data it copies it over once (flag `rr-alpha-carried`, old main data kept as
-  `...-before-alpha`).
-- Branch names stay `main` and `next` so the publishing workflow keeps working. Shared fixes: Alpha (main) first,
-  then merge into Beta (next), as before.
-- ChatGPT copy sync recipe: the identity lines are now the `BETA` block (not `NEXT`); swap that block for the
-  ChatGPT identity and keep the copy's `rr-chatgpt-*` storage names.
-- Standing checks after every change: scroll arrows (text fields, selects, small panels at 320/390/1280, light and
-  dark), page errors, tap count, phone and desktop previews before publishing.
-- Phase 3 (live beta) planning and bug chasing continue in the new session, RC.
+## Merge log (Beta → Alpha)
 
-Known issues and follow-ups for the next prototype. Not published; the site only serves index.html.
+- **Alpha** = `main`, **Beta** = `next`. New work goes to Beta first and moves to Alpha only with James's approval.
+  Fixes that belong on both go to Alpha first, then merge into Beta.
+- **Nov 4, 2026:** `main` was fast-forwarded to `next` (Discover release 1 and everything since). Both branches
+  are identical from here; the earlier merge history is in the Nov 4 snapshot of this file in the notes
+  repository (`Discover Build Prototype - Reading Room/LATER (Nov 4 snapshot).md`).
 
-## Merging into main
+**Waiting on Beta to move to Alpha:** nothing yet.
 
-Running list, so merges between main and next need no guesswork. Shared fixes go to main first, then merge into
-next; next-only features wait for James's approval to merge into main.
-
-**Shared fixes (already on both):**
-- Toast Undo stays on one line (main 339c9a2, merged Oct 31). Same code on both.
-- Tour: Library stop opens its own tab; elevator numbering for 13 stops (main 4f67823, merged Nov 2). **next's
-  version wins**: it adds the Discover and Your Next Read stops and resets the Discover view (`lib.rv='disc'`),
-  which main doesn't have.
-- Undo in messages works while a window is open: the message goes inside the open window (main 6f4d203, merged
-  Nov 2). Same code on both.
-- Undo from a message also redraws the open window (main 89a9a48, merged Nov 2). Same code on both; on next,
-  the shared redraw also covers the finish window.
-- Fix bundle (main 9b94137 + f54bef0, merged Nov 2): timer Resume and Start Over at 0:00; the Minutes box takes
-  hours (90, 1:30, 2h 30m) with "= 1h 30m" under it; a day can't pass 24 hours, and over 8 hours or 500 pages the
-  form asks "Is that right?" (the timer asks whether it kept running); catch-up entries ("Covers more than one
-  day": count toward totals, hours and pages goals, and challenges whose dates hold the whole stretch, never
-  streaks, daily goals, or reading days); Duplicate on every challenge and Battle of the Books (month or year in
-  the name moves forward; otherwise the name is selected to type over; Battles carry no readers, picks,
-  moderator, or results); Count It for list books finished before a challenge started, and a start-date warning
-  in the form; sample audiobooks (Project Hail Mary in progress, The Martian finished and unrated, Pride and
-  Prejudice to read), added once to saved data. Same code on both, except next keeps "Finished, date unknown" in
-  the Add Progress list.
-- Polish bundle (main, merged Nov 3): tabs (Library, Challenges, book details, Battle) work with arrow keys,
-  Home and End, keep focus after switching, and name their panels; Add a Book and cover source switches are toggle
-  buttons; the goal option reads "Minutes or pages, whichever I reach first"; the greeting drops "Just" ("20 more
-  minutes to reach today's goal." / "20 minutes or 15 pages to go today."); Edit Goal is green; shorter Log
-  Reading form (no Book label, no Mark as finished checkbox since Status does it, help line only for audiobooks and
-  new books, Read with someone? folds the names, Date and Covers more than one day share a row, the note is one
-  line that grows, its count shows from 150 characters). next's own book details and Library templates carry the
-  same tab attributes; next also keeps focus through any book details redraw.
-- Appearance package (main, merged Nov 3; colors and lineup from James's Appearance Package, prepared in the
-  ChatGPT copy): each palette recolors the whole app and has its own dark version; Default keeps today's look under
-  the stored key sage; new Sage (sage-green), Espresso and Forest; Dashboard scene follows the palette. Contrast
-  checked on all 22 combinations: Lavender, Meadow, Slate and Amber light were nudged darker to reach 4.5:1; Default
-  is unchanged (its secondary text on the alternate surface is 4.25:1 light, 4.04:1 dark, as before).
-- Sweet16 palettes (main, merged Nov 3; from James's Sweet16Palettes package, prepared in the ChatGPT copy):
-  Terracotta, Teal, Paper and Ink, Ivory and Ink, Blueprint (16 in all); the three high-contrast palettes get 2 px
-  borders and 3 px focus outlines. Terracotta's selected tint lightened (#F6E2D6) to reach 4.5:1. Color Palette
-  menu: Default, then around the color wheel, then a High Contrast group.
-- Fonts (main, merged Nov 3): Source Sans 3 and DM Sans as heading fonts (sans fallback), DM Sans as a body font;
-  Manrope was added and then replaced by DM Sans (saved Manrope choices move to DM Sans).
-- Log Reading row and note prompts (main, merged Nov 3): Start Page / End Page / Minutes on one row at every width
-  (labels above; "Optional" as the placeholder in whichever box is optional; Start / End for audiobooks; same in
-  Edit Session; tighter padding under 400 px). Note prompts: 15 general, plus 2 story or 2 nonfiction (by genre:
-  Nonfiction, Memoir, Science, Religion, History), 1 reread, 4 finishing; one per opening, shuffled with no repeats
-  until all have shown; kept with an unsaved draft; the empty note box grows to two lines when a prompt wraps.
-  Revised Nov 3 (James): separate decks for stories, nonfiction, general (no genre on record) and finishing; the
-  reread question added once per deck; the finishing prompt appears only while the note is empty (never under
-  someone's writing); changing the book while the note is empty picks a prompt for that book; "optional" stays in
-  the field's name for screen readers after a value hides the placeholder. Note box no longer shows scroll arrows.
-- Genre (main, merged Nov 3): Edit Book and Add a Book use a real list (common genres plus any in the library,
-  None, Other… to type one). The Princess Bride's sample genre was Nonfiction; now Fantasy (fixed once in saved data).
-- Text boxes (main, merged Nov 3): one shared rule (fitTA): each multi-line box starts at its own rows, grows with
-  its text up to its max-height (240 px; book notes 320; Log Reading note 160), then scrolls; no resize handle.
-  Starting rows: Log Reading note 1, book description 2 (next), History note 2, session note 2, challenge and Battle
-  descriptions 2, borrow and reply notes 2, book notes 3.
-- Placeholders (main, merged Nov 3): italic, 14 px, secondary color.
-- Genre and Type (main, merged Nov 4): Type (Fiction / Nonfiction / Not Set, optional, stored on the book) above a
-  searchable genre box (opens with the full list, current genre marked; typing narrows; Use "…" for a new genre;
-  arrow keys, Enter, Escape; combobox and listbox roles). Type set narrows the list to that type plus either-genres.
-  Picking a clearly typed genre while Type is Not Set fills Type (visible, changeable). A mismatch (Memoir with
-  Fiction) shows a message and blocks saving; nothing changes silently. Genre table and spelling-tolerant matching
-  (genreKey, genreValue) come from ChatGPT's version; Library filter and challenge genre rules use them. Existing
-  books got Type only where the genre clearly decides it. Note prompts read Type. Open Library suggestions: later.
-- **Standing check (James, Nov 3): watch for scroll arrows after every change.** Test script: scratch scroll.js
-  scans text fields, selects, and small panels at 320/390/1280 px, light and dark, for content taller than its box.
-
-**next-only (waiting to merge into main):** Discover release 1 (2a–2h), "Finished, date unknown", and later changes: Discover as a Library
-tab, lean cards, ghost card, finish window (queue, rate, thank, recommend), finished-only ratings, Did Not Finish
-reasons, include my rating, rating label follows sharing, Recommend a Book on every tab, English editions and
-Open Library matching, book descriptions (2i), more than one Did Not Finish reason, which tab book details
-open on (My Reading for your books, Copies for the group library, owned To Read books, and copy notices; About
-elsewhere), optional stars in Recommend for finished books you haven't rated, and the Recommend form keeping its
-choices when the window redraws. When merging next into main, next's version wins everywhere.
-
-**Changes on next that fix main behavior too** (come over with the merge; James chose next first):
-- One click opens book details from Currently Reading (large cover and title) and Paused Books, on My Reading;
-  double-click and press-and-hold to edit are removed; small covers in Currently Reading still switch books
-  (Nov 2). Main still uses double-click there.
-- Mouse or trackpad clicks outside book, challenge, and Battle of the Books details close them (a text box in use
-  takes the first click; an unsent borrow or reply note blocks it); forms never close that way; finger taps never
-  close any window (Nov 2). Main windows don't close on outside clicks.
-- Tab rows that don't fit (book details, Library, Challenges) show a fade and a chevron on the side with hidden
-  tabs; the book details tab reads "Activity", with the group name inside the tab (Nov 2). Main has peek only.
-- Tabs use flexible spacing (gaps shrink before scrolling), and windows use a 16 px side margin at 400 px and
-  narrower (main uses 22 px everywhere) (Nov 2). Target: everything fits at 360 px; 320 px still works. Inside windows, tabs
-  spread across the row when there's room; pages stay left-aligned. James: if the spread look doesn't hold up,
-  leave it for later rather than chase it.
-
-## Test on /next/ after the push
-
-- ~~Undo in the finish window~~: tested by James Oct 31, 2026, working.
-- ~~More by This Author with real data~~: tested by James Oct 31, 2026, working.
-- ~~English editions~~: Judy Moody, M.D. and The Martian passed (James, Nov 2).
-- ~~Read Free Online~~: passed with This Side of Paradise on the Internet Archive (James, Nov 2).
-
-## Planned
-
-- **Book descriptions (2i)**: built Nov 2, 2026 (plan: `plans/Book_Descriptions.md`): member-written, Open Library
-  (saved), and Google Books (fetched when a book opens and no other description exists, never saved, shown as given
-  with the "powered by Google" image and a link to the book's Google Books page; no preview of Google text away from
-  that attribution). Google's Books API terms and branding guidelines read Nov 2. Google Books key published Nov 2 at
-  James's instruction; Google restricts it to gravityoptional.github.io and the Books API (checked: other sites
-  are refused).
-- **Before the live beta (Google Books terms):** rights holders must be able to ask for content removal, so the
-  live site needs a contact for that (the Send Feedback address could serve). No fees may be charged for the app.
-
-- **Premade challenges** (James, Nov 2; separate from Discover, discuss later): ready-made challenges a member can
-  start in one step (for example a month of reading days, a genre or series list, a books-this-year goal), alongside
-  Create Challenge and the planned way to duplicate any challenge.
-
-- **Adjust Dashboard Photo** (James, Nov 2; later, cosmetic only): the member's Dashboard photo is always centered.
-  Idea: Adjust Photo beside Change and Remove: drag it up, down or sideways, Flip (mirror) and possibly Rotate.
-  Shared with main. Book covers stay as they are.
-
-- **Sharing prompts** (designed Nov 3, mockups in previews/b3/share-*): (1) first copy asks "Show your books in
-  the [group] Library?" with Share My Books pre-selected, Keep Them Private, Continue; sets (5) the setting "New
-  Copies Start As: Shared / Private"; never asked in solo. (2) **After a Goodreads import (live beta):** "Imported
-  N Books from Goodreads. M of them are marked as books you own." Share All M (pre-selected), Let Me Choose, Keep
-  All Private; imports always ask; unowned books never appear. (3) Nudge in the group library when all your copies
-  are private: "Your N books are private..." Choose Books to Share, Not Now (back after a month), Don't Show Again.
-  (4) Empty group library: "The [group] Library Is Empty" with Share Books I Own. James: wording fine for now.
-  **Built Nov 3 on main (merged into next): 1, 3, 4, 5.** Waiting: 2, with the Goodreads import.
-
-## Issues
-
-- **Tall card rows on phones (Discover).** Cards in a row share row heights so their buttons line up. In a
-  sideways-scrolling phone row, one long title off screen makes every card in that row taller, leaving empty
-  space above the buttons. Not acceptable as a permanent solution. Likely fix: cap titles at three lines with
-  the full title in book details, and size rows to what's visible.
-  **Closed Nov 3 (James: not much to gain):** titles and reasons are capped at three lines (Nov 2). Measured at
-  320–1440 px: it happens only below about 600 px (phones held upright), at most about 38 px, at about 1 in 5
-  scroll positions in a row. Fixed card spaces on phones were considered and set aside.
-- **WorldCat "Error 1015" on the first Find at Your Library click** (seen Oct 31, 2026; the same link worked on
-  retry). WorldCat's traffic protection, not Reading Room. If it recurs, switch the link target.
-- **Ghost card after Not for Me** (trying it, Oct 31): faded in place with "Hidden · Undo" for 5 seconds, paused
-  while the pointer rests on it or the keyboard is on Undo (Nov 2). Also on group recommendation cards. James (Nov 2):
-  5 seconds acceptable, 6 better; the mouse pause can look stuck; idea to discuss: after the pointer leaves, a
-  short 2-second ghost. Built Nov 2: 6 seconds; waits while the pointer rests on it or the keyboard is on Undo, then
-  2 seconds after it leaves.
-- **Window tabs** (Nov 2): gaps capped at 64 px with the group centered (the battle window's three tabs no longer
-  sit at the edges).
-- **Free sources** (Nov 2): Project Gutenberg and LibriVox come from the numbers Open Library already records
-  (id_project_gutenberg, id_librivox), not from Gutendex (60–90+ seconds per search) or LibriVox's API (doesn't allow
-  web pages; its script format would run LibriVox code inside Reading Room). Standard Ebooks' feeds need a paid
-  Patrons Circle membership, so search links only, as the hand-off says.
-- **Language setting** (James agreed Oct 31; do it at the very end): Open Library lookups prefer English editions, fixed in code. Add a
-  member setting (for example Spanish) that sets the preferred edition language. The same setting should set Google Books' country
-  (`GB_COUNTRY`, fixed to US for now).
-- **Did Not Finish reasons** (James, Oct 31): the list is fine for now (Not for me, Too slow, Not the right time,
-  Content I didn't want, Had to return it); revisit later. Possible later use: "Not for me" as a soft Not for Me
-  for that author in Discover.
+**On Alpha, to merge into Beta:** nothing yet.

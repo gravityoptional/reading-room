@@ -40,7 +40,7 @@ Branch names stay `main` and `next` so the publishing setup keeps working.
 | File | What it is |
 |---|---|
 | `index.html` | The whole app. |
-| `LATER.md` | The running notebook. It starts with **Roles from Nov 4**, then the merge history, issues, plans, and decisions (sharing prompts, palettes, fonts, note prompts, genre and Type, text boxes, standing checks). Read it first. |
+| `LATER.md` | The merge log between Beta and Alpha. Plans, decisions, and items saved for later are in the Requirements doc (Build plan and Later) in `reading-room-notes`. |
 | `HANDOFF.md` | This file. |
 | `plans/Book_Descriptions.md` | James's plan for book descriptions (built Nov 2). |
 | `tools/tapcount.js` | Tap-count regression: 10 core tasks, before vs. after. Usage is in the file. |
@@ -103,7 +103,7 @@ These were never in the repository. Include them in the session package if they 
 ## Open items
 
 - **Phase 3, live beta:** choose the first administrator method; set up Supabase and Cloudflare; Goodreads import
-  (with the import sharing prompt already designed in LATER.md); Download and Restore; Send Feedback and a
+  (with the import sharing prompt already designed in the Requirements doc); Download and Restore; Send Feedback and a
   content-removal contact (needed for Google Books terms); possibly move the Google key behind a Cloudflare Worker.
 - **Later:** Open Library genre suggestions (designed, not built); language setting (at the very end); Adjust
   Dashboard Photo; premade challenges; revisit Did Not Finish reasons; watch WorldCat's Error 1015; Discover
