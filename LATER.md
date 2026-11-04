@@ -60,6 +60,14 @@ next; next-only features wait for James's approval to merge into main.
   its text up to its max-height (240 px; book notes 320; Log Reading note 160), then scrolls; no resize handle.
   Starting rows: Log Reading note 1, book description 2 (next), History note 2, session note 2, challenge and Battle
   descriptions 2, borrow and reply notes 2, book notes 3.
+- Placeholders (main, merged Nov 3): italic, 14 px, secondary color.
+- Genre and Type (main, merged Nov 4): Type (Fiction / Nonfiction / Not Set, optional, stored on the book) above a
+  searchable genre box (opens with the full list, current genre marked; typing narrows; Use "…" for a new genre;
+  arrow keys, Enter, Escape; combobox and listbox roles). Type set narrows the list to that type plus either-genres.
+  Picking a clearly typed genre while Type is Not Set fills Type (visible, changeable). A mismatch (Memoir with
+  Fiction) shows a message and blocks saving; nothing changes silently. Genre table and spelling-tolerant matching
+  (genreKey, genreValue) come from ChatGPT's version; Library filter and challenge genre rules use them. Existing
+  books got Type only where the genre clearly decides it. Note prompts read Type. Open Library suggestions: later.
 - **Standing check (James, Nov 3): watch for scroll arrows after every change.** Test script: scratch scroll.js
   scans text fields, selects, and small panels at 320/390/1280 px, light and dark, for content taller than its box.
 
