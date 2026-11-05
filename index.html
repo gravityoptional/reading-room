@@ -1511,6 +1511,8 @@ function gtPick(root,v){const {inp,type}=gtParts(root);inp.value=genreValue(v);g
   const c=genreClass(inp.value);if(!type.value&&(c==='fiction'||c==='nonfiction')){type.value=c;root.querySelector(`input[type=radio][value="${c}"]`).checked=true}// a clearly typed genre fills in Type (shown, and changeable)
   gtCheck(root)}
 document.addEventListener('focusin',e=>{const r=e.target.closest?.('[data-gt]');if(r&&e.target.getAttribute('role')==='combobox')gtOpen(r)});
+/* Clicking or tapping the field while it already has focus (after a pick, or after Esc) opens the list again. */
+document.addEventListener('click',e=>{const inp=e.target.closest?.('[data-gt] [role=combobox]');if(!inp)return;const r=inp.closest('[data-gt]');if(gtParts(r).list.hidden)gtOpen(r)});
 document.addEventListener('input',e=>{const r=e.target.closest?.('[data-gt]');if(!r)return;if(e.target.getAttribute('role')==='combobox'){gtOpen(r,e.target.value);gtCheck(r)}
   else if(e.target.type==='radio'){gtParts(r).type.value=e.target.value;gtCheck(r);if(!gtParts(r).list.hidden)gtOpen(r)}});
 document.addEventListener('keydown',e=>{const r=e.target.closest?.('[data-gt]');if(!r||e.target.getAttribute('role')!=='combobox')return;const {inp,list}=gtParts(r),opts=[...list.querySelectorAll('[role=option]')];
