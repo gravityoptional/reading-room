@@ -13,11 +13,13 @@ between the two sites. Not published; the site only serves index.html.
   are identical from here; the earlier merge history is in the Nov 4 snapshot of this file in the notes
   repository (`Discover Build Prototype - Reading Room/LATER (Nov 4 snapshot).md`).
 
-**Waiting on Beta to move to Alpha:**
-- **Nov 5, 2026 (`next` c6264d3):** ChatGPT's copy merged in: Add a Book with reading status and ownership, Start a New
-  Book with ownership, owned copies in Edit Book, an edition for each reading, saving protections, Website Audit
-  repairs (first pass 1–8, second pass 1–15 and 17), the two-row tablet header; our genre box kept (Add It Yourself
-  uses it, Author and Pages share a row); unread count at 4.5:1 or better (second pass 18). Moving it to Alpha is a
-  fast-forward of `main` to `next`.
+- **Nov 5, 2026:** `main` was fast-forwarded to `next` again: ChatGPT's copy merged in (Add a Book with reading
+  status and ownership, Start a New Book with ownership, owned copies in Edit Book, an edition for each reading, saving
+  protections, Website Audit repairs first pass 1–8 and second pass 1–15 and 17, the two-row tablet header), our genre
+  box kept (Add It Yourself uses it; clicking the field reopens the list; the list opens above the field when there's
+  more room and stays inside the window), unread count at 4.5:1 or better (second pass 18). Checked first: old Alpha
+  saved data opens and saves in the new code, unsaved drafts included. Both branches are identical again.
+
+**Waiting on Beta to move to Alpha:** nothing yet.
 
 **On Alpha, to merge into Beta:** nothing yet.
