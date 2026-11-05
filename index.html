@@ -1388,7 +1388,7 @@ const isCU=x=>!!x.from;
 const DAY_MAX=1440,DAY_ASK_MIN=480,DAY_ASK_PAGES=500;
 const daysIn=(a,b)=>daysBetween(a,b)+1;
 const fmtPos=m=>`${Math.floor(m/60)}:${pad(Math.round(m%60))}`;
-const parsePos=v=>{v=String(v).trim();if(!v)return null;if(/^\d+$/.test(v))return +v;const m=v.match(/^(\d+):(\d{1,2})$/);return m?(+m[1])*60+(+m[2]):NaN};
+const parsePos=v=>{v=String(v).trim();if(!v)return null;if(/^\d+$/.test(v))return +v;const m=v.match(/^(\d+):(\d{1,2})$/);return m&&+m[2]<60?(+m[1])*60+(+m[2]):NaN};
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid=()=>Math.random().toString(36).slice(2,10);
 const ago=ts=>{const m=Math.round((Date.now()-ts)/60000);if(m<1)return 'just now';if(m<60)return `${m} min ago`;const h=Math.round(m/60);if(h<24)return `${h} hour${h>1?'s':''} ago`;const d=Math.round(h/24);return `${d} day${d>1?'s':''} ago`};
@@ -2278,7 +2278,7 @@ const nameOf=w=>w==='me'?'You':(S.members[w]?.name||'Member');
 const GN=()=>S.group?.name||'Group';
 const initOf=w=>w==='me'?S.me.name[0]:(S.members[w]?.name||'F')[0];
 const colorOf=w=>w==='me'?S.me.color:(S.members[w]?.color||'#6B7280');
-const ownerNames=id=>[...new Set(copiesOf(id).map(c=>c.owner))].map(o=>o==='me'?'you':nameOf(o)).join(', ');
+const ownerNames=id=>[...new Set(copiesOf(id).map(c=>c.owner))].map(o=>o==='me'?'you':esc(nameOf(o))).join(', '); // always shown inside markup, so names are escaped here
 const sortKey=x=>x.replace(/^(the|a|an)\s+/i,'').toLowerCase();
 const lastName=a=>(a.trim().split(/\s+/).pop()||'');
 const hashStr=x=>[...x].reduce((a,c)=>(a*31+c.charCodeAt(0))>>>0,7);
@@ -2305,7 +2305,7 @@ function lendCopy(c,who){
 }
 function avail(tid){const cs=copiesOf(tid),ph=cs.filter(c=>c.format==='physical');if(!cs.length)return null;if(!ph.length)return {t:'Digital copy',cls:''};if(ph.some(c=>!c.loanTo&&!holdOn(c)))return {t:'Available',cls:'ok'};const h=ph.find(c=>!c.loanTo&&holdOn(c));const who=w=>w==='me'?'you':nameOf(w);if(h)return {t:`On hold for ${who(holdOn(h).from)}`,cls:'loan'};return {t:`On loan to ${who(ph[0].loanTo)}`,cls:'loan'}}
 function avStack(tid){const owners=[...new Set(copiesOf(tid).map(c=>c.owner))];if(!owners.length)return '';
-  return `<span class="av-stack" aria-hidden="true">${owners.slice(0,3).map(o=>`<span class="avatar" style="background:${colorOf(o)}">${initOf(o)}</span>`).join('')}</span><span class="xs muted">${owners.length===1?`Owned by ${nameOf(owners[0])}`:`${owners.length} owners`}</span>`}
+  return `<span class="av-stack" aria-hidden="true">${owners.slice(0,3).map(o=>`<span class="avatar" style="background:${colorOf(o)}">${initOf(o)}</span>`).join('')}</span><span class="xs muted">${owners.length===1?`Owned by ${esc(nameOf(owners[0]))}`:`${owners.length} owners`}</span>`}
 const fmtChips=tid=>[...new Set(copiesOf(tid).map(c=>c.format))].map(f=>`<span class="fchip">${FMT[f]}</span>`).join('');
 const STATUS={reading:'Currently Reading',paused:'Paused',finished:'Finished',dnf:'Did Not Finish',want:'On To Read'};
 const libCover=(t,w)=>cover({title:t.title,author:t.author,c:t.c,cover:t.cover,titleId:t.titleId,format:'print'},w);
@@ -2320,7 +2320,7 @@ function lcard(t,extra=''){
   const av=avail(t.id);
   return `<div class="lcard"><button class="lc-open" data-act="openTitle" data-id="${t.id}">${libCover(t)}<span class="lc-t">${esc(dispT(t.title))}</span><span class="bk-a">${esc(t.author)}</span></button>
   ${copiesOf(t.id).length?`<div class="lc-meta">${fmtChips(t.id)}</div><div class="lc-own">${avStack(t.id)}</div>`:`<div class="xs muted">Not in the group library</div>`}
-  ${av?`<div class="avail ${av.cls}">${av.t}</div>`:''}${extra}
+  ${av?`<div class="avail ${av.cls}">${esc(av.t)}</div>`:''}${extra}
   <div class="lc-act">${cardAction(t)}</div></div>`;
 }
 const LIB0={format:'all',avail:'all',genre:'all',status:'any'};
@@ -3011,7 +3011,7 @@ async function gbWant(t){
   if(!t||descOf(t)||gbDesc[t.id]||gbBusy)return;
   const au=t.author&&t.author!=='Unknown author'?lastName(t.author.split(',')[0]):'',qt=t.title.split(':')[0].trim();
   const q=t.isbn?`isbn:${t.isbn}`:`intitle:${qt}${au?` inauthor:${au}`:''}`;
-  gbBusy=t.id;if(bookDlg.open&&bd.id===t.id)renderBD();
+  gbBusy=t.id;if(bookDlg.open&&bd.id===t.id)renderBD(true);
   try{
     const r=await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=5&printType=books&country=${GB_COUNTRY}&key=${GB_KEY}&fields=items(volumeInfo(title,authors,description,infoLink,canonicalVolumeLink))`);
     if(r.ok){
@@ -3020,7 +3020,7 @@ async function gbWant(t){
       gbDesc[t.id]=v?{html:gbSafe(v.description),link:v.canonicalVolumeLink||v.infoLink||''}:{none:true};
     }// a refused or failed request isn't remembered, so the next open tries again
   }catch(e){}finally{gbBusy=null}
-  if(bookDlg.open&&bd.id===t.id)renderBD();
+  if(bookDlg.open&&bd.id===t.id)renderBD(true);
 }
 let descBusy=false;const descTodo=[];
 /* Queue a title's description; books opened in details go to the front. */
@@ -3036,7 +3036,7 @@ async function descFill(){
     if(!r.ok){t.descTried=Date.now();save();if(r.status>=500)break;continue}
     const j=await r.json(),d=cleanDesc(j.description);
     if(d)t.desc=d;else t.descTried=Date.now();save();
-    if(bookDlg.open&&bd.id===t.id){renderBD();if(!d)gbWant(t)}
+    if(bookDlg.open&&bd.id===t.id){renderBD(true);if(!d)gbWant(t)}
     await new Promise(z=>setTimeout(z,1000));
   }}finally{descBusy=false}
 }
@@ -3084,8 +3084,8 @@ function copyRow(c){
   else if(mine&&ph)act=c.loanTo?`<button class="btn btn-ghost sm" data-act="cpReturn" data-id="${c.id}">Mark Returned</button>`
     :bd.lend===c.id?`<span class="lend"><select class="inp sm" id="lendTo" aria-label="Lend to">${Object.entries(S.members).map(([k,m])=>`<option value="${k}">${esc(m.name)}</option>`).join('')}</select><button class="btn btn-primary sm" data-act="cpLendGo" data-id="${c.id}">Lend</button><button class="link-btn sm" data-act="cpLend" data-id="">Cancel</button></span>`
     :`<button class="btn btn-ghost sm" data-act="cpLend" data-id="${c.id}">Mark Loaned</button>`;
-  return `<div class="copy"><span class="avatar" style="background:${colorOf(c.owner)}">${initOf(c.owner)}</span><div class="cp-main"><div class="small"><b>${FMT[c.format]}</b>${c.edition?` · ${esc(c.edition)}`:''}${c.where?` · ${esc(c.where)}`:''}</div><div class="xs muted">Owned by ${nameOf(c.owner)}${mine?` · <button type="button" class="link-btn sm copy-edit-link" data-act="cpEdit" data-id="${c.id}" aria-label="Edit ${esc(FMT[c.format])} copy${c.edition?' — '+esc(c.edition):''}">Edit</button>`:''}</div></div>
-  <span class="avail ${ph?(c.loanTo||hold?'loan':'ok'):''}">${ph?(c.loanTo?(c.loanTo==='me'?'On loan to you':`On loan to ${nameOf(c.loanTo)}`):hold?(hold.from==='me'?'On hold for you':`On hold for ${nameOf(hold.from)} — awaiting pickup`):'Available'):'Digital'}</span>
+  return `<div class="copy"><span class="avatar" style="background:${colorOf(c.owner)}">${initOf(c.owner)}</span><div class="cp-main"><div class="small"><b>${FMT[c.format]}</b>${c.edition?` · ${esc(c.edition)}`:''}${c.where?` · ${esc(c.where)}`:''}</div><div class="xs muted">Owned by ${esc(nameOf(c.owner))}${mine?` · <button type="button" class="link-btn sm copy-edit-link" data-act="cpEdit" data-id="${c.id}" aria-label="Edit ${esc(FMT[c.format])} copy${c.edition?' — '+esc(c.edition):''}">Edit</button>`:''}</div></div>
+  <span class="avail ${ph?(c.loanTo||hold?'loan':'ok'):''}">${ph?(c.loanTo?(c.loanTo==='me'?'On loan to you':`On loan to ${esc(nameOf(c.loanTo))}`):hold?(hold.from==='me'?'On hold for you':`On hold for ${esc(nameOf(hold.from))} — awaiting pickup`):'Available'):'Digital'}</span>
   <span class="cp-act">${act}${mine&&!S.settings.solo?`<button class="link-btn sm cp-share" data-act="cpShare" data-id="${c.id}" aria-pressed="${!c.private}" title="Show this copy in the ${esc(GN())} Library">${c.private?`${ic('lock')}Only Me`:`${ic('users')}Shared`}</button>`:''}${mine?`<button class="link-btn sm" data-act="cpRemove" data-id="${c.id}">Remove</button>`:''}</span></div>${bd.reqNote===c.id&&!mine&&!mr?`<div class="req-in req-compose"><label class="f"><span>Note to ${esc(nameOf(c.owner))} <span class="sub">(optional)</span></span><textarea class="inp" id="reqNoteTx" rows="2" maxlength="200" data-count="200" aria-describedby="reqNoteCount" placeholder="When you could pick it up, or why you'd like to read it"></textarea>${charCount('reqNoteCount',0,200)}</label><span class="req-btns"><button class="btn btn-ghost sm" data-act="reqNoteOpen" data-id="">Cancel</button><button class="btn btn-primary sm" data-act="reqBorrow" data-id="${c.id}">${free?'Send Request':'Join the Waiting Line'}</button></span></div>`:''}${incoming.map((r,i)=>`<div class="req-in"><span class="small">${free?'':`<span class="xs muted">${ordinal(i+1)} in line · </span>`}<b>${esc(nameOf(r.from))}</b> asked to borrow this ${ago(r.ts)}.${r.note?`<span class="req-msg">“${esc(r.note)}”</span>`:''}</span>${replyBtns(r,free)}</div>`).join('')}`;
 }
 /* A reading keeps its own edition label: selecting a copy copies the label, never a live reference. */
@@ -3128,7 +3128,7 @@ copyEditForm.addEventListener('submit',e=>{e.preventDefault();const c=S.copies.f
   if(!save())return;
   document.querySelectorAll('.reading-edition').forEach(w=>{const select=w.querySelector('select'),option=select&&[...select.options].find(o=>o.value===c.id);if(option)option.textContent=FMT[c.format]+' · '+(c.edition||'Copy');if(select?.value===c.id){const prefix=w.dataset.editionPrefix,input=w.querySelector('input');if(input?.value===oldEdition&&(prefix==='adReading'||prefix==='startReading'&&['want','new'].includes(formatPick?.b?.status)))input.value=c.edition}});
   const access=document.getElementById('teCopies');if(access&&titleDlg.open)access.innerHTML=copyAccess(c.titleId);
-  copyEditDlg.close();render();if(bookDlg.open)renderBD();toast('Saved your copy.');
+  copyEditDlg.close();render();if(bookDlg.open)renderBD(true);toast('Saved your copy.');
 });
 copyEditDlg.addEventListener('close',()=>{if(copyEditOpener?.isConnected)copyEditOpener.focus()});
 function bookIdentityTaken(id,title,author){return S.titles.some(t=>t.id!==id&&olKey(t.title)===olKey(title)&&olKey(t.author)===olKey(author))}
@@ -3170,14 +3170,23 @@ function bdQuiet(t,r){
   const rec=myRecs().some(x=>x.titleId===t.id);
   return `<div class="bd-quiet">${rec?'':`<button class="link-btn sm" data-act="discHide" data-k="${esc(k)}">Not for Me</button><span aria-hidden="true" class="muted">·</span>`}<button class="link-btn sm" data-act="readIt" data-id="${t.id}">Already Read It</button></div>`;
 }
-function renderBD(){
+function renderBD(keepAll){
+  const kept=keepAll?bdFields():null;
   // Redraws (a description arriving, a rating) keep what's been chosen and typed in the Recommend form.
   const fa=document.activeElement,fk=fa&&fa!==bookBody&&bookBody.contains(fa)?(fa.id?'#'+CSS.escape(fa.id):fa.dataset?.act?`[data-act="${fa.dataset.act}"]${fa.dataset.v!=null?`[data-v="${fa.dataset.v}"]`:''}${fa.dataset.id?`[data-id="${fa.dataset.id}"]`:''}`:null):null;
   const keep=bookBody.querySelector('.recf')?{to:[...bookBody.querySelectorAll('[name=recTo]:checked')].map(x=>x.value),note:document.getElementById('recNote')?.value||'',rate:!!document.getElementById('recRate')?.checked,focus:document.activeElement?.id||''}:null;
   renderBD0();
+  if(kept)bdRestore(kept);
   if(fk&&(!document.activeElement||document.activeElement===document.body||!document.activeElement.isConnected))bookBody.querySelector(fk)?.focus({preventScroll:true});
   if(keep&&bd.rec){keep.to.forEach(v=>{const c=bookBody.querySelector(`[name=recTo][value="${v}"]`);if(c&&!c.disabled)c.checked=true});const n=document.getElementById('recNote');if(n)n.value=keep.note;const r=document.getElementById('recRate');if(r&&r.type==='checkbox'&&keep.rate)r.checked=true;if(keep.focus)document.getElementById(keep.focus)?.focus()}
 }
+/* Third pass T3-2: a redraw that the reader didn't cause (a description arriving, a save in another window) keeps
+   everything typed or chosen in the book window: borrow and reply notes, a copy being added, lending. */
+function bdFields(){return [...bookBody.querySelectorAll('input,select,textarea')].filter(e=>e.type!=='file'&&e.type!=='hidden'&&(e.id||e.name)).map(e=>{
+  const key=e.id?'#'+CSS.escape(e.id):`[name="${CSS.escape(e.name)}"]${e.type==='checkbox'||e.type==='radio'?`[value="${CSS.escape(e.value)}"]`:''}`;
+  const changed=e.type==='checkbox'||e.type==='radio'?e.checked!==e.defaultChecked:e.tagName==='SELECT'?[...e.options].some(o=>o.selected!==o.defaultSelected):e.value!==e.defaultValue;
+  return changed?{key,v:e.value,c:e.checked,box:e.type==='checkbox'||e.type==='radio',sel:e.tagName==='SELECT'}:null}).filter(Boolean)}
+function bdRestore(list){list.forEach(f=>{const e=bookBody.querySelector(f.key);if(!e)return;if(f.box)e.checked=f.c;else e.value=f.v;e.dispatchEvent(new Event('input',{bubbles:true}))})}
 function renderBD0(){
   const t=titleById(bd.id);if(!t){bookDlg.close();return}
   const r=myReading(t.id),cs=copiesOf(t.id).filter(c=>!S.settings.solo||c.owner==='me');
@@ -3223,7 +3232,7 @@ function renderBD0(){
   }else{
     body=`<label class="f"><span>Notes <span class="sub">(only you see these)</span></span><textarea class="inp" id="bdNotes" rows="3" maxlength="5000" data-count="5000" aria-describedby="bdNoteCount" placeholder="Thoughts, favorite quotes, where you left off…">${esc(S.notes[t.id]||'')}</textarea>${charCount('bdNoteCount',(S.notes[t.id]||'').length,5000)}</label><div class="xs muted" style="margin-top:6px">Saved as you type.</div>`;
   }
-  bookBody.innerHTML=`<div class="dlg-h bd-h">${libCover(t,84)}<div style="flex:1;min-width:0"><h2 id="bdTitle">${esc(dispT(t.title))}</h2><div class="muted">${esc(t.author)}</div><div class="xs muted" style="margin-top:4px">${[t.series?`${esc(t.series)} #${t.seriesNo??'?'}`:'',t.genre,t.pages?`${t.pages} pages`:''].filter(Boolean).join(' · ')}</div>
+  bookBody.innerHTML=`<div class="dlg-h bd-h">${libCover(t,84)}<div style="flex:1;min-width:0"><h2 id="bdTitle">${esc(dispT(t.title))}</h2><div class="muted">${esc(t.author)}</div><div class="xs muted" style="margin-top:4px">${[t.series?`${esc(t.series)} #${t.seriesNo??'?'}`:'',t.genre?esc(t.genre):'',t.pages?`${t.pages} pages`:''].filter(Boolean).join(' · ')}</div>
  ${dsc&&dsc.src!=='gb'&&bd.tab!=='about'?`<div class="bd-prev"><span class="bd-prev-t">${esc(dsc.text.replace(/\s+/g,' '))}</span><button class="link-btn sm" data-act="bdTab" data-v="about">More</button></div>`:''}
  <div class="bd-acts">${prim}</div>${getLine(t)}${bdQuiet(t,r)}</div><button type="button" class="icon-btn x" data-act="closeBD" aria-label="Close">${ic('x')}</button></div>
     ${(()=>{const rs=myRecs().filter(r=>r.titleId===t.id);return rs.length?`<div class="rec-box">${rs.map(r=>`<div class="small"><b>${esc(nameOf(r.from))}</b>${r.rating?` (${r.rating}★)`:''} recommended this to you${r.note?`: “${esc(r.note)}”`:'.'}</div>`).join('')}<div class="rec-acts"><button class="link-btn sm" data-act="dismissRec" data-id="${t.id}">Not for Me</button><span class="xs muted">Only you see this; ${esc([...new Set(rs.map(r=>nameOf(r.from)))].join(' and '))} won’t be told.</span></div></div>`:''})()}
@@ -3345,7 +3354,7 @@ titleForm.addEventListener('submit',e=>{
   copyEdits.forEach(x=>{let c=S.copies.find(c=>c.id===x.id);if(!c){c={id:'c'+uid(),titleId:t.id,owner:'me',loanTo:null};S.copies.push(c);x.id=c.id;}c.format=x.format;c.edition=x.edition;if(!S.settings.solo)c.private=!x.shared||undefined;else if(!('private' in c))c.private=true;});
   // Retain newly assigned IDs if storage fails, so retrying cannot add duplicates.
   titleForm.querySelectorAll('.inline-copy').forEach((row,i)=>row.dataset.copyId=copyEdits[i].id);
-  if(!save())return;titleDlg.close();render();if(bookDlg.open)renderBD();toast(`Saved changes to ${title}.`);
+  if(!save())return;titleDlg.close();render();if(bookDlg.open)renderBD(true);toast(`Saved changes to ${title}.`);
 });
 
 /* ---------- add a book ---------- */
@@ -3513,7 +3522,7 @@ function coverRedraw(){
   clearTimeout(coverDraw);
   coverDraw=setTimeout(()=>{
     if(document.activeElement?.closest('input,select,textarea')||document.querySelector('.menu:not([hidden]),.dc-ghost'))return coverRedraw();
-    const y=window.scrollY;render();window.scrollTo(0,y);if(bookDlg.open)renderBD();if(addDlg.open)renderAdd(true);
+    const y=window.scrollY;render();window.scrollTo(0,y);if(bookDlg.open)renderBD(true);if(addDlg.open)renderAdd(true);
   },2500);
 }
 async function coverFill(){
@@ -4623,7 +4632,7 @@ editForm.addEventListener('submit',e=>{
   if(b.status==='finished'){if(f.finished){b.finished=f.finished;delete b.readIt;delete b.markedOn}else{delete b.finished;b.readIt=true;b.markedOn=b.markedOn||today()}}
   saveReadingEdition(b,readEdition(editForm,'editReading'));
   const tt=titleById(b.titleId);if(tt){updateBookIdentity(tt,b.title,b.author);if(['print','ebook'].includes(b.format))tt.pages=b.total;const sn=(f.series||'').trim();tt.series=sn||undefined;tt.seriesNo=sn&&String(f.seriesNo||'').trim()!==''&&!isNaN(+f.seriesNo)?+f.seriesNo:undefined;if(sn&&/^\d+$/.test(String(f.seriesLen||'').trim()))(S.seriesLen=S.seriesLen||{})[sn]=+f.seriesLen}
-  if(!save())return;editDlg.close();render();if(bookDlg.open)renderBD();toast(`Saved changes to ${b.title}.`);
+  if(!save())return;editDlg.close();render();if(bookDlg.open)renderBD(true);toast(`Saved changes to ${b.title}.`);
 });
 /* Tabs: Left/Right (and Home/End) move between tabs and switch to them; only the selected tab is a Tab-key stop.
    Switching redraws the page or window, so focus goes back to the newly selected tab instead of falling to the page. */
@@ -4644,7 +4653,10 @@ let toastT,ghostT;const GHOST_MS=6000,GHOST_AFTER=2000;
 let undoFn=null;
 const snapshot=()=>JSON.stringify(S);
 // Undo also redraws any open window (book, challenge, or battle details), since the message's Undo can be used there.
-const restoreTo=snap=>()=>{S=JSON.parse(snap);save();refreshLib()};
+/* Undo reverses only its own action (third pass T3-1): the state right after the action is compared with the snapshot
+   before it, and only those differences are taken back, so anything saved since (a note, another session) stays.
+   If something since changed the same record, Undo says so instead of overwriting it. */
+const restoreTo=snap=>{const after=JSON.stringify(S);return ()=>{let next;try{next=mergeSaved(JSON.parse(after),JSON.parse(snap),JSON.parse(JSON.stringify(S)))}catch(e){toast('Can’t undo that now: it has been changed since.');return}S=next;save();refreshLib()}};
 const showT=t=>{if(t.showPopover){if(t.matches(':popover-open'))t.hidePopover();t.showPopover()}else t.hidden=false};
 const hideT=t=>{if(t.hidePopover){if(t.matches(':popover-open'))t.hidePopover()}else t.hidden=true};
 let extraSub='';
@@ -4844,7 +4856,7 @@ document.addEventListener('click',e=>{
     case 'dnfSave':{const b=book(dnfSel.id),note=document.getElementById('dnfNote').value.trim(),had=!!(b.dnfWhy||b.dnfNote);
       if(dnfSel.why.length)b.dnfWhy=DNF_WHY.map(x=>x[0]).filter(k=>dnfSel.why.includes(k));else delete b.dnfWhy;if(note)b.dnfNote=note;else delete b.dnfNote;
       if(!had&&(b.dnfWhy||b.dnfNote))postBook('dnf','stopped reading',b,`at ${stopAt(b)}${b.dnfWhy?` · ${dnfWhyL(b.dnfWhy,true)}`:''}${b.dnfNote?`: “${b.dnfNote}”`:''}`);
-      save();dnfDlg.close();render();if(bookDlg.open)renderBD();toast(b.dnfWhy||b.dnfNote?'Reason saved.':'Saved.');break}
+      save();dnfDlg.close();render();if(bookDlg.open)renderBD(true);toast(b.dnfWhy||b.dnfNote?'Reason saved.':'Saved.');break}
     case 'dnfClose':dnfDlg.close();break;
     case 'dnfUndo':{const u=dnfSel?.undo;dnfDlg.close();if(u){u();toast('Undone.')}break}
     case 'dnfEdit':{const b=book(a.dataset.book);if(b)openDnf(b);break}
@@ -4942,7 +4954,7 @@ document.addEventListener('click',e=>{
     case 'shGo':{const v=shBody.querySelector('input[name=shV]:checked')?.value||'shared',c=S.copies.find(x=>x.id===shSel.cid);S.settings.copyDefault=v;
       if(c){const was=!c.private;if(v==='private'&&was){c.private=true;const t=titleById(c.titleId);const i=S.activity.map(x=>x.kind==='library'&&x.who==='me'&&x.book===t?.title&&Date.now()-x.ts<6e5).lastIndexOf(true);if(i>=0)S.activity.splice(i,1)}
         else if(v==='shared'&&!was){delete c.private;postBook('library','added a book to the group library:',titleById(c.titleId))}}
-      save();shDlg.close();render();if(bookDlg.open)renderBD();toast(v==='shared'?'Your books will show in the group library.':'Your books will stay private. Share any of them later.');break}
+      save();shDlg.close();render();if(bookDlg.open)renderBD(true);toast(v==='shared'?'Your books will show in the group library.':'Your books will stay private. Share any of them later.');break}
     case 'shareStart':{if(addDlg.open)addDlg.close();if(bookDlg.open)bookDlg.close();view='library';lib.tab='mybooks';lib.sel=new Set();render();window.scrollTo(0,0);break}
     case 'shNudge':{if(a.dataset.v==='off')S.settings.shareNudgeOff=true;else S.settings.shareNudgeAt=Date.now();save();refreshLib();toast(a.dataset.v==='off'?'Got it. That reminder won’t show again.':'We’ll remind you in a month.');break}
     case 'shareSel':lib.sel=lib.sel?null:new Set();refreshLib();if(!lib.sel)window.scrollTo(0,0);break;
