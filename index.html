@@ -225,6 +225,9 @@ main{max-width:1240px;margin:0 auto;padding:20px 20px 40px}
 .d-kicker{font-size:12px;font-weight:600;color:var(--primary)}
 .d-title{font-size:26px;line-height:1.15}
 .d-prog{display:flex;justify-content:space-between;font-size:14px;margin-top:14px}
+/* F1: no length yet. */
+.len-none{color:var(--text-2);font-size:13px}.len-none .link-btn{padding:0 2px;font-size:13px}.len-box{margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--surface-alt);display:grid;gap:2px}
+.d-prog .len-none{text-align:right}
 .detail .bar{height:9px}
 .d-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px}
 .d-stat{background:var(--surface-alt);border-radius:10px;padding:10px 12px}
@@ -1706,6 +1709,7 @@ function weekDays(){
   return Array.from({length:7},(_,i)=>addDays(mon,i));
 }
 function milestone(b){
+  if(!hasLen(b))return '';
   if(b.format==='audio'){
     const rem=b.total-b.pos;if(rem<=0)return '';
     if(rem<=60)return `${fmtMin(rem)} left to finish`;
@@ -1716,6 +1720,14 @@ function milestone(b){
   const next=Math.floor(b.pos/50)*50+50;return `${next-b.pos} pages to page ${next}`;
 }
 const pct=b=>b.total>0?Math.max(0,Math.min(100,Math.round(b.pos/b.total*100))):0;
+/* F1: a reading can start without its length. Until a length is set there's no percent, no finish estimate, and no
+   automatic Finished at the last page; logged page ranges still count. */
+const hasLen=b=>b.total>0;
+const minsLogged=b=>S.sessions.filter(s=>s.bookId===b.id).reduce((a,s)=>a+(s.minutes||0),0);
+function progText(b){if(b.format==='unknown')return 'Reading format not specified';const audio=b.format==='audio';
+  if(hasLen(b))return audio?`${fmtPos(b.pos)} of ${fmtPos(b.total)}`:`Page ${b.pos} of ${b.total}`;
+  if(b.pos>0)return audio?`At ${fmtPos(b.pos)}`:`Page ${b.pos}`;const m=minsLogged(b);return m?`${fmtMin(m)} logged`:'Nothing logged yet'}
+const addLenLink=b=>`<span class="len-none">Length not set · <button type="button" class="link-btn sm" data-act="addLength" data-book="${b.id}">Add Length</button></span>`;
 const lastRead=id=>{const s=S.sessions.filter(x=>x.bookId===id).map(x=>x.date).sort().pop();return s};
 const yearFinished=()=>S.books.filter(b=>b.status==='finished'&&b.finished&&b.finished.slice(0,4)===today().slice(0,4)).length;
 const monthPages=()=>S.sessions.filter(s=>s.date.slice(0,7)===today().slice(0,7)).reduce((a,s)=>a+(s.pages||0),0);
@@ -1806,11 +1818,11 @@ function readingList(){return S.books.filter(b=>b.status==='reading').sort((a,b)
 function currentSel(){const list=readingList();if(!list.length)return null;return list.find(x=>x.id===selBook)||list[0]}
 function bookStats(b){
   const t=today(),audio=b.format==='audio',ss=S.sessions.filter(s=>s.bookId===b.id&&!isCU(s));
-  const left=Math.max(0,b.total-b.pos);
+  const left=hasLen(b)?Math.max(0,b.total-b.pos):null;
   let per=null;
   if(audio){const m=ss.map(s=>s.minutes||s.est||0).filter(x=>x>0);if(m.length)per=m.reduce((a,x)=>a+x,0)/m.length}
   else{const own=ss.filter(s=>s.pages>0).map(s=>s.pages),all=S.sessions.filter(s=>s.pages>0&&!isCU(s)).map(s=>s.pages);const use=own.length>=2?own:all;if(use.length)per=use.reduce((a,x)=>a+x,0)/use.length}
-  const toGo=per?Math.ceil(left/per):null;
+  const toGo=per&&left!=null?Math.ceil(left/per):null;
   const days=new Set(ss.filter(s=>s.date>addDays(t,-14)).map(s=>s.date)).size;
   const reading=Math.max(1,S.books.filter(x=>x.status==='reading').length);
   const rate=days?days/14:new Set(S.sessions.filter(s=>s.date>addDays(t,-14)&&!isCU(s)).map(s=>s.date)).size/14/reading;
@@ -1828,15 +1840,15 @@ function detailPanel(b,list){
   <div class="detail" id="detail" aria-live="polite"><div class="d-left"><button class="d-cover cover-btn" ${openRead(b)} aria-label="${esc(b.title)} details">${cover(b,140)}</button>${sideActs(b,'side-acts')}</div><div style="min-width:0">
     <div class="d-kicker">Reading Now</div><h3 class="d-title"><button class="d-tlink" ${openRead(b)}>${esc(b.title)}</button></h3><div class="muted small">${esc(b.author)}${st.started?`, started ${fmtDateY(st.started)}`:''}${audio?' · audiobook':''}</div>
     ${sideActs(b,'side-acts-m')}
-    <div class="d-prog"><span>${audio?`${fmtPos(b.pos)} of ${fmtPos(b.total)}`:`Page ${b.pos} of ${b.total}`}</span><b>${pct(b)}%</b></div>
-    <div class="bar"><span style="width:${pct(b)}%"></span></div>
+    ${hasLen(b)?`<div class="d-prog"><span>${progText(b)}</span><b>${pct(b)}%</b></div>
+    <div class="bar"><span style="width:${pct(b)}%"></span></div>`:`<div class="d-prog"><span>${progText(b)}</span>${addLenLink(b)}</div>`}
     ${ms?`<div class="hint">${ms}</div>`:''}
-    <div class="d-stats">
+    ${hasLen(b)?`<div class="d-stats">
       ${audio?stat('Time Left',fmtMin(st.left)):stat('Pages Left',st.left)}
       ${stat(audio?'Listening Pace':'Page Pace',st.per?`${Math.round(st.per)}<small>${audio?' min':''}/session</small>`:'—')}
       ${stat('Sessions to Go',st.toGo!=null?`≈ ${st.toGo}`:'—')}
       ${stat('Finish Around',st.finish?fmtDateY(st.finish):'—','accent')}
-    </div>
+    </div>`:''}
     <div class="d-actions"><button class="btn btn-primary" data-act="log" data-book="${b.id}">${ic('book')}Log Reading</button>${S.timer&&S.timer.bookId===b.id?`<button class="btn btn-ghost" data-act="stopTimer">${ic('clock')}<span data-timer>${fmtClock(tElapsed())}</span></button>`:`<button class="btn btn-ghost" data-act="startTimer" data-book="${b.id}">${ic('play')}Start Timer</button>`}
     </div>
   </div></div>
@@ -1867,7 +1879,7 @@ function stepBook(d,refocus){
 }
 function pausedBlock(){
   const list=S.books.filter(b=>b.status==='paused');
-  const body=list.length?`<div class="paused">${(showPaused?list:list.slice(0,2)).map(b=>`<div class="bk"><button class="cover-btn" ${openRead(b)} tabindex="-1" aria-hidden="true">${cover(b)}</button><div><button class="bk-t bk-tlink" ${openRead(b)}>${esc(b.title)}</button><div class="bk-a">${esc(b.author)}</div><div class="bk-meta" style="margin-top:6px">Paused at ${b.format==='audio'?fmtPos(b.pos):b.pos} of ${b.format==='audio'?fmtPos(b.total):b.total}</div>${b.pausedOn?`<div class="bk-meta">Paused on ${fmtDate(b.pausedOn)}</div>`:''}</div><div class="bk-actions"><button class="btn btn-ghost" data-act="resume" data-book="${b.id}">Resume</button></div></div>`).join('')}</div>`
+  const body=list.length?`<div class="paused">${(showPaused?list:list.slice(0,2)).map(b=>`<div class="bk"><button class="cover-btn" ${openRead(b)} tabindex="-1" aria-hidden="true">${cover(b)}</button><div><button class="bk-t bk-tlink" ${openRead(b)}>${esc(b.title)}</button><div class="bk-a">${esc(b.author)}</div><div class="bk-meta" style="margin-top:6px">Paused at ${hasLen(b)?(b.format==='audio'?fmtPos(b.pos)+' of '+fmtPos(b.total):b.pos+' of '+b.total):progText(b)}</div>${b.pausedOn?`<div class="bk-meta">Paused on ${fmtDate(b.pausedOn)}</div>`:''}</div><div class="bk-actions"><button class="btn btn-ghost" data-act="resume" data-book="${b.id}">Resume</button></div></div>`).join('')}</div>`
     :`<p class="muted small" style="margin:0">No paused books. Pausing keeps your place without cluttering Currently Reading.</p>`;
   return `<section class="card" aria-labelledby="pbH"><div class="card-h"><span class="ico">${ic('pause')}</span><h2 id="pbH">Paused Books <span class="count">(${list.length})</span></h2>${list.length>2?`<button class="more" data-act="togglePaused">${showPaused?'Show Fewer':'View All'}</button>`:''}</div>${body}</section>`;
 }
@@ -2312,7 +2324,7 @@ const libCover=(t,w)=>cover({title:t.title,author:t.author,c:t.c,cover:t.cover,t
 function cardAction(t){
   const r=myReading(t.id);
   if(r&&r.status==='want')return `<button class="btn btn-ghost sm on" data-act="toggleWant" data-id="${t.id}" aria-pressed="true">${ic('check')}On To Read</button>`;
-  if(r&&(r.status==='reading'||r.status==='paused'))return `<div class="xs muted" style="margin-bottom:4px">${STATUS[r.status]} · ${pct(r)}%</div><button class="btn btn-ghost sm" data-act="bdLog" data-id="${r.id}">${ic('book')}Log Reading</button>`;
+  if(r&&(r.status==='reading'||r.status==='paused'))return `<div class="xs muted" style="margin-bottom:4px">${STATUS[r.status]}${hasLen(r)?` · ${pct(r)}%`:''}</div><button class="btn btn-ghost sm" data-act="bdLog" data-id="${r.id}">${ic('book')}Log Reading</button>`;
   if(r)return `<div class="st st-${r.status}">${STATUS[r.status]}</div>`;
   return `<button class="btn btn-ghost sm" data-act="toggleWant" data-id="${t.id}" aria-pressed="false">${ic('plus')}Add to To Read</button>`;
 }
@@ -2361,7 +2373,7 @@ function mbCard(t){
   const st=mbStatus(t),r=myReading(t.id),cs=copiesOf(t.id),mine=cs.some(c=>c.owner==='me');
   const own=mine?'You own it':cs.length?`Owned by ${ownerNames(t.id)}`:'Not owned';
   const fin=S.books.filter(b=>b.titleId===t.id&&b.status==='finished').length;
-  const chip=st==='owned'?`<span class="st">Own but Not Started</span>`:`<span class="st st-${st}">${MB_LABEL[st]}${st==='reading'||st==='paused'?` · ${pct(r)}%`:''}</span>`;
+  const chip=st==='owned'?`<span class="st">Own but Not Started</span>`:`<span class="st st-${st}">${MB_LABEL[st]}${(st==='reading'||st==='paused')&&hasLen(r)?` · ${pct(r)}%`:''}</span>`;
   let act='';
   if(st==='reading'||st==='paused')act=`<button class="btn btn-ghost sm" data-act="bdLog" data-id="${r.id}">${ic('book')}Log Reading</button>`;
   else if(st==='want'){const on=(S.upNext||[]).includes(r.id);act=`<button class="btn btn-ghost sm" data-act="bdLog" data-id="${r.id}">${ic('play')}Start Reading</button><button class="link-btn sm up-tog" data-act="${on?'upRm':'upAdd'}" data-id="${r.id}">${on?`${ic('check')}In Reading Queue`:`${ic('plus')}Add to Reading Queue`}</button>`}
@@ -3208,9 +3220,9 @@ function renderBD0(){
   }else if(bd.tab==='mine'){
     if(!r)body=`<p class="small muted">You haven’t read this book yet. Add it to your To Read list to keep it handy.</p>`;
     else{
-      const prog=r.format==='unknown'?'Reading format not specified':r.format==='audio'?`${fmtPos(r.pos)} of ${fmtPos(r.total)}`:`Page ${r.pos} of ${r.total}`;
+      const prog=progText(r);
       body=`<div class="st st-${r.status}">${STATUS[r.status]}</div> <button class="link-btn sm" data-act="editBook" data-book="${r.id}">${ic('pencil')}Change Status or Details</button>
-      ${r.status!=='want'&&r.format!=='unknown'?`<div class="bar" style="margin-top:12px"><span style="width:${pct(r)}%"></span></div><div class="xs muted">${prog} · ${pct(r)}%</div>`:''}
+      ${r.status!=='want'&&r.format!=='unknown'?(hasLen(r)?`<div class="bar" style="margin-top:12px"><span style="width:${pct(r)}%"></span></div><div class="xs muted">${prog} · ${pct(r)}%</div>`:`<div class="len-box"><div class="small">${prog}</div><div class="xs muted">${addLenLink(r)}</div></div>`):''}
       <div class="xs muted" style="margin-top:6px">${[r.started?`Started ${fmtDateY(r.started)}`:'',r.finished?`Finished ${fmtDateY(r.finished)}`:r.status==='finished'?finUnknown(r):'',r.dnfOn?`Set aside ${fmtDateY(r.dnfOn)}`:''].filter(Boolean).join(' · ')}</div>
       ${r.edition?`<div class="small" style="margin-top:10px">Edition: ${esc(r.edition)}</div>`:''}
       ${r.status==='finished'?`<div class="rate"><span class="small">Your Rating <span class="muted">(${rateWho()})</span></span>${starsFor(r)}</div>`
@@ -3377,7 +3389,7 @@ function adDetails(){const d=ad.detail,t=d.look,locked=d.existing&&!d.reread,aud
     ${locked?`<div class="ad-notice" role="status">Already in your books: <b>${STATUS[d.existing.status]}</b>. Your existing reading and sessions will stay unchanged.<div class="ad-existing-acts"><button type="button" class="link-btn sm" data-act="adOpenReading">Open My Reading</button>${['finished','dnf'].includes(d.existing.status)?`<button type="button" class="link-btn sm" data-act="adReread">${d.existing.status==='finished'?'Start a Reread':'Start a New Reading'}</button>`:''}</div></div>`:''}
     <div class="form ad-detail-form"><label class="f">Reading Status<select class="inp" id="adStatus" ${locked?'disabled':''}>${AD_STATUSES.map(([k,l])=>`<option value="${k}" ${d.status===k?'selected':''}>${l}</option>`).join('')}</select></label>
     ${!locked&&d.status!=='none'?`<div class="ad-reading-options">${d.status==='want'?'<p class="xs muted ad-help">Choose your reading format when you start.</p>':`<label class="f">Reading Format ${active?'':opt}<select class="inp" id="adReadFormat">${formats.map(([k,l])=>`<option value="${k}" ${d.format===k?'selected':''}>${l}</option>`).join('')}</select></label>`}
-      ${d.status!=='want'&&d.format!=='unknown'&&(audio||!t.pages)?input('adTotal',`${audio?'Audiobook Length (h:mm)':'Number of Pages'} ${active?'':opt}`,d.total&&(audio?typeof d.total==='number'?fmtPos(d.total):d.total:d.total),'inputmode="'+(audio?'text':'numeric')+'" '+(audio?'placeholder="h:mm"':'')):''}
+      ${d.status!=='want'&&d.format!=='unknown'&&(audio||!t.pages)?input('adTotal',`${audio?'Audiobook Length (h:mm)':'Number of Pages'} ${opt}`,d.total&&(audio?typeof d.total==='number'?fmtPos(d.total):d.total:d.total),'inputmode="'+(audio?'text':'numeric')+'" '+(audio?'placeholder="h:mm"':'')):''}
       ${progress&&d.format!=='unknown'?input('adPosition',`${d.status==='dnf'?'Stopped at':'Current'} ${audio?'Position (h:mm)':'Page'} ${opt}`,d.pos,'inputmode="'+(audio?'text':'numeric')+'" '+(audio?'placeholder="h:mm"':'')):''}
       ${active?input('adStarted',`Start Date ${opt}`,d.started,`type="date" max="${today()}"`):''}
       ${d.status==='finished'?`${input('adFinished',`Finish Date ${opt}`,d.finished,`type="date" max="${today()}"`)}<p class="xs muted ad-help">Leave blank for Finished, date unknown.</p><label class="f"><span>Your Rating ${opt}</span><select class="inp" id="adRating"><option value="">Not Rated</option>${Array.from({length:10},(_,i)=>(i+1)/2).map(n=>`<option value="${n}" ${+d.rating===n?'selected':''}>${n} ${n===1?'star':'stars'}</option>`).join('')}</select></label>`:''}
@@ -3397,9 +3409,8 @@ function adSave(){adCaptureDetail();const d=ad.detail;if(!d)return;const er=m=>{
   const parse=v=>String(v).trim()===''?null:audio?parsePos(v):/^\d+$/.test(String(v).trim())?+v:NaN;
   const unspecified=d.status==='want'||d.format==='unknown';const total=reading&&!unspecified?parse(audio?d.total:d.look.pages||d.total):null,pos=reading&&!unspecified?parse(d.pos):null;
   if(reading&&total!==null&&(!Number.isFinite(total)||total<=0))return er(audio?'Enter the length as h:mm, for example 6:45.':'Enter a positive whole number of pages.');
-  if(reading&&active&&!total)return er(audio?'Add the audiobook length so progress can be tracked.':'Add the number of pages so progress can be tracked.');
   if(reading&&pos!==null&&(!Number.isFinite(pos)||pos<0))return er(audio?'Enter the position as h:mm.':'Enter a whole page number, zero or above.');
-  if(reading&&pos!==null&&(!total||pos>total))return er('The current position must fit within the book’s total length.');
+  if(reading&&pos!==null&&total&&pos>total)return er('The current position must fit within the book’s total length.');
   for(const[k,l]of [['started','start'],['finished','finish'],['stopped','stopped']])if(reading&&d[k]&&(!/^\d{4}-\d{2}-\d{2}$/.test(d[k])||d[k]>today()))return er(`Choose a valid ${l} date that is not in the future.`);
   if(reading&&d.status==='finished'&&d.rating&&(!Number.isFinite(+d.rating)||+d.rating<.5||+d.rating>5||+d.rating*2%1))return er('Choose a rating between half a star and five stars.');
   if(reading&&d.status==='want'&&d.queue&&upList().length>=10)return er('Your Reading Queue holds 10 books. Remove one first, or leave Add to Reading Queue unchecked.');
@@ -3410,7 +3421,7 @@ function adSave(){adCaptureDetail();const d=ad.detail;if(!d)return;const er=m=>{
   let r=null,copy=null;if(reading){r={id:'r'+uid(),titleId:t.id,title:t.title,author:t.author,format:d.status==='want'?'unknown':d.format,total:total||0,pos:pos??0,status:d.status,c:t.c};
     if(d.status==='want')r.wantSince=today();
     if(active&&d.started)r.started=d.started;
-    if(d.status==='finished'){r.pos=r.total;if(d.finished)r.finished=d.finished;else{r.readIt=true;r.markedOn=today()}if(d.rating)r.rating=+d.rating}
+    if(d.status==='finished'){if(r.total>0)r.pos=r.total;if(d.finished)r.finished=d.finished;else{r.readIt=true;r.markedOn=today()}if(d.rating)r.rating=+d.rating}
     if(d.status==='dnf'){if(d.stopped)r.dnfOn=d.stopped;if(d.reasons.length)r.dnfWhy=[...d.reasons]}
     if(pos!==null&&active)r.progressBase={pos:r.pos,date:today(),excluded:[]};
     S.books.push(r);if(d.status==='want'&&d.queue)(S.upNext=S.upNext||[]).push(r.id);ad.lastStatus=d.status;ad.lastFormat=d.format;
@@ -3672,7 +3683,7 @@ sessForm.addEventListener('submit',e=>{
   if([st,en,mn,po].some(n=>Number.isNaN(n)))return er(audio?'Use h:mm for positions and whole numbers for minutes.':'Use whole numbers.');
   if((st==null)!==(en==null))return er('Enter both the start and the end, or leave both blank.');
   if(en!=null&&en<st)return er('The end must be after the start.');
-  if(b&&en!=null&&en>b.total)return er(audio?`This audiobook is ${fmtPos(b.total)} long.`:`This book has ${b.total} pages.`);
+  if(b&&hasLen(b)&&en!=null&&en>b.total)return er(audio?`This audiobook is ${fmtPos(b.total)} long.`:`This book has ${b.total} pages.`);
   if(mn!=null&&mn<=0)return er('Minutes must be above zero.');
   const pages=audio?0:(en!=null?en-st:(po||0));
   if(!pages&&mn==null&&!(audio&&en>st))return er('A session needs pages, minutes, or listening progress.');
@@ -4290,10 +4301,10 @@ document.addEventListener('change',e=>{
   if(e.target===fmt&&own.checked)copy.value=fmt.value==='audio'?'audio':copy.value==='audio'?'physical':copy.value;
   if(e.target.matches('[data-edition-copy]')&&e.target.value){const c=S.copies.find(c=>c.id===e.target.value);if(c){const was=fmt.value;fmt.value=c.format==='audio'?'audio':'print';if(was!==fmt.value)document.getElementById('startLength').value=fmt.value==='audio'?'':titleById(formatPick.b.titleId)?.pages||'';}}
   if(e.target===fmt||e.target===copy&&own.checked)document.getElementById('startLength').value=fmt.value==='audio'?'':titleById(formatPick.b.titleId)?.pages||'';
-  const label=document.querySelector('#startLengthLabel span');if(label)label.textContent=fmt.value==='audio'?'Audio Length (h:mm)':'Total Pages';
+  const label=document.querySelector('#startLengthLabel span');if(label)label.textContent=fmt.value==='audio'?'Audio Length (h:mm)':'Total Pages';const hint=document.getElementById('startLenHint');if(hint)hint.textContent=fmt.value==='audio'?'You can log minutes without a length.':'You can log minutes without a page count.';
 });
 function drawLog(b,focus,preMin,moveTo){
-  if(b.format==='unknown'||b.status==='want'&&!startSetupDone.has(b)){detachLogDraft();formatPick={b,focus,preMin,moveTo};logForm.dataset.mode='format';logForm.innerHTML=`<div class="dlg-h"><h2 id="logTitle">Start Reading</h2><button type="button" class="icon-btn x" data-act="closeLog" aria-label="Close">${ic('x')}</button></div><div class="form"><h3>${esc(b.title)}</h3><div class="f2"><label class="f">Reading Format<select class="inp" id="startFormat"><option value="print">Print / Ebook</option><option value="audio">Audiobook</option></select></label><label class="f" id="startLengthLabel"><span>Total Pages</span><input class="inp" id="startLength" value="${titleById(b.titleId)?.pages||''}"></label></div>${readingEditionFields(b,'startReading')}<section><label class="chk"><input type="checkbox" id="startOwn"> I Own a Copy</label><div id="startCopyFields" hidden>${inlineCopyRow()}</div></section><div id="formatError" class="err" role="alert"></div><div class="dlg-f"><button type="button" class="btn btn-ghost" data-act="startNew">Back</button><button type="button" class="btn btn-primary" data-act="startFormatGo">Continue to Log Reading</button></div></div>`;document.getElementById('startFormat').value=b.format==='audio'?'audio':'print';document.getElementById('startLength').value=b.total?(b.format==='audio'?fmtPos(b.total):b.total):titleById(b.titleId)?.pages||'';document.querySelector('#startLengthLabel span').textContent=b.format==='audio'?'Audio Length (h:mm)':'Total Pages';return;}
+  if(b.format==='unknown'||b.status==='want'&&!startSetupDone.has(b)){detachLogDraft();formatPick={b,focus,preMin,moveTo};logForm.dataset.mode='format';logForm.innerHTML=`<div class="dlg-h"><h2 id="logTitle">Start Reading</h2><button type="button" class="icon-btn x" data-act="closeLog" aria-label="Close">${ic('x')}</button></div><div class="form"><h3>${esc(b.title)}</h3><div class="f2"><label class="f">Reading Format<select class="inp" id="startFormat"><option value="print">Print / Ebook</option><option value="audio">Audiobook</option></select></label><label class="f" id="startLengthLabel"><span>Total Pages</span><input class="inp" id="startLength" value="${titleById(b.titleId)?.pages||''}" placeholder="Optional"></label></div><div class="xs muted" id="startLenHint" style="margin-top:-6px">You can log minutes without a page count.</div>${readingEditionFields(b,'startReading')}<section><label class="chk"><input type="checkbox" id="startOwn"> I Own a Copy</label><div id="startCopyFields" hidden>${inlineCopyRow()}</div></section><div id="formatError" class="err" role="alert"></div><div class="dlg-f"><button type="button" class="btn btn-ghost" data-act="startNew">Back</button><button type="button" class="btn btn-primary" data-act="startFormatGo">Continue to Log Reading</button></div></div>`;document.getElementById('startFormat').value=b.format==='audio'?'audio':'print';document.getElementById('startLength').value=b.total?(b.format==='audio'?fmtPos(b.total):b.total):titleById(b.titleId)?.pages||'';document.querySelector('#startLengthLabel span').textContent=b.format==='audio'?'Audio Length (h:mm)':'Total Pages';return;}
 
 
   if(logDlg.open&&logForm.dataset.mode==='log')draftSave(logForm);
@@ -4319,7 +4330,7 @@ function drawLog(b,focus,preMin,moveTo){
       <label class="f">Minutes<span class="sr-only opt-sr"></span><input class="inp" name="minutes" inputmode="text" autocomplete="off" value="${preMin||''}" placeholder="" data-ph="" aria-describedby="minHint"><span class="xs muted min-hint" id="minHint" aria-live="polite"></span></label>
     </div>
     <div class="calc" id="calc"></div>
-    <div class="xs muted" style="margin-top:-8px" ${!audio&&!isNew?'hidden':''}>${audio?`Total length ${fmtPos(b.total)}. Enter positions as h:mm. Add minutes for the time you actually spent listening; otherwise the change in position counts as estimated time.`:(isNew?`New book: the starting page is 0, so reading pages 1–20 counts as 20 pages. Saving starts the book even if you don’t log pages yet.`:`The starting page is where you left off. Enter pages, minutes, or both.`)}</div>
+    <div class="xs muted" style="margin-top:-8px" ${!audio&&!isNew?'hidden':''}>${audio?`${hasLen(b)?`Total length ${fmtPos(b.total)}. `:''}Enter positions as h:mm. Add minutes for the time you actually spent listening; otherwise the change in position counts as estimated time.`:(isNew?`New book: the starting page is 0, so reading pages 1–20 counts as 20 pages. Saving starts the book even if you don’t log pages yet.`:`The starting page is where you left off. Enter pages, minutes, or both.`)}</div>
     <details class="rt reading-together"><summary class="link-btn sm">Read with someone?</summary><div class="chips" style="margin-top:8px">${Object.entries(S.members).map(([k,m])=>`<label class="tog"><input type="checkbox" name="with" value="${k}"><span>${esc(m.name)}</span></label>`).join('')}</div><span class="xs muted">Reading aloud or side by side? Everyone you choose gets credit for this session too.</span></details>
     <div class="f lg-when"><div class="f2 cu-dates"><label class="f cu-from" hidden>From<input class="inp" type="date" name="from" max="${today()}"></label><label class="f"><span class="cu-to">Date</span><input class="inp" type="date" name="date" value="${today()}" max="${today()}"></label></div>
       <label class="chk"><input type="checkbox" name="cu"> Covers more than one day</label><span class="xs muted cu-note" hidden>Counts toward totals and challenges, but not streaks or daily goals.</span></div>
@@ -4386,10 +4397,10 @@ function renderNewResults(q){
   const want=S.books.filter(x=>x.status==='want'&&hit(x)).sort(az);
   const lib=S.settings.solo?[]:S.titles.filter(x=>copiesOf(x.id).length&&hit(x)&&!S.books.some(y=>y.titleId===x.id&&['reading','paused','want'].includes(y.status))).map(x=>({...x,total:x.pages})).sort((a,b)=>Number(recSet.has(b.id))-Number(recSet.has(a.id))||az(a,b));
   const row=(x,src,sub)=>`<button type="button" class="pick" data-act="pickNew" data-src="${src}" data-id="${x.id}">${cover({...x,format:x.format||'print'})}<span><span class="pick-t">${esc(x.title)}</span><span class="xs muted">${esc(x.author)} · ${sub}</span></span></button>`;
-  const len=x=>x.format==='unknown'?'Format chosen when you start':x.format==='audio'?`audiobook, ${fmtPos(x.total)}`:`${x.total} pages`;
+  const len=x=>x.format==='unknown'?'Format chosen when you start':x.format==='audio'?(hasLen(x)?`audiobook, ${fmtPos(x.total)}`:'audiobook'):hasLen(x)?`${x.total} pages`:'length not set';
   document.getElementById('newResults').innerHTML=
     `${upList().filter(hit).length?`<div class="pick-h">Reading Queue</div><div class="pick-list">${upList().filter(hit).map(x=>row(x,'want',len(x))).join('')}</div>`:''}<div class="pick-h">From Your To Read List</div><div class="pick-list">${want.filter(x=>!upList().includes(x)).length?want.filter(x=>!upList().includes(x)).map(x=>row(x,'want',len(x))).join(''):`<div class="xs muted">${q?'No matches.':'Your To Read list is empty.'}</div>`}</div>
-     <div class="pick-h">From the ${esc(GN())} Library</div><div class="pick-list">${lib.length?lib.map(x=>row(x,'lib',`${recSet.has(x.id)?'⭐ Recommended for you · ':''}${x.total} pages · owned by ${ownerNames(x.id)}`)).join(''):`<div class="xs muted">${q?'No matches.':'Nothing else in the group library yet.'}</div>`}</div>`;
+     <div class="pick-h">From the ${esc(GN())} Library</div><div class="pick-list">${lib.length?lib.map(x=>row(x,'lib',`${recSet.has(x.id)?'⭐ Recommended for you · ':''}${hasLen(x)?x.total+' pages · ':''}owned by ${ownerNames(x.id)}`)).join(''):`<div class="xs muted">${q?'No matches.':'Nothing else in the group library yet.'}</div>`}</div>`;
   if(S.settings.solo){const h=[...document.querySelectorAll('#newResults .pick-h')].find(x=>/Library$/.test(x.textContent));if(h){h.nextElementSibling?.remove();h.remove()}}
   document.getElementById('newResults').insertAdjacentHTML('beforeend',newOL(new Set([...S.books.filter(x=>['reading','paused','want'].includes(x.status)).map(x=>x.titleId),...lib.map(x=>x.id)])));
 }
@@ -4426,7 +4437,7 @@ function calcLog(){
       if(minutes&&!isNaN(minutes)&&minutes>0)parts.push(`Speed <b>${Math.round(span/minutes*60)} pages/hr</b>`);
       else if(g.estimate&&span>0){const p=pace(b.id);if(p)parts.push(`About <b>${Math.round(span/p)} min</b> (estimated)`)}
     }
-    if(end>=b.total)parts.push(`<b>That’s the end of the book!</b>`);
+    if(hasLen(b)&&end>=b.total)parts.push(`<b>That’s the end of the book!</b>`);
   }else parts.push('Pages read <b>—</b>');
   const mh=document.getElementById('minHint');if(mh)mh.textContent=minutes==null?'':isNaN(minutes)?'Try 90, 1:30, or 2h 30m':`= ${fmtMin(minutes)}`;
   const cu=logForm.cu?.checked;
@@ -4445,7 +4456,7 @@ logForm.addEventListener('input',e=>{
   if(logForm.dataset.mode==='new'){if(e.target.id==='newQ'){nwQueue(e.target.value);renderNewResults(e.target.value)}return}
   if(logForm.dataset.mode==='manual'){if(e.target.name==='mFormat'){const a=e.target.value==='audio';document.getElementById('mTotalL').textContent=a?'Length (h:mm)':'Number of Pages';logForm.mTotal.placeholder=a?'h:mm':'Pages';logForm.mTotal.inputMode=a?'text':'numeric'}return}
   if(e.target.name==='book'){if(e.target.value==='__new'){drawNew();setTimeout(()=>document.getElementById('newQ')?.focus(),30)}else drawLog(findB(e.target.value));return}
-  if(e.target.name==='end'){const {b,end}=readLog(),fin=end!=null&&!isNaN(end)&&end>=b.total;
+  if(e.target.name==='end'){const {b,end}=readLog(),fin=hasLen(b)&&end!=null&&!isNaN(end)&&end>=b.total;
     if(fin&&logForm.status.value!=='finished'){logForm.dataset.autoFin=logForm.status.value;logForm.status.value='finished';logForm.finished.checked=true}
     else if(!fin&&logForm.dataset.autoFin){logForm.status.value=logForm.dataset.autoFin;logForm.dataset.autoFin='';logForm.finished.checked=false}}
   if(e.target.name==='status')logForm.dataset.autoFin='';
@@ -4473,7 +4484,7 @@ logForm.addEventListener('submit',e=>{
   const fromD=logForm.cu.checked?f.from:null;
   if(logForm.cu.checked){if(!fromD)return err('Choose the first day this covers.');if(fromD>=f.date)return err('The first day must be before the last day.')}
   if(hasEnd&&end<start)return err(`The ${audio?'end position':'ending page'} must be after the ${audio?'start position':'starting page'}.`);
-  if(hasEnd&&end>b.total)return err(audio?`This audiobook is ${fmtPos(b.total)} long.`:`This book has ${b.total} pages.`);
+  if(hasEnd&&hasLen(b)&&end>b.total)return err(audio?`This audiobook is ${fmtPos(b.total)} long.`:`This book has ${b.total} pages.`);
   const wasFinished=b.status==='finished',finished=logForm.finished.checked||f.status==='finished';
   const statusChanged=finished||f.status!==b.status;
   if(!range&&minutes==null&&!statusChanged)return err('Enter pages, minutes, or both.');
@@ -4503,7 +4514,7 @@ logForm.addEventListener('submit',e=>{
     if(withIds.length){extraSub=`Also counted for ${withIds.map(nameOf).join(' and ')}.`;if(S.settings.share)S.activity.push({id:uid(),who:'me',kind:'together',text:`read together with ${withIds.map(nameOf).join(' and ')}`,book:b.title,titleId:b.titleId,ts:Date.now(),r:{}})}
   }
   if(range){if(!['reading','paused'].includes(b.status))b.pos=end;else syncPos(b)}
-  if(finished){const alreadyFinished=b.status==='finished';b.status='finished';if(!alreadyFinished)b.finished=f.date;b.pos=b.total}
+  if(finished){const alreadyFinished=b.status==='finished';b.status='finished';if(!alreadyFinished)b.finished=f.date;if(hasLen(b))b.pos=b.total}
   else{b.status=f.status;if(f.status==='paused')b.pausedOn=today();if(f.status==='dnf'){b.dnfOn=f.date;if(selBook===b.id)selBook=null}}
   if(range)syncPos(b);
   const started=wasWant&&b.status==='reading';
@@ -4580,7 +4591,7 @@ function openEdit(id){
     <label class="f">Author<input class="inp" name="author" value="${esc(b.author)}"></label>
     ${readingEditionFields(b,'editReading')}
     <div class="f2"><label class="f">Format<select class="inp" name="format" ${hasSessions?'disabled':''}>${['want','finished','dnf'].includes(b.status)&&!S.sessions.some(x=>x.bookId===b.id)?`<option value="unknown" ${b.format==='unknown'?'selected':''}>Not Specified</option>`:''}<option value="print" ${b.format==='print'||b.format==='ebook'?'selected':''}>Book or Ebook</option><option value="audio" ${audio?'selected':''}>Audiobook</option></select></label>
-    <label class="f"><span id="eTotalL">${audio?'Length (h:mm)':'Number of Pages'}</span><input class="inp" name="total" value="${audio?fmtPos(b.total):b.total}"></label></div>
+    <label class="f"><span id="eTotalL">${audio?'Length (h:mm)':'Number of Pages'}</span><input class="inp" name="total" value="${hasLen(b)?(audio?fmtPos(b.total):b.total):''}" placeholder="Optional"></label></div>
     <div class="f2"><label class="f"><span id="ePosL">${audio?'Current Position (h:mm)':'Current Page'}</span><input class="inp" name="pos" value="${audio?fmtPos(b.pos):b.pos}"></label>
     <label class="f">Started On<input class="inp" type="date" name="started" value="${b.started||''}" max="${today()}"></label></div>
     <div data-edit-finish ${b.status==='finished'?'':'hidden'}><label class="f"><span>Finished On <span class="sub">(optional)</span></span><input class="inp" type="date" name="finished" value="${b.finished||''}" max="${today()}"></label><p class="xs muted">Leave blank if the finish date is unknown.</p></div>
@@ -4599,7 +4610,7 @@ editForm.addEventListener('submit',e=>{
   const tot=num(f.total),pos=num(f.pos),er=m=>document.getElementById('editErr').textContent=m;
   const wasQueued=(S.upNext||[]).includes(b.id),next=editForm.dataset.nextStatus||((S.upNext||[]).includes(b.id)&&b.status==='want'?'queue':b.status),nextStatus=next==='queue'?'want':next;
   if(next==='queue'&&!(S.upNext||[]).includes(b.id)&&upList().length>=10)return er('Your Reading Queue holds 10 books. Remove one first.');
-  if(['reading','paused'].includes(nextStatus)&&f.format==='unknown')return er('Choose a reading format and enter its length before moving this book into progress.');
+  if(['reading','paused'].includes(nextStatus)&&f.format==='unknown')return er('Choose a reading format before moving this book into progress.');
   if(nextStatus!=='finished')f.finished='';
   const chosenCopy=S.copies.find(c=>c.id===readEdition(editForm,'editReading').editionCopyId);if(chosenCopy&&f.format!=='unknown'&&(chosenCopy.format==='audio')!==a)return er('Choose a copy that matches this reading’s format.');
   if(!f.title.trim())return er('Enter a title.');
@@ -4608,21 +4619,22 @@ editForm.addEventListener('submit',e=>{
   if(f.started&&f.finished&&f.finished<f.started)return er('The finish date cannot be before the start date.');
   if(b.format==='ebook'&&f.format==='print')f.format='ebook';
   if(S.sessions.some(x=>x.bookId===b.id)&&f.format!==b.format)return er('This reading has logged sessions. Keep its format to protect their page or audio positions.');
-  if(f.format!=='unknown'&&(!tot||isNaN(tot)||tot<=0))return er(a?'Enter the length as h:mm, for example 6:45.':'Enter the number of pages.');
+  const noTot=String(f.total??'').trim()==='';
+  if(f.format!=='unknown'&&!noTot&&(!tot||isNaN(tot)||tot<=0))return er(a?'Enter the length as h:mm, for example 6:45, or leave it blank.':'Enter the number of pages, or leave it blank.');
   if(pos==null||isNaN(pos)||pos<0)return er(a?'Enter the position as h:mm.':'Enter the current page.');
-  if(pos>tot)return er(a?'The position can’t be past the end.':'The current page can’t be past the last page.');
+  if(!noTot&&pos>tot)return er(a?'The position can’t be past the end.':'The current page can’t be past the last page.');
   if(pos!==b.pos||f.format!==b.format)b.progressBase={pos:f.format==='unknown'?0:pos,date:today(),excluded:S.sessions.filter(x=>x.bookId===b.id).map(x=>x.id)};
-  Object.assign(b,{title:f.title.trim(),author:f.author.trim()||'Unknown author',format:f.format,total:f.format==='unknown'?0:tot,pos:f.format==='unknown'?0:pos,started:f.started||undefined});
+  Object.assign(b,{title:f.title.trim(),author:f.author.trim()||'Unknown author',format:f.format,total:f.format==='unknown'||noTot?0:tot,pos:f.format==='unknown'?0:pos,started:f.started||undefined});
   if(nextStatus!==b.status||next==='queue'&&!(S.upNext||[]).includes(b.id)){
     const hadSessions=S.sessions.some(x=>x.bookId===b.id);S.upNext=(S.upNext||[]).filter(id=>id!==b.id);if(next==='queue')S.upNext.push(b.id);
     delete b.finished;delete b.readIt;delete b.markedOn;delete b.pausedOn;delete b.dnfOn;b.status=nextStatus;
     if(nextStatus==='want'){b.wantSince=b.wantSince||today();if(!hadSessions){delete b.started;b.pos=0;}}
     if(nextStatus==='reading'){if(wasQueued)b.fromQueue=true;if(b.wantSince&&daysBetween(b.wantSince,today())>=365)b.rescued=today();if(!b.started)b.started=today();}if(nextStatus==='paused')b.pausedOn=today();if(nextStatus==='dnf')b.dnfOn=today();
-    if(nextStatus==='finished'){postBook('finished','finished',b);b.pos=b.total;if(S.timer?.bookId===b.id&&!S.timer.stop)S.timer.stop=Date.now();}
+    if(nextStatus==='finished'){postBook('finished','finished',b);if(hasLen(b))b.pos=b.total;if(S.timer?.bookId===b.id&&!S.timer.stop)S.timer.stop=Date.now();}
   }
   if(b.status==='finished'){if(f.finished){b.finished=f.finished;delete b.readIt;delete b.markedOn}else{delete b.finished;b.readIt=true;b.markedOn=b.markedOn||today()}}
   saveReadingEdition(b,readEdition(editForm,'editReading'));
-  const tt=titleById(b.titleId);if(tt){updateBookIdentity(tt,b.title,b.author);if(['print','ebook'].includes(b.format))tt.pages=b.total;const sn=(f.series||'').trim();tt.series=sn||undefined;tt.seriesNo=sn&&String(f.seriesNo||'').trim()!==''&&!isNaN(+f.seriesNo)?+f.seriesNo:undefined;if(sn&&/^\d+$/.test(String(f.seriesLen||'').trim()))(S.seriesLen=S.seriesLen||{})[sn]=+f.seriesLen}
+  const tt=titleById(b.titleId);if(tt){updateBookIdentity(tt,b.title,b.author);if(['print','ebook'].includes(b.format)&&hasLen(b))tt.pages=b.total;const sn=(f.series||'').trim();tt.series=sn||undefined;tt.seriesNo=sn&&String(f.seriesNo||'').trim()!==''&&!isNaN(+f.seriesNo)?+f.seriesNo:undefined;if(sn&&/^\d+$/.test(String(f.seriesLen||'').trim()))(S.seriesLen=S.seriesLen||{})[sn]=+f.seriesLen}
   if(!save())return;editDlg.close();render();if(bookDlg.open)renderBD();toast(`Saved changes to ${b.title}.`);
 });
 /* Tabs: Left/Right (and Home/End) move between tabs and switch to them; only the selected tab is a Tab-key stop.
@@ -4688,7 +4700,7 @@ document.addEventListener('click',e=>{
       if(v==='reading'){if(prev==='want'){if(wasQ)b.fromQueue=true;if(b.wantSince&&daysBetween(b.wantSince,today())>=365)b.rescued=today()}b.status='reading';if(!b.started)b.started=today()}
       else if(v==='paused'){b.status='paused';b.pausedOn=today()}
       else if(v==='want'||v==='queue'){b.status='want';if(!b.wantSince)b.wantSince=today();if(!has){delete b.started;b.pos=0}if(v==='queue')S.upNext.push(b.id)}
-      else if(v==='finished'){b.status='finished';b.finished=today();b.pos=b.total;if(!b.started)b.started=today();if(prev!=='finished')postBook('finished','finished',b);if(S.timer?.bookId===b.id&&!S.timer.stop)S.timer.stop=Date.now()}
+      else if(v==='finished'){b.status='finished';b.finished=today();if(hasLen(b))b.pos=b.total;if(!b.started)b.started=today();if(prev!=='finished')postBook('finished','finished',b);if(S.timer?.bookId===b.id&&!S.timer.stop)S.timer.stop=Date.now()}
       else if(v==='dnf'){b.status='dnf';b.dnfOn=today()}
       if(selBook===b.id)selBook=null;
       save();if(editDlg.open)editDlg.close();render();if(bookDlg.open)renderBD();
@@ -4916,6 +4928,7 @@ document.addEventListener('click',e=>{
     case 'resetTimer':resetTimer();break;
     case 'discardTimer':{const snap=snapshot();S.timer=null;save();render();toast('Timer discarded.',restoreTo(snap));break}
     case 'editBook':openEdit(id);break;
+    case 'addLength':openEdit(id);setTimeout(()=>{const t=editForm.querySelector('[name=total]');t?.focus();t?.scrollIntoView({block:'center'})},40);break;
     case 'closeEdit':editDlg.close();break;
     case 'teOpen':openTitleEdit(a.dataset.id);if(a.dataset.focus)setTimeout(()=>titleForm.querySelector(`[name=${a.dataset.focus}]`)?.focus(),40);break;
     case 'teClose':titleDlg.close();break;
@@ -4925,7 +4938,7 @@ document.addEventListener('click',e=>{
     case 'teGen':te.cover='';te.url='';te.src='gen';te.bad=false;te.touched=true;tePanel();tePreview();break;
     case 'startNew':drawNew();if(!logDlg.open)logDlg.showModal();setTimeout(()=>document.getElementById('newQ')?.focus(),30);break;
     case 'backLog':{const c=currentSel()||S.books.find(x=>x.status==='paused');if(c)drawLog(c);break}
-    case 'startFormatGo':{const f=document.getElementById('startFormat').value,v=document.getElementById('startLength').value.trim(),total=f==='audio'?parsePos(v):/^\d+$/.test(v)?+v:NaN;if(!Number.isFinite(total)||total<=0){document.getElementById('formatError').textContent='Enter a positive page count or audio length as h:mm.';break}const {b,focus,preMin,moveTo}=formatPick;const selectedCopy=S.copies.find(c=>c.id===document.getElementById('startReadingCopy')?.value);if(!document.getElementById('startOwn')?.checked&&selectedCopy&&(selectedCopy.format==='audio')!==(f==='audio')){document.getElementById('formatError').textContent='Choose a reading format that matches the selected copy.';break;}const own=document.getElementById('startOwn')?.checked,copyRow=document.querySelector('#startCopyFields .inline-copy');if(own){const cf=copyRow.querySelector('[data-copy-format]').value,edition=copyRow.querySelector('[data-copy-edition]').value.trim();if((cf==='audio')!==(f==='audio')){document.getElementById('formatError').textContent='Choose a reading format that matches the copy you’re reading.';break;}startCopyDrafts.set(b.id,{id:'c'+uid(),titleId:b.titleId,owner:'me',format:cf,edition,loanTo:null,private:S.settings.solo||!copyRow.querySelector('[data-copy-shared]')?.checked||undefined});saveReadingEdition(b,{edition});}else{startCopyDrafts.delete(b.id);saveReadingEdition(b,readEdition(logForm,'startReading'));}startSetupDone.add(b);b.format=f;b.total=total;b.pos=b.status==='finished'?total:0;if(moveTo){commitStartCopy(b);b.status=moveTo;b.pos=0;delete b.finished;delete b.dnfOn;if(moveTo==='reading'&&!b.started)b.started=today();if(moveTo==='paused')b.pausedOn=today();S.upNext=(S.upNext||[]).filter(id=>id!==b.id);save();logDlg.close();render();toast(`Moved ${b.title} to ${STATUS[moveTo]}.`)}else{save();drawLog(b,focus,preMin)}break}
+    case 'startFormatGo':{const f=document.getElementById('startFormat').value,v=document.getElementById('startLength').value.trim(),total=v===''?0:f==='audio'?parsePos(v):/^\d+$/.test(v)?+v:NaN;if(v!==''&&(!Number.isFinite(total)||total<=0)){document.getElementById('formatError').textContent=f==='audio'?'Enter the length as h:mm, or leave it blank.':'Enter the number of pages as a whole number, or leave it blank.';break}const {b,focus,preMin,moveTo}=formatPick;const selectedCopy=S.copies.find(c=>c.id===document.getElementById('startReadingCopy')?.value);if(!document.getElementById('startOwn')?.checked&&selectedCopy&&(selectedCopy.format==='audio')!==(f==='audio')){document.getElementById('formatError').textContent='Choose a reading format that matches the selected copy.';break;}const own=document.getElementById('startOwn')?.checked,copyRow=document.querySelector('#startCopyFields .inline-copy');if(own){const cf=copyRow.querySelector('[data-copy-format]').value,edition=copyRow.querySelector('[data-copy-edition]').value.trim();if((cf==='audio')!==(f==='audio')){document.getElementById('formatError').textContent='Choose a reading format that matches the copy you’re reading.';break;}startCopyDrafts.set(b.id,{id:'c'+uid(),titleId:b.titleId,owner:'me',format:cf,edition,loanTo:null,private:S.settings.solo||!copyRow.querySelector('[data-copy-shared]')?.checked||undefined});saveReadingEdition(b,{edition});}else{startCopyDrafts.delete(b.id);saveReadingEdition(b,readEdition(logForm,'startReading'));}startSetupDone.add(b);b.format=f;b.total=total;b.pos=b.status==='finished'?total:0;if(moveTo){commitStartCopy(b);b.status=moveTo;b.pos=0;delete b.finished;delete b.dnfOn;if(moveTo==='reading'&&!b.started)b.started=today();if(moveTo==='paused')b.pausedOn=today();S.upNext=(S.upNext||[]).filter(id=>id!==b.id);save();logDlg.close();render();toast(`Moved ${b.title} to ${STATUS[moveTo]}.`)}else{save();drawLog(b,focus,preMin)}break}
     case 'manualNew':detachLogDraft();logDlg.close();openAdd();ad.tab='manual';ad.lastStatus='reading';renderAdd();document.getElementById('amTitle')?.focus();break;
     case 'tourGo':tourStart(a.dataset.v);break;
     case 'tourLater':{const T=tourPrefs();if(a.dataset.v==='group')T.groupSeen=true;else{T.notNow=(T.notNow||0)+1;T.askAt=(T.visits||0)+3}save();hideTourOffer();toast(a.dataset.v==='group'||T.notNow>=2?'You can take the tour anytime from your account menu.':'No problem. You can take the tour anytime from your account menu.');break}
@@ -4977,7 +4990,7 @@ document.addEventListener('click',e=>{
     case 'prevBook':stepBook(-1,'prevBook');break;
     case 'nextBook':stepBook(1,'nextBook');break;
     case 'more':{const pop=document.getElementById('morePop');pop.hidden=!pop.hidden;a.setAttribute('aria-expanded',String(!pop.hidden));break}
-    case 'finish':{const snap=snapshot(),b=book(id);b.status='finished';b.finished=today();b.pos=b.total;selBook=null;if(S.timer?.bookId===b.id&&!S.timer.stop)S.timer.stop=Date.now();
+    case 'finish':{const snap=snapshot(),b=book(id);b.status='finished';b.finished=today();if(hasLen(b))b.pos=b.total;selBook=null;if(S.timer?.bookId===b.id&&!S.timer.stop)S.timer.stop=Date.now();
       if(S.settings.share)S.activity.push({id:uid(),who:'me',kind:'finished',text:'finished',book:b.title,titleId:b.titleId,ts:Date.now(),r:{}});
       S.trophies.push({id:uid(),name:'Finished!',desc:b.title,date:today(),tier:'badge',icon:'check',hue:'green'});
       save();render();if(!openNextDlg(b,restoreTo(snap)))toast(`Finished ${b.title}. Nice work!`,restoreTo(snap));break}
