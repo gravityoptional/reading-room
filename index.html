@@ -572,6 +572,7 @@ button.cal-d{border:0;font:inherit;color:inherit;cursor:pointer;position:relativ
 .gt-seg+.gt-seg span{border-left:1px solid var(--border)}.gt-seg input:checked+span{background:var(--primary-light);color:var(--primary);font-weight:600}.gt-seg input:focus-visible+span{outline:2px solid var(--primary);outline-offset:-3px}
 .gt-combo{position:relative}.gt-combo .inp{padding-right:40px}.gt-tog{position:absolute;right:4px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--text-2);padding:8px;cursor:pointer;display:flex}.gt-tog svg.i{width:16px;height:16px}
 .gt-list{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:30;margin:0;padding:4px;list-style:none;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 30px rgba(15,23,42,.18);max-height:228px;overflow-y:auto}
+.gt-list.gt-up{top:auto;bottom:calc(100% + 4px);box-shadow:0 -10px 30px rgba(15,23,42,.18)}
 .gt-list li{padding:9px 10px;border-radius:7px;cursor:pointer;font-size:15px}.gt-list li[aria-selected=true]{background:var(--primary-light);color:var(--primary)}.gt-list li.gt-cur{font-weight:600}.gt-list li.gt-cur::after{content:"  ✓"}.gt-list .gt-use{font-style:italic}.gt-list .gt-none{color:var(--text-2);cursor:default}
 .gt-msg{color:var(--red,#B42318)}.gt-msg:empty{display:none}.gt-bad .gt-combo .inp{border-color:var(--red,#B42318)}
 /* Placeholder text (examples and prompts inside boxes) is quieter than what people type: italic, 14 px, secondary color. */
@@ -1503,7 +1504,15 @@ function gtItems(root,q){const {type}=gtParts(root),t=type.value,all=genreAll();
   return items}
 function gtOpen(root,q){const {inp,list}=gtParts(root),items=gtItems(root,q),cur=genreKey(inp.value),id=list.id;
   list.innerHTML=items.length?items.map((g,i)=>typeof g==='string'?`<li role="option" id="${id}-${i}" data-v="${esc(g)}" aria-selected="false" class="${genreKey(g)===cur?'gt-cur':''}">${esc(g)}</li>`:`<li role="option" id="${id}-${i}" data-v="${esc(g.use)}" aria-selected="false" class="gt-use">Use “${esc(g.use)}”</li>`).join(''):'<li class="gt-none" aria-disabled="true">No matching genres</li>';
-  list.hidden=false;inp.setAttribute('aria-expanded','true');const c=list.querySelector('.gt-cur');if(c&&q==null){gtAct(root,c);c.scrollIntoView({block:'nearest'})}else inp.removeAttribute('aria-activedescendant')}
+  const was=!list.hidden;list.hidden=false;inp.setAttribute('aria-expanded','true');gtPlace(root,was);const c=list.querySelector('.gt-cur');if(c&&q==null){gtAct(root,c);list.scrollTop=Math.max(0,c.offsetTop-(list.clientHeight-c.offsetHeight)/2)}else inp.removeAttribute('aria-activedescendant')}
+/* Opens the list below the field, or above it when there's more room there, so it stays inside the window (or the
+   screen, above a phone keyboard) without making the window scroll. The list's height shrinks to the room it has.
+   While it stays open (typing narrows it), it keeps its side, so it doesn't jump. */
+function gtPlace(root,keep){const {inp,list}=gtParts(root),r=inp.getBoundingClientRect(),vv=window.visualViewport,box=inp.closest('dialog[open]')?.getBoundingClientRect();
+  const top=Math.max(box?box.top:0,vv?vv.offsetTop:0)+8,bottom=Math.min(box?box.bottom:innerHeight,vv?vv.offsetTop+vv.height:innerHeight)-8;
+  const below=bottom-r.bottom-4,above=r.top-top-4;list.style.maxHeight='';const want=Math.min(list.scrollHeight+2,228),up=keep?list.classList.contains('gt-up'):below<want&&above>below;
+  list.classList.toggle('gt-up',up);list.style.maxHeight=Math.max(96,Math.min(228,Math.floor(up?above:below)))+'px'}
+window.visualViewport?.addEventListener('resize',()=>document.querySelectorAll('[data-gt]').forEach(r=>{if(!gtParts(r).list.hidden)gtPlace(r)}));
 function gtClose(root){const {inp,list}=gtParts(root);list.hidden=true;inp.setAttribute('aria-expanded','false');inp.removeAttribute('aria-activedescendant')}
 function gtAct(root,li){const {inp,list}=gtParts(root);list.querySelectorAll('[aria-selected=true]').forEach(x=>x.setAttribute('aria-selected','false'));if(!li)return;li.setAttribute('aria-selected','true');inp.setAttribute('aria-activedescendant',li.id);li.scrollIntoView({block:'nearest'})}
 function gtCheck(root){const {inp,type,msg}=gtParts(root);msg.textContent=genreConflict(type.value,inp.value);root.classList.toggle('gt-bad',!!msg.textContent)}
