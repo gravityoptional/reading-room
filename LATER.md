@@ -26,4 +26,8 @@ between the two sites. Not published; the site only serves index.html.
 - **Nov 5, 2026 (`next` 926870f):** F1, reading without a known length. Moving it to Alpha is a fast-forward of
   `main` to `next`.
 
+- **Nov 5, 2026 (`main` a218124, shared fix):** Website Audit third pass T3-1 to T3-4 (Undo reverses only its own
+  action; background redraws keep typed book-window entries; genres and member names shown as text; audio h:mm minutes
+  checked). Merged into Beta on top of F1.
+
 **On Alpha, to merge into Beta:** nothing yet.
