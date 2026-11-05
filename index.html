@@ -4507,7 +4507,7 @@ logForm.addEventListener('submit',e=>{
   else{b.status=f.status;if(f.status==='paused')b.pausedOn=today();if(f.status==='dnf'){b.dnfOn=f.date;if(selBook===b.id)selBook=null}}
   if(range)syncPos(b);
   const started=wasWant&&b.status==='reading';
-  if(started){selBook=b.id;if(wasQueued)b.fromQueue=true;if(b.wantSince&&daysBetween(b.wantSince,f.date)>=365)b.rescued=f.date}
+  if(started){selBook=b.id;if((S.upNext||[]).includes(b.id))b.fromQueue=true;if(b.wantSince&&daysBetween(b.wantSince,f.date)>=365)b.rescued=f.date}
   if(started){const re=S.books.some(x=>x!==b&&x.titleId===b.titleId&&x.status==='finished');postBook(re?'reread':'started',re?'started rereading':'started a new book',b)}
   if(S.settings.share){
     if(finished&&!wasFinished)S.activity.push({id:uid(),who:'me',kind:'finished',text:'finished',book:b.title,titleId:b.titleId,ts:Date.now(),r:{}});
