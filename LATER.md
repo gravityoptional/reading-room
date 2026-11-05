@@ -20,6 +20,10 @@ between the two sites. Not published; the site only serves index.html.
   more room and stays inside the window), unread count at 4.5:1 or better (second pass 18). Checked first: old Alpha
   saved data opens and saves in the new code, unsaved drafts included. Both branches are identical again.
 
-**Waiting on Beta to move to Alpha:** nothing yet.
+- **Nov 5, 2026 (`main` 64cfc24, shared fix):** logging the first session of a To Read book saves again. On both.
+
+**Waiting on Beta to move to Alpha:**
+- **Nov 5, 2026 (`next` 926870f):** F1, reading without a known length. Moving it to Alpha is a fast-forward of
+  `main` to `next`.
 
 **On Alpha, to merge into Beta:** nothing yet.
