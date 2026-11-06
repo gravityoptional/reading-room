@@ -22,12 +22,9 @@ between the two sites. Not published; the site only serves index.html.
 
 - **Nov 5, 2026 (`main` 64cfc24, shared fix):** logging the first session of a To Read book saves again. On both.
 
-**Waiting on Beta to move to Alpha:**
-- **Nov 5, 2026 (`next` 926870f):** F1, reading without a known length. Moving it to Alpha is a fast-forward of
-  `main` to `next`.
+- **Nov 6, 2026:** `main` fast-forwarded to `next`: F1 (reading without a known length) moved to Alpha. Both
+  branches identical again.
 
-- **Nov 5, 2026 (`main` a218124, shared fix):** Website Audit third pass T3-1 to T3-4 (Undo reverses only its own
-  action; background redraws keep typed book-window entries; genres and member names shown as text; audio h:mm minutes
-  checked). Merged into Beta on top of F1.
+**Waiting on Beta to move to Alpha:** nothing yet.
 
 **On Alpha, to merge into Beta:** nothing yet.
