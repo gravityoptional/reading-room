@@ -24,6 +24,9 @@ between the two sites. Not published; the site only serves index.html.
 
 - **Nov 6, 2026:** `main` fast-forwarded to `next`: F1 (reading without a known length) moved to Alpha. Both
   branches identical again.
+- **Nov 7, 2026 (evening):** `main` fast-forwarded to `next` after James tested Beta: battles take any book (Open
+  Library search in Add My Book), reading one format while owning another, Invite People for group challenges and
+  battles, and the 320-px battle search fix.
 
 **Waiting on Beta to move to Alpha:** nothing yet.
 
