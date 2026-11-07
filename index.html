@@ -1572,7 +1572,10 @@ document.addEventListener('pointerdown',e=>{const li=e.target.closest?.('.gt-lis
   document.querySelectorAll('[data-gt]').forEach(r=>{if(!r.contains(e.target))gtClose(r)})},true);
 document.addEventListener('focusout',e=>{const r=e.target.closest?.('[data-gt]');if(r&&!r.contains(e.relatedTarget))setTimeout(()=>{if(!r.contains(document.activeElement))gtClose(r)},0)});
 let saveFailed=false;
+/* Daily goals stay within a real day: up to 1,440 minutes and 2,000 pages. */
+const GOAL_MAX_MIN=1440,GOAL_MAX_PAGES=2000;
 function prepState(){
+  {const g=S.settings;if(g){if(!(g.goalMinutes>0&&g.goalMinutes<=GOAL_MAX_MIN&&Number.isInteger(g.goalMinutes)))g.goalMinutes=20;if(!(g.goalPages>0&&g.goalPages<=GOAL_MAX_PAGES&&Number.isInteger(g.goalPages)))g.goalPages=15}}
 S.me.admin=true;
 S.settings.hideAct=S.settings.hideAct||[];
 if(!S.seriesSeeded){S.seriesSeeded=true;['Wool','Shift','Dust'].forEach((n,i)=>{const t=(S.titles||[]).find(x=>x.title===n&&/Howey/.test(x.author||''));if(t){t.series='Silo';t.seriesNo=i+1}});(S.seriesLen=S.seriesLen||{}).Silo=3}
@@ -4378,7 +4381,10 @@ document.addEventListener('change',e=>{
   if(logForm.dataset.mode!=='format')return;
   const own=document.getElementById('startOwn'),fields=document.getElementById('startCopyFields');if(!own||!fields)return;
   const fmt=document.getElementById('startFormat'),copy=fields.querySelector('[data-copy-format]');
-  if(e.target===own){fields.hidden=!own.checked;logForm.querySelector('.reading-edition').hidden=own.checked;if(own.checked)copy.value=fmt.value==='audio'?'audio':'physical';}
+  if(e.target===own){fields.hidden=!own.checked;logForm.querySelector('.reading-edition').hidden=own.checked;if(own.checked)copy.value=fmt.value==='audio'?'audio':'physical';
+    // the edition typed for the reading carries into the copy's Edition box, and back again if unticked
+    const re=document.getElementById('startReadingEdition'),ce=fields.querySelector('[data-copy-edition]');
+    if(re&&ce){if(own.checked&&!ce.value.trim()&&re.value.trim())ce.value=re.value;else if(!own.checked&&!re.value.trim()&&ce.value.trim())re.value=ce.value}}
   if(e.target===copy&&own.checked)fmt.value=copy.value==='audio'?'audio':'print';
   if(e.target===fmt&&own.checked)copy.value=fmt.value==='audio'?'audio':copy.value==='audio'?'physical':copy.value;
   if(e.target.matches('[data-edition-copy]')&&e.target.value){const c=S.copies.find(c=>c.id===e.target.value);if(c){const was=fmt.value;fmt.value=c.format==='audio'?'audio':'print';if(was!==fmt.value)document.getElementById('startLength').value=fmt.value==='audio'?'':titleById(formatPick.b.titleId)?.pages||'';}}
@@ -4633,7 +4639,7 @@ function openGoal(){
   goalForm.innerHTML=`<div class="dlg-h"><h2 id="goalTitle">My Reading Goals</h2><button type="button" class="icon-btn x" data-act="closeGoal" aria-label="Close">${ic('x')}</button></div>
   <div class="form"><div class="small muted">How would you like to measure your daily goal?</div>
   ${[['minutes','Minutes per day'],['pages','Pages per day'],['both','Minutes or pages, whichever I reach first']].map(([v,l])=>`<label class="radio"><input type="radio" name="type" value="${v}" ${g.goalType===v?'checked':''}>${l}</label>`).join('')}
-  <div class="f2"><label class="f">Daily Minutes<input class="inp" name="gm" inputmode="numeric" value="${g.goalMinutes}"></label><label class="f">Daily Pages<input class="inp" name="gp" inputmode="numeric" value="${g.goalPages}"></label></div>
+  <div class="f2"><label class="f">Daily Minutes<input class="inp" name="gm" inputmode="numeric" maxlength="4" value="${g.goalMinutes}"></label><label class="f">Daily Pages<input class="inp" name="gp" inputmode="numeric" maxlength="4" value="${g.goalPages}"></label></div>
   <label class="f">Rest Days per Week <span class="sub">Missing a day uses a rest day instead of breaking your streak.</span><select class="inp" name="rest">${[0,1,2].map(n=>`<option value="${n}" ${(g.restDays??1)===n?'selected':''}>${n===0?'None':n}</option>`).join('')}</select></label>
   <label class="chk"><input type="checkbox" name="est" ${g.estimate?'checked':''}> Estimate missing reading time from my reading speed</label>
   <div class="err" id="goalErr" role="alert"></div>
@@ -4644,6 +4650,8 @@ goalForm.addEventListener('submit',e=>{
   e.preventDefault();const f=Object.fromEntries(new FormData(goalForm));
   const gm=+f.gm,gp=+f.gp;
   if(!(gm>0&&Number.isInteger(gm))||!(gp>0&&Number.isInteger(gp))){document.getElementById('goalErr').textContent='Goals must be whole numbers above zero.';return}
+  if(gm>GOAL_MAX_MIN)return document.getElementById('goalErr').textContent=`Daily minutes can be up to ${GOAL_MAX_MIN.toLocaleString()} (a whole day).`;
+  if(gp>GOAL_MAX_PAGES)return document.getElementById('goalErr').textContent=`Daily pages can be up to ${GOAL_MAX_PAGES.toLocaleString()}.`;
   Object.assign(S.settings,{goalType:f.type,goalMinutes:gm,goalPages:gp,estimate:!!f.est,restDays:+f.rest});
   save();goalDlg.close();render();toast('Goal saved.');
 });
