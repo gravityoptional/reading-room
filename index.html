@@ -540,7 +540,7 @@ button.cal-d{border:0;font:inherit;color:inherit;cursor:pointer;position:relativ
 .cp-act{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .lend,.addcopy{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .addcopy{margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
-.recf{margin-top:14px;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--surface-alt);display:grid;gap:10px}
+.recf{margin-top:14px;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--surface-alt);display:grid;grid-template-columns:minmax(0,1fr);gap:10px}
 .rate{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}
 .star{border:0;background:none;font-size:24px;line-height:1;padding:0 2px;color:var(--border)}
 .star.on{color:var(--orange)}
@@ -3486,7 +3486,6 @@ function adUndoSafe(before,after,current){
 }
 function adSave(){adCaptureDetail();const d=ad.detail;if(!d)return;const er=m=>{document.getElementById('adDetailError').textContent=m},locked=d.existing&&!d.reread,audio=d.format==='audio',active=['reading','paused'].includes(d.status),reading=!locked&&d.status!=='none';
   const selectedCopy=S.copies.find(c=>c.id===d.readingCopyId);if(reading&&d.format!=='unknown'&&d.status!=='want'&&selectedCopy&&(selectedCopy.format==='audio')!==audio)return er('Choose a reading format that matches the selected copy.');
-  if(reading&&d.readingCopyId==='__new'&&d.own&&d.format!=='unknown'&&d.status!=='want'&&(d.copyFormat==='audio')!==audio)return er('Choose a reading format that matches the copy you’re adding.');
   const allowed=AD_STATUSES.some(([k])=>k===d.status);if(!allowed)return er('Choose a reading status.');
   if((locked||d.status==='none')&&!d.own)return er(locked?'This reading is already saved. Choose a copy to add, or open My Reading.':'Choose a reading status or mark a copy you own.');
   const parse=v=>String(v).trim()===''?null:audio?parsePos(v):/^\d+$/.test(String(v).trim())?+v:NaN;
@@ -3510,7 +3509,7 @@ function adSave(){adCaptureDetail();const d=ad.detail;if(!d)return;const er=m=>{
     S.books.push(r);if(d.status==='want'&&d.queue)(S.upNext=S.upNext||[]).push(r.id);ad.lastStatus=d.status;ad.lastFormat=d.format;
   }else if(!locked)ad.lastStatus='none';
   if(d.own){copy={id:'c'+uid(),titleId:t.id,owner:'me',format:d.copyFormat,edition:d.edition.trim(),loanTo:null};if(S.settings.solo||!d.share)copy.private=true;S.copies.push(copy);if(!copy.private)postBook('library','added a book to the group library:',t)}
-  if(r)saveReadingEdition(r,d.readingCopyId==='__new'&&copy?{edition:copy.edition,editionCopyId:copy.id}:{edition:d.readingEdition,editionCopyId:d.readingCopyId});
+  if(r)saveReadingEdition(r,d.readingCopyId==='__new'&&copy&&(d.format==='unknown'||(copy.format==='audio')===audio)?{edition:copy.edition,editionCopyId:copy.id}:{edition:d.readingEdition,editionCopyId:d.readingCopyId});
   ad.added.add(t.id);ad.detail=null;ad.manualDetail=null;ad.tab='search';if(!ad.q)ad.q=t.title;save();render();renderAdd();addDlg.scrollTop=ad.scroll||0;
   const undo=restoreTo(snap,adUndoSafe);
   toast(reading?`Added ${t.title} as ${AD_STATUSES.find(([k])=>k===d.status)[1]}.`:`Added your ${FMT[d.copyFormat].toLowerCase()} copy of ${t.title}.`,()=>{if(!undo())return;ad.added.delete(t.id);renderAdd(true)});
@@ -4042,8 +4041,9 @@ function renderCh(){
   if(c.mode!=='comp'&&(c.mode==='personal'||joined))sec+=contribSection(c);
   let acts='';
   if(st.k!=='ended'&&(!fam||joined))acts+=`<button class="btn btn-primary" data-act="chLog">${ic('book')}Log Reading</button>`;
-  if(fam&&!joined&&st.k!=='ended'){const inv=c.inviteOnly&&(c.invited||[]).includes('me')&&!(c.declined||[]).includes('me');acts+=inv?`<div class="inv-box"><span class="small"><b>${esc(nameOf(c.creator))}</b> invited you to this challenge.</span><span class="inv-acts"><button class="btn btn-ghost" data-act="chDecline" data-id="${c.id}">Decline</button><button class="btn btn-primary" data-act="chJoin" data-id="${c.id}">${ic('check')}Accept</button></span></div>`:`<button class="btn btn-primary" data-act="chJoin" data-id="${c.id}">${ic('plus')}Join Challenge</button>`}
+  if(fam&&!joined&&st.k!=='ended'){const inv=(c.invited||[]).includes('me')&&!(c.declined||[]).includes('me');acts+=inv?`<div class="inv-box"><span class="small"><b>${esc(nameOf(c.invitedBy?.me||c.creator))}</b> invited you to this challenge.</span><span class="inv-acts"><button class="btn btn-ghost" data-act="chDecline" data-id="${c.id}">Decline</button><button class="btn btn-primary" data-act="chJoin" data-id="${c.id}">${ic('check')}Accept</button></span></div>`:`<button class="btn btn-primary" data-act="chJoin" data-id="${c.id}">${ic('plus')}Join Challenge</button>`}
   if(fam&&joined)acts+=`<button class="btn btn-ghost" data-act="chLeave" data-id="${c.id}">Leave Challenge</button>`;
+  if(fam&&joined&&st.k!=='ended'&&!S.settings.solo)acts+=`<button class="btn btn-ghost" data-act="chInv" aria-expanded="${!!cv.inv}">${ic('users')}Invite People</button>`;
   acts+=`<button class="btn btn-ghost" data-act="chAgain" data-id="${c.id}">${ic('copy')}Duplicate</button>`;
   const finished=st.k==='done'||st.k==='ended';
   if(creator)acts+=`<button class="btn btn-ghost" data-act="chEdit" data-id="${c.id}">${ic('pencil')}Edit</button>`+(!fam||!finished?`<button class="link-btn" data-act="chDelAsk" aria-expanded="${!!cv.del}">Delete</button>`:'');
@@ -4056,7 +4056,7 @@ function renderCh(){
   <div class="bar" style="height:10px"><span style="width:${pc}%"></span></div><div class="chc-row"><span class="small">${p.label}</span>${c.mode==='comp'?'':`<span class="small muted">${pc}%</span>`}</div>
   <div class="stats ch-stats">${stats.map(([n,l])=>`<div class="stat"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('')}</div>
   ${sec?`<div style="margin-top:14px">${sec}</div>`:''}
-  <div class="bd-acts" style="margin-top:16px">${acts}</div>${confirmBox}`;
+  <div class="bd-acts" style="margin-top:16px">${acts}</div>${confirmBox}${cv.inv&&fam&&joined?invitePicker('ch',c.participants||[],c.invited||[],c.declined||[]):''}`;
 }
 const KIND_L={books:'books',sessions:'reading sessions',days:'reading days'};
 function ruleText(c){
@@ -4206,6 +4206,8 @@ function renderBattle(){
     if(me)acts=`<button class="btn btn-primary" data-act="bAdd" aria-expanded="${bv.adding}">${ic('plus')}Add My Book</button><button class="btn btn-ghost" data-act="bLeave">Leave Battle</button>`;
     else if(mod)acts=`<span class="joined">${ic('check')}You’re moderating</span><button class="btn btn-ghost" data-act="bUnmod">Step Down</button>`;
     else acts=`<button class="btn btn-primary" data-act="bJoin">${ic('plus')}Join as Reader</button>${b.moderator?'':`<button class="btn btn-ghost" data-act="bMod">Moderate</button>`}`;
+    if(!me&&!mod&&(b.invited||[]).includes('me'))acts=`<div class="inv-box"><span class="small"><b>${esc(nameOf(b.invitedBy?.me||bCreator(b)))}</b> invited you to read in this battle.</span><span class="inv-acts">${acts}</span></div>`;
+    if((me||mod||bCreator(b)==='me')&&!S.settings.solo)acts+=`<button class="btn btn-ghost" data-act="bInv" aria-expanded="${!!bv.inv}">${ic('users')}Invite People</button>`;
   }
   acts+=`<button class="btn btn-ghost" data-act="bDup">${ic('copy')}Duplicate</button>`;
   if(bCreator(b)==='me')acts+=`<button class="btn btn-ghost" data-act="bEdit">${ic('pencil')}Edit</button>`;
@@ -4222,11 +4224,42 @@ function renderBattle(){
       `<div class="contrib"><span class="avatar" style="background:${b.moderator?colorOf(b.moderator):'var(--secondary)'}">${b.moderator?initOf(b.moderator):'?'}</span><span class="small"><b>${b.moderator?esc(nameOf(b.moderator)):'No moderator yet'}</b> <span class="xs muted">· Moderator</span></span><span></span></div>`}
   else body=`<p class="small" style="margin-top:0">${esc(b.desc||'')}</p><div class="small muted">Reading starts ${fmtDateY(b.readStart)} · Battle on ${fmtDateY(b.event)}</div><ul class="small muted" style="padding-left:18px"><li>Each reader adds one or more books; no book can be picked twice.</li><li>Everyone reads every book on the list.</li><li>The moderator runs the in-person battle and doesn’t pick books.</li><li>Reading progress comes from your normal reading logs.</li></ul>`;
   chBody.innerHTML=`<div class="dlg-h"><span class="chc-ic">${ic('library')}</span><div style="flex:1;min-width:0"><h2 id="chTitle">${esc(b.name)}</h2><div class="xs muted">Reading from ${fmtDateY(b.readStart)} · Battle on ${fmtDateY(b.event)}</div><div style="margin-top:6px"><span class="st ${st==='active'?'st-reading':st==='completed'?'st-finished':''}">${BST[st]}</span> <span class="xs muted">Started by ${esc(bCreator(b)==='me'?'You':nameOf(bCreator(b)))} · Moderator: ${b.moderator?esc(nameOf(b.moderator)):'none yet'}</span></div></div><button type="button" class="icon-btn x" data-act="closeCh" aria-label="Close">${ic('x')}</button></div>
-  ${acts?`<div class="bd-acts">${acts}</div>`:''}${confirmBox}${adder}
+  ${acts?`<div class="bd-acts">${acts}</div>`:''}${confirmBox}${bv.inv&&open?invitePicker('b',[...Object.keys(b.readers),b.moderator].filter(Boolean),b.invited||[],[]):''}${adder}
   <div class="bd-tabs" role="tablist" aria-label="Battle sections">${tabs.map(([k,l])=>`<button class="bd-tab" role="tab" id="tab-bt-${k}" aria-controls="btPanel" tabindex="${bv.tab===k?0:-1}" aria-selected="${bv.tab===k}" data-act="bTab" data-v="${k}">${l}</button>`).join('')}</div><div class="bd-body" role="tabpanel" id="btPanel" aria-labelledby="tab-bt-${bv.tab}">${body}</div>`;
 }
-function bResults(b){const q=bv.q.trim().toLowerCase();if(!q)return '<span class="xs muted">Type a title or author.</span>';const taken=new Set(bList(b).map(x=>x.id));
-  return S.titles.filter(t=>!taken.has(t.id)&&(t.title+' '+t.author).toLowerCase().includes(q)).slice(0,6).map(t=>`<button type="button" class="pick" data-act="bPick" data-id="${t.id}">${libCover(t)}<span><span class="pick-t">${esc(t.title)}</span><span class="xs muted">${esc(t.author)}</span></span></button>`).join('')||'<span class="xs muted">No matches. Add the book in the Library first.</span>'}
+/* Invite People, in a challenge or battle: group members not already in it. Those already invited (or who declined)
+   show but can't be picked again. */
+function invitePicker(kind,inIt,invited,declined){
+  const rows=Object.entries(S.members).filter(([k])=>!inIt.includes(k));
+  if(!rows.length)return `<div class="recf"><span class="small">Everyone in ${esc(GN())} is already in.</span><button class="link-btn sm" data-act="${kind}Inv">Close</button></div>`;
+  return `<div class="recf"><div class="small" style="font-weight:600">Invite People</div><div class="chips">${rows.map(([k,m])=>{const was=invited.includes(k)?'Invited':declined.includes(k)?'Declined':'';
+    return `<label class="chk ${was?'dim':''}"><input type="checkbox" name="invTo" value="${k}" ${was?'disabled':''}> ${esc(m.name)}${was?` <span class="xs muted">(${was})</span>`:''}</label>`}).join('')}</div>
+    <span class="xs muted">Each person gets a notification and can join.</span><div class="err" id="invErr" role="alert"></div>
+    <div class="acts"><button class="btn btn-primary sm" data-act="${kind}InvGo">Send Invitations</button><button class="link-btn sm" data-act="${kind}Inv">Cancel</button></div></div>`}
+const invPicked=()=>[...chBody.querySelectorAll('[name=invTo]:checked')].map(x=>x.value);
+const andList=n=>n.length>1?n.slice(0,-1).join(', ')+' and '+n.at(-1):n[0]||'';
+/* The battle's book search: books already here first, then Open Library, so any book can go on the list. */
+function bResults(b){const raw=bv.q.trim(),q=raw.toLowerCase();if(!q)return '<span class="xs muted">Type a title or author.</span>';const taken=new Set(bList(b).map(x=>x.id));
+  const mine=S.titles.filter(t=>!taken.has(t.id)&&(t.title+' '+t.author).toLowerCase().includes(q)).slice(0,6);
+  const here=mine.map(t=>`<button type="button" class="pick" data-act="bPick" data-id="${t.id}">${libCover(t)}<span><span class="pick-t">${esc(t.title)}</span><span class="xs muted">${esc(t.author)}</span></span></button>`).join('');
+  const o=bv.ol;let ol='';
+  if(raw.length<3)ol=here?'':'<span class="xs muted">Keep typing to search Open Library.</span>';
+  else if(!o||o.q!==olKey(raw)||o.state==='loading')ol='<div class="pick-h">From Open Library</div><span class="xs muted" role="status">Searching Open Library…</span>';
+  else if(o.state==='error')ol='<div class="pick-h">From Open Library</div><span class="xs muted">Open Library didn’t answer. Check your connection and try again.</span>';
+  else{const items=o.items.map((x,i)=>({x,i})).filter(({x})=>{const t=olExisting(x);return !t||(!taken.has(t.id)&&!mine.includes(t))}).slice(0,6);
+    ol=items.length?'<div class="pick-h">From Open Library</div>'+items.map(({x,i})=>{const t=olExisting(x);if(t&&taken.has(t.id))return '';
+      const cv=libCover({title:x.title,author:x.author,c:hashStr(x.title)%COVERS.length,cover:x.coverId?`https://covers.openlibrary.org/b/id/${x.coverId}-S.jpg`:''});
+      return `<button type="button" class="pick" data-act="bPickOL" data-i="${i}">${cv}<span><span class="pick-t">${esc(x.title)}</span><span class="xs muted">${[esc(x.author),x.year].filter(Boolean).join(' · ')}</span></span></button>`}).join('')
+      :here?'':'<span class="xs muted">No matches. Check the spelling, or try the author’s name.</span>'}
+  return here+ol}
+let bOlTimer=null,bOlCtl=null;
+function bOlQueue(){clearTimeout(bOlTimer);const raw=bv.q.trim(),k=olKey(raw);
+  if(raw.length<3){bOlCtl?.abort();bv.ol=null;return}
+  if(bv.ol&&bv.ol.q===k&&bv.ol.state!=='error')return;
+  bv.ol={q:k,state:'loading',items:[]};
+  bOlTimer=setTimeout(async()=>{bOlCtl?.abort();bOlCtl=new AbortController();
+    try{const items=await olSearch(raw,bOlCtl.signal);if(bv.ol?.q===k)bv.ol={q:k,state:'done',items}}catch(e){if(e.name==='AbortError')return;if(bv.ol?.q===k)bv.ol={q:k,state:'error',items:[]}}
+    const el=document.getElementById('bRes'),b=S.battles.find(x=>x.id===bv.id);if(el&&b)el.innerHTML=bResults(b)},350)}
 function openBForm(b,dup){chMode='bform';const ed=!!b&&!dup,d=dup?dupPlan(dup.name,dup.readStart,dup.event):null;chBody.innerHTML=`<div class="dlg-h"><h2 id="chTitle" style="flex:1">${ed?'Edit Battle of the Books':d?'Duplicate Battle of the Books':'Start a Battle of the Books'}</h2><button type="button" class="icon-btn x" data-act="closeCh" aria-label="Close">${ic('x')}</button></div>
   <div class="form"><label class="f">Name<input class="inp" id="bfName" maxlength="80" autocomplete="off" value="${ed?esc(b.name):d?esc(d.name):''}"></label><label class="f"><span>Description <span class="sub">(optional)</span></span><textarea class="inp" id="bfDesc" rows="2" maxlength="200">${ed?esc(b.desc||''):d?esc(dup.desc||''):''}</textarea></label>
   <div class="f2"><label class="f">Reading Starts<input class="inp" type="date" id="bfStart" value="${ed?b.readStart:d?d.start:today()}"></label><label class="f">Battle Date<input class="inp" type="date" id="bfEvent" value="${ed?b.event:d?d.end||'':''}"></label></div>
@@ -4241,7 +4274,7 @@ function openAwardForm(){chMode='award';chBody.innerHTML=`<div class="dlg-h"><h2
   if(!chDlg.open)chDlg.showModal();setTimeout(()=>document.getElementById('awName')?.focus(),30)}
 chDlg.addEventListener('close',()=>{if(view==='challenges'||view==='dashboard'){const y=window.scrollY;render();window.scrollTo(0,y)}});
 document.addEventListener('input',e=>{
-  if(e.target.id==='bQ'){bv.q=e.target.value;const b=S.battles.find(x=>x.id===bv.id);document.getElementById('bRes').innerHTML=bResults(b)}
+  if(e.target.id==='bQ'){bv.q=e.target.value;bOlQueue();const b=S.battles.find(x=>x.id===bv.id);document.getElementById('bRes').innerHTML=bResults(b)}
   else if(e.target.id==='cfQ'){cf.q=e.target.value;document.getElementById('cfRes').innerHTML=cfResults()}
 });
 
@@ -4376,7 +4409,7 @@ function setLogOpt(){
   ph('end',f==='minutes'||(!f&&gt==='minutes'));ph('minutes',f==='end'||f==='audio'||(!f&&gt==='pages'));
 }
 let formatPick=null;
-function commitStartCopy(b){const c=startCopyDrafts.get(b.id);if(!c)return;c.titleId=b.titleId;S.copies.push(c);b.editionCopyId=c.id;startCopyDrafts.delete(b.id);if(!c.private)postBook('library','added a book to the group library:',b);}
+function commitStartCopy(b){const c=startCopyDrafts.get(b.id);if(!c)return;c.titleId=b.titleId;S.copies.push(c);if((c.format==='audio')===(b.format==='audio'))b.editionCopyId=c.id;startCopyDrafts.delete(b.id);if(!c.private)postBook('library','added a book to the group library:',b);}
 document.addEventListener('change',e=>{
   if(logForm.dataset.mode!=='format')return;
   const own=document.getElementById('startOwn'),fields=document.getElementById('startCopyFields');if(!own||!fields)return;
@@ -4385,14 +4418,16 @@ document.addEventListener('change',e=>{
     // the edition typed for the reading carries into the copy's Edition box, and back again if unticked
     const re=document.getElementById('startReadingEdition'),ce=fields.querySelector('[data-copy-edition]');
     if(re&&ce){if(own.checked&&!ce.value.trim()&&re.value.trim())ce.value=re.value;else if(!own.checked&&!re.value.trim()&&ce.value.trim())re.value=ce.value}}
-  if(e.target===copy&&own.checked)fmt.value=copy.value==='audio'?'audio':'print';
-  if(e.target===fmt&&own.checked)copy.value=fmt.value==='audio'?'audio':copy.value==='audio'?'physical':copy.value;
+  // reading and owning can differ (listening to the audiobook while owning the hardcover); a copy in another format
+  // is simply owned, so the reading keeps its own Edition box
+  if(own.checked){const same=(copy.value==='audio')===(fmt.value==='audio');logForm.querySelector('.reading-edition').hidden=same;
+    const note=document.getElementById('startCopyNote');if(note)note.hidden=same}
   if(e.target.matches('[data-edition-copy]')&&e.target.value){const c=S.copies.find(c=>c.id===e.target.value);if(c){const was=fmt.value;fmt.value=c.format==='audio'?'audio':'print';if(was!==fmt.value)document.getElementById('startLength').value=fmt.value==='audio'?'':titleById(formatPick.b.titleId)?.pages||'';}}
-  if(e.target===fmt||e.target===copy&&own.checked)document.getElementById('startLength').value=fmt.value==='audio'?'':titleById(formatPick.b.titleId)?.pages||'';
+  if(e.target===fmt)document.getElementById('startLength').value=fmt.value==='audio'?'':titleById(formatPick.b.titleId)?.pages||'';
   const label=document.querySelector('#startLengthLabel span');if(label)label.textContent=fmt.value==='audio'?'Audio Length (h:mm)':'Total Pages';const hint=document.getElementById('startLenHint');if(hint)hint.textContent=fmt.value==='audio'?'You can log minutes without a length.':'You can log minutes without a page count.';
 });
 function drawLog(b,focus,preMin,moveTo){
-  if(b.format==='unknown'||b.status==='want'&&!startSetupDone.has(b)){detachLogDraft();formatPick={b,focus,preMin,moveTo};logForm.dataset.mode='format';logForm.innerHTML=`<div class="dlg-h"><h2 id="logTitle">Start Reading</h2><button type="button" class="icon-btn x" data-act="closeLog" aria-label="Close">${ic('x')}</button></div><div class="form"><h3>${esc(b.title)}</h3><div class="f2"><label class="f">Reading Format<select class="inp" id="startFormat"><option value="print">Print / Ebook</option><option value="audio">Audiobook</option></select></label><label class="f" id="startLengthLabel"><span>Total Pages</span><input class="inp" id="startLength" value="${titleById(b.titleId)?.pages||''}" placeholder="Optional"></label></div><div class="xs muted" id="startLenHint" style="margin-top:-6px">You can log minutes without a page count.</div>${readingEditionFields(b,'startReading')}<section><label class="chk"><input type="checkbox" id="startOwn"> I Own a Copy</label><div id="startCopyFields" hidden>${inlineCopyRow()}</div></section><div id="formatError" class="err" role="alert"></div><div class="dlg-f"><button type="button" class="btn btn-ghost" data-act="startNew">Back</button><button type="button" class="btn btn-primary" data-act="startFormatGo">Continue to Log Reading</button></div></div>`;document.getElementById('startFormat').value=b.format==='audio'?'audio':'print';document.getElementById('startLength').value=b.total?(b.format==='audio'?fmtPos(b.total):b.total):titleById(b.titleId)?.pages||'';document.querySelector('#startLengthLabel span').textContent=b.format==='audio'?'Audio Length (h:mm)':'Total Pages';return;}
+  if(b.format==='unknown'||b.status==='want'&&!startSetupDone.has(b)){detachLogDraft();formatPick={b,focus,preMin,moveTo};logForm.dataset.mode='format';logForm.innerHTML=`<div class="dlg-h"><h2 id="logTitle">Start Reading</h2><button type="button" class="icon-btn x" data-act="closeLog" aria-label="Close">${ic('x')}</button></div><div class="form"><h3>${esc(b.title)}</h3><div class="f2"><label class="f">Reading Format<select class="inp" id="startFormat"><option value="print">Print / Ebook</option><option value="audio">Audiobook</option></select></label><label class="f" id="startLengthLabel"><span>Total Pages</span><input class="inp" id="startLength" value="${titleById(b.titleId)?.pages||''}" placeholder="Optional"></label></div><div class="xs muted" id="startLenHint" style="margin-top:-6px">You can log minutes without a page count.</div>${readingEditionFields(b,'startReading')}<section><label class="chk"><input type="checkbox" id="startOwn"> I Own a Copy</label><div id="startCopyFields" hidden>${inlineCopyRow()}<p class="xs muted" id="startCopyNote" style="margin:6px 0 0" hidden>A different format from your reading is fine. It’s saved as a copy you own.</p></div></section><div id="formatError" class="err" role="alert"></div><div class="dlg-f"><button type="button" class="btn btn-ghost" data-act="startNew">Back</button><button type="button" class="btn btn-primary" data-act="startFormatGo">Continue to Log Reading</button></div></div>`;document.getElementById('startFormat').value=b.format==='audio'?'audio':'print';document.getElementById('startLength').value=b.total?(b.format==='audio'?fmtPos(b.total):b.total):titleById(b.titleId)?.pages||'';document.querySelector('#startLengthLabel span').textContent=b.format==='audio'?'Audio Length (h:mm)':'Total Pages';return;}
 
 
   if(logDlg.open&&logForm.dataset.mode==='log')draftSave(logForm);
@@ -4860,6 +4895,14 @@ document.addEventListener('click',e=>{
     case 'chLog':{chDlg.close();const c=currentSel();if(c)openLog(c.id);else{drawNew();logDlg.showModal()}break}
     case 'chJoin':{const c=S.challenges.find(x=>x.id===a.dataset.id);if(!c.participants.includes('me'))c.participants.push('me');if(S.settings.share)S.activity.push({id:uid(),who:'me',kind:'challenge',text:(c.inviteOnly&&(c.invited||[]).includes('me'))?'accepted a challenge:':'joined',book:c.name,ch:c.id,ts:Date.now(),r:{}});save();if(chDlg.open&&chMode==='ch')renderCh();else{const y=window.scrollY;render();window.scrollTo(0,y)}toast(`Joined ${c.name}.`);break}
     case 'chLeave':{const snap=snapshot(),c=S.challenges.find(x=>x.id===a.dataset.id);c.participants=c.participants.filter(w=>w!=='me');save();renderCh();toast(`Left ${c.name}.`,restoreTo(snap));break}
+    case 'chInv':cv.inv=!cv.inv;renderCh();if(cv.inv)setTimeout(()=>chBody.querySelector('[name=invTo]:not([disabled])')?.focus(),30);break;
+    case 'chInvGo':{const c=S.challenges.find(x=>x.id===cv.id),to=invPicked();if(!c)break;if(!to.length){document.getElementById('invErr').textContent='Choose at least one person.';break}
+      c.invited=[...new Set([...(c.invited||[]),...to])];c.invitedBy={...(c.invitedBy||{}),...Object.fromEntries(to.map(w=>[w,'me']))};
+      const names=andList(to.map(nameOf));post('invite',`invited ${names} to a challenge:`,c.name,null,c.id);cv.inv=false;save();renderCh();toast(`Invited ${names} to ${c.name}.`,null,'Each gets a notification and can join.');break}
+    case 'bInv':bv.inv=!bv.inv;renderBattle();if(bv.inv)setTimeout(()=>chBody.querySelector('[name=invTo]:not([disabled])')?.focus(),30);break;
+    case 'bInvGo':{const b=S.battles.find(x=>x.id===bv.id),to=invPicked();if(!b)break;if(!to.length){document.getElementById('invErr').textContent='Choose at least one person.';break}
+      b.invited=[...new Set([...(b.invited||[]),...to])];b.invitedBy={...(b.invitedBy||{}),...Object.fromEntries(to.map(w=>[w,'me']))};
+      const names=andList(to.map(nameOf));post('battle',`invited ${names} to read in`,b.name);bv.inv=false;save();renderBattle();toast(`Invited ${names} to ${b.name}.`,null,'Each gets a notification and can join as a reader.');break}
     case 'chDelAsk':cv.del=!cv.del;renderCh();break;
     case 'chHide':{const c=S.challenges.find(x=>x.id===cv.id),h=hiddenC();if(a.dataset.v==='1'){if(!h.includes(c.id))h.push(c.id)}else S.settings.hiddenCh=h.filter(x=>x!==c.id);save();renderCh();render();toast(a.dataset.v==='1'?`Hid ${c.name} from your lists. Its trophies stay on the Trophy Wall.`:`${c.name} is back in your lists.`);break}
     case 'chShowHidden':showHiddenC=!showHiddenC;render();break;
@@ -4877,7 +4920,8 @@ document.addEventListener('click',e=>{
     case 'bLeave':{const snap=snapshot(),b=S.battles.find(x=>x.id===bv.id);delete b.readers.me;bv.adding=false;save();renderBattle();toast(`Left ${b.name}. Your picks were removed.`,restoreTo(snap));break}
     case 'bMod':{const b=S.battles.find(x=>x.id===bv.id);b.moderator='me';save();renderBattle();toast(`You’re moderating ${b.name}.`);break}
     case 'bUnmod':{const b=S.battles.find(x=>x.id===bv.id);b.moderator=null;save();renderBattle();toast('You stepped down as moderator.');break}
-    case 'bAdd':bv.adding=!bv.adding;bv.q='';renderBattle();if(bv.adding)setTimeout(()=>document.getElementById('bQ')?.focus(),30);break;
+    case 'bAdd':bv.adding=!bv.adding;bv.q='';bv.ol=null;renderBattle();if(bv.adding)setTimeout(()=>document.getElementById('bQ')?.focus(),30);break;
+    case 'bPickOL':{const x=bv.ol?.items[+a.dataset.i];if(!x)break;const b=S.battles.find(y=>y.id===bv.id),t=olTitleFrom(x);if(bList(b).some(y=>y.id===t.id)){toast('Someone already picked that book.');break}b.readers.me.push(t.id);bv.adding=false;bv.q='';bv.ol=null;save();renderBattle();toast(`Added ${t.title} to the shared list.`);break}
     case 'bPick':{const b=S.battles.find(x=>x.id===bv.id),t=titleById(a.dataset.id);if(bList(b).some(x=>x.id===t.id)){toast('Someone already picked that book.');break}b.readers.me.push(t.id);bv.adding=false;bv.q='';save();renderBattle();toast(`Added ${t.title} to the shared list.`);break}
     case 'bRemove':{const b=S.battles.find(x=>x.id===bv.id);b.readers.me=b.readers.me.filter(x=>x!==a.dataset.id);save();renderBattle();break}
     case 'bNew':openBForm();break;
@@ -5039,7 +5083,7 @@ document.addEventListener('click',e=>{
     case 'teGen':te.cover='';te.url='';te.src='gen';te.bad=false;te.touched=true;tePanel();tePreview();break;
     case 'startNew':drawNew();if(!logDlg.open)logDlg.showModal();setTimeout(()=>document.getElementById('newQ')?.focus(),30);break;
     case 'backLog':{const c=currentSel()||S.books.find(x=>x.status==='paused');if(c)drawLog(c);break}
-    case 'startFormatGo':{const f=document.getElementById('startFormat').value,v=document.getElementById('startLength').value.trim(),total=v===''?0:f==='audio'?parsePos(v):/^\d+$/.test(v)?+v:NaN;if(v!==''&&(!Number.isFinite(total)||total<=0)){document.getElementById('formatError').textContent=f==='audio'?'Enter the length as h:mm, or leave it blank.':'Enter the number of pages as a whole number, or leave it blank.';break}const {b,focus,preMin,moveTo}=formatPick;const selectedCopy=S.copies.find(c=>c.id===document.getElementById('startReadingCopy')?.value);if(!document.getElementById('startOwn')?.checked&&selectedCopy&&(selectedCopy.format==='audio')!==(f==='audio')){document.getElementById('formatError').textContent='Choose a reading format that matches the selected copy.';break;}const own=document.getElementById('startOwn')?.checked,copyRow=document.querySelector('#startCopyFields .inline-copy');if(own){const cf=copyRow.querySelector('[data-copy-format]').value,edition=copyRow.querySelector('[data-copy-edition]').value.trim();if((cf==='audio')!==(f==='audio')){document.getElementById('formatError').textContent='Choose a reading format that matches the copy you’re reading.';break;}startCopyDrafts.set(b.id,{id:'c'+uid(),titleId:b.titleId,owner:'me',format:cf,edition,loanTo:null,private:S.settings.solo||!copyRow.querySelector('[data-copy-shared]')?.checked||undefined});saveReadingEdition(b,{edition});}else{startCopyDrafts.delete(b.id);saveReadingEdition(b,readEdition(logForm,'startReading'));}startSetupDone.add(b);b.format=f;b.total=total;b.pos=b.status==='finished'?total:0;if(moveTo){commitStartCopy(b);b.status=moveTo;b.pos=0;delete b.finished;delete b.dnfOn;if(moveTo==='reading'&&!b.started)b.started=today();if(moveTo==='paused')b.pausedOn=today();S.upNext=(S.upNext||[]).filter(id=>id!==b.id);save();logDlg.close();render();toast(`Moved ${b.title} to ${STATUS[moveTo]}.`)}else{save();drawLog(b,focus,preMin)}break}
+    case 'startFormatGo':{const f=document.getElementById('startFormat').value,v=document.getElementById('startLength').value.trim(),total=v===''?0:f==='audio'?parsePos(v):/^\d+$/.test(v)?+v:NaN;if(v!==''&&(!Number.isFinite(total)||total<=0)){document.getElementById('formatError').textContent=f==='audio'?'Enter the length as h:mm, or leave it blank.':'Enter the number of pages as a whole number, or leave it blank.';break}const {b,focus,preMin,moveTo}=formatPick;const selectedCopy=S.copies.find(c=>c.id===document.getElementById('startReadingCopy')?.value);if(!document.getElementById('startOwn')?.checked&&selectedCopy&&(selectedCopy.format==='audio')!==(f==='audio')){document.getElementById('formatError').textContent='Choose a reading format that matches the selected copy.';break;}const own=document.getElementById('startOwn')?.checked,copyRow=document.querySelector('#startCopyFields .inline-copy');if(own){const cf=copyRow.querySelector('[data-copy-format]').value,edition=copyRow.querySelector('[data-copy-edition]').value.trim();const same=(cf==='audio')===(f==='audio');startCopyDrafts.set(b.id,{id:'c'+uid(),titleId:b.titleId,owner:'me',format:cf,edition,loanTo:null,private:S.settings.solo||!copyRow.querySelector('[data-copy-shared]')?.checked||undefined});saveReadingEdition(b,same?{edition}:readEdition(logForm,'startReading'));}else{startCopyDrafts.delete(b.id);saveReadingEdition(b,readEdition(logForm,'startReading'));}startSetupDone.add(b);b.format=f;b.total=total;b.pos=b.status==='finished'?total:0;if(moveTo){commitStartCopy(b);b.status=moveTo;b.pos=0;delete b.finished;delete b.dnfOn;if(moveTo==='reading'&&!b.started)b.started=today();if(moveTo==='paused')b.pausedOn=today();S.upNext=(S.upNext||[]).filter(id=>id!==b.id);save();logDlg.close();render();toast(`Moved ${b.title} to ${STATUS[moveTo]}.`)}else{save();drawLog(b,focus,preMin)}break}
     case 'manualNew':detachLogDraft();logDlg.close();openAdd();ad.tab='manual';ad.lastStatus='reading';renderAdd();document.getElementById('amTitle')?.focus();break;
     case 'tourGo':tourStart(a.dataset.v);break;
     case 'tourLater':{const T=tourPrefs();if(a.dataset.v==='group')T.groupSeen=true;else{T.notNow=(T.notNow||0)+1;T.askAt=(T.visits||0)+3}save();hideTourOffer();toast(a.dataset.v==='group'||T.notNow>=2?'You can take the tour anytime from your account menu.':'No problem. You can take the tour anytime from your account menu.');break}
