@@ -960,6 +960,12 @@ main section.card .card-h .ico{display:none}
 .yir-sec h3{font-family:var(--serif);font-size:19px;margin:0 0 6px}
 .yir-rated{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:14px 10px}
 .yir-book{display:grid;gap:4px;justify-items:start;text-align:left;border:0;background:none;padding:0;color:inherit}
+body:has(.menu:not([hidden])) .tour-offer{display:none}
+.acct-pic{display:flex;gap:14px;align-items:center}
+.acct-av{width:64px;height:64px;font-size:26px;flex:none}
+.acct-colors{display:flex;flex-wrap:wrap;gap:6px}
+.acct-colors button{width:26px;height:26px;border-radius:50%;border:2px solid var(--surface);box-shadow:0 0 0 1px var(--border);padding:0}
+.acct-colors button[aria-checked="true"]{box-shadow:0 0 0 2px var(--text)}
 .btn-del{background:#B42318;color:#fff}.btn-del:hover{background:#912018}.btn-del:disabled{opacity:.45;cursor:not-allowed}
 .b-hidden-t{justify-self:start}
 .inv-box{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:12px 14px;border-radius:12px;background:var(--primary-light)}
@@ -1953,7 +1959,7 @@ function trophiesCard(){
   ${list.length?`<div class="trophies">${list.map(t=>`<div class="trophy">${hexBadge(t)}<div class="tn">${esc(t.name)}</div><div class="td">${esc(t.desc)}</div><div class="td">${fmtDate(t.date)}</div></div>`).join('')}</div>`:`<p class="muted small">Trophies you earn will show up here.</p>`}</section>`;
 }
 const REACTS=[['like','👍','Like'],['love','❤️','Love'],['celebrate','🎉','Celebrate'],['applaud','👏','Applaud']];
-function person(who){return who==='me'?{name:'You',color:S.me.color,init:S.me.name[0]}:{...S.members[who],init:S.members[who].name[0]}}
+function person(who){return who==='me'?{name:'You',color:S.me.color,init:S.me.name[0],photo:S.me.photo}:{...S.members[who],init:S.members[who].name[0]}}
 const ACT_CAT={started:'reading',finished:'reading',dnf:'reading',reread:'reading',resumed:'reading',halfway:'reading',session:'reading',together:'reading',library:'library',loan:'library',rec:'library',goal:'goals',streak:'goals',record:'goals',challenge:'challenges',invite:'challenges',completed:'challenges',battle:'battle',earned:'trophies',award:'trophies',member:'group'};
 const ACT_LBL=[['reading','Reading'],['library','Library'],['goals','Goals and Streaks'],['challenges','Challenges'],['battle','Battle of the Books'],['trophies','Trophies and Awards'],['group','Group']];
 let actOpen=false,actLimit=6;
@@ -2011,7 +2017,7 @@ function activityCard(){
     const txt=a.n>1?`logged ${a.n} reading sessions${new Date(a.ts).toDateString()===new Date().toDateString()?' today':''}`:a.text;
     const counts=REACTS.map(([k,e,l])=>{const n=Object.values(a.r).filter(v=>v===k).length;const on=a.r.me===k;
       return `<button class="react" ${mine?'disabled':''} aria-pressed="${on}" data-act="react" data-id="${a.id}" data-r="${k}" title="${l}" aria-label="${l}${n?`, ${n}`:''}"><span class="em" aria-hidden="true">${e}</span>${n?n:''}</button>`}).join('');
-    return `<div class="act"><div class="act-top"><span class="avatar" style="background:${p.color}">${p.init}</span><div class="act-txt"><b>${esc(p.name)}</b> ${esc(txt)}${a.book?` <em>${esc(a.book)}</em>`:''}${a.extra&&a.n!==2&&!(a.n>1)?` <span class="muted">(${esc(a.extra)})</span>`:''}</div><span class="act-when">${ago(a.ts)}</span></div><div class="reacts">${counts}</div></div>`;
+    return `<div class="act"><div class="act-top"><span class="avatar" style="background:${p.photo?`url('${p.photo}') center/cover no-repeat, ${p.color}`:p.color}">${p.photo?'':p.init}</span><div class="act-txt"><b>${esc(p.name)}</b> ${esc(txt)}${a.book?` <em>${esc(a.book)}</em>`:''}${a.extra&&a.n!==2&&!(a.n>1)?` <span class="muted">(${esc(a.extra)})</span>`:''}</div><span class="act-when">${ago(a.ts)}</span></div><div class="reacts">${counts}</div></div>`;
   }).join(''):`<div class="empty">${ic('users')}<h3>${hide.length?'Nothing to Show':'No Group Activity Yet'}</h3><p>${hide.length?'You’ve hidden some kinds of activity. Choose What Shows to bring them back.':'Group members who share their reading will show up here.'}</p></div>`;
   const filt=actOpen?`<div class="act-f"><div class="xs muted">Show activity about:</div><div class="chips">${ACT_LBL.map(([k,l])=>`<button class="tab sm" aria-pressed="${!hide.includes(k)}" data-act="actCat" data-v="${k}">${l}</button>`).join('')}</div></div>`:'';
   const note=S.settings.share?'':`<div class="privacy-note"><span>${ic('lock')} Your activity is private, so your group doesn’t see it here.</span><button data-act="share">Share with My Groups</button></div>`;
@@ -2396,6 +2402,11 @@ const nameOf=w=>w==='me'?'You':(S.members[w]?.name||'Member');
 const GN=()=>S.group?.name||'Group';
 const initOf=w=>w==='me'?S.me.name[0]:(S.members[w]?.name||'F')[0];
 const colorOf=w=>w==='me'?S.me.color:(S.members[w]?.color||'#6B7280');
+/* Avatars: a member's photo when they've added one, otherwise their initial on their color. */
+const photoOf=w=>w==='me'?S.me.photo:(S.members[w]||window.RR_PEOPLE?.[w])?.photo;
+const avBg=w=>{const ph=photoOf(w);return ph?`url('${ph}') center/cover no-repeat, ${colorOf(w)}`:colorOf(w)};
+const avInit=w=>photoOf(w)?'':esc(initOf(w));
+const AV_COLORS=['#2E7D52','#1D4ED8','#6D28D9','#C2410C','#B91C1C','#0E7490','#92400E','#BE185D','#3F6212','#475569'];
 const ownerNames=id=>[...new Set(copiesOf(id).map(c=>c.owner))].map(o=>o==='me'?'you':esc(nameOf(o))).join(', '); // always shown inside markup, so names are escaped here
 const sortKey=x=>x.replace(/^(the|a|an)\s+/i,'').toLowerCase();
 const lastName=a=>(a.trim().split(/\s+/).pop()||'');
@@ -2423,7 +2434,7 @@ function lendCopy(c,who){
 }
 function avail(tid,cs=copiesOf(tid)){const ph=cs.filter(c=>c.format==='physical');if(!cs.length)return null;if(!ph.length)return {t:'Digital copy',cls:''};if(ph.some(c=>!c.loanTo&&!holdOn(c)))return {t:'Available',cls:'ok'};const h=ph.find(c=>!c.loanTo&&holdOn(c));const who=w=>w==='me'?'you':nameOf(w);if(h)return {t:`On hold for ${who(holdOn(h).from)}`,cls:'loan'};return {t:`On loan to ${who(ph[0].loanTo)}`,cls:'loan'}}
 function avStack(tid,cs=copiesOf(tid)){const owners=[...new Set(cs.map(c=>c.owner))];if(!owners.length)return '';
-  return `<span class="av-stack" aria-hidden="true">${owners.slice(0,3).map(o=>`<span class="avatar" style="background:${colorOf(o)}">${initOf(o)}</span>`).join('')}</span><span class="xs muted">${owners.length===1?`Owned by ${esc(nameOf(owners[0]))}`:`${owners.length} owners`}</span>`}
+  return `<span class="av-stack" aria-hidden="true">${owners.slice(0,3).map(o=>`<span class="avatar" style="background:${avBg(o)}">${avInit(o)}</span>`).join('')}</span><span class="xs muted">${owners.length===1?`Owned by ${esc(nameOf(owners[0]))}`:`${owners.length} owners`}</span>`}
 const fmtChips=(tid,cs=copiesOf(tid))=>[...new Set(cs.map(c=>c.format))].map(f=>`<span class="fchip">${FMT[f]}</span>`).join('');
 const STATUS={reading:'Currently Reading',paused:'Paused',finished:'Finished',dnf:'Did Not Finish',want:'On To Read'};
 const libCover=(t,w)=>cover({title:t.title,author:t.author,c:t.c,cover:t.cover,titleId:t.titleId,format:'print'},w);
@@ -2505,8 +2516,8 @@ function fromMe(){
   return `<div class="lib-count"><span class="small muted">${ids.length} book${ids.length===1?'':'s'} recommended</span></div><div class="from-list">${ids.map(id=>{const t=titleById(id);if(!t)return '';
     return `<div class="from card"><button class="lc-open from-b" data-act="openTitle" data-id="${id}">${libCover(t,56)}<span><span class="lc-t" style="display:block">${esc(t.title)}</span><span class="bk-a">${esc(t.author)}</span></span></button>
     <div class="from-rows">${byT[id].map(r=>{const vis=S.members[r.to]?.share!==false,st=vis?(r.status||'sent'):'sent';
-      if(recEdit===r.id)return `<div class="from-row rec-edit"><span class="avatar" style="background:${colorOf(r.to)}">${initOf(r.to)}</span><input class="inp sm" id="recEditIn" maxlength="140" value="${esc(r.note||'')}" placeholder="Add a note (optional)" aria-label="Note for ${esc(nameOf(r.to))}">${(()=>{const rt=r.rating||myRating(r.titleId);return rt?`<label class="chk xs"><input type="checkbox" id="recEditRate" ${r.rating?'checked':''}> Include my rating (${rt}★)</label>`:''})()}<button class="btn btn-primary sm" data-act="recEditSave" data-id="${r.id}">Save</button><button class="link-btn sm" data-act="recEditCancel">Cancel</button></div>`;
-      return `<div class="from-row"><span class="avatar" style="background:${colorOf(r.to)}">${initOf(r.to)}</span><span class="small fr-txt"><b>${esc(nameOf(r.to))}</b>${r.note?` <span class="muted">“${esc(r.note)}”</span>`:''}${r.rating?` <span class="xs muted">· your rating (${r.rating}★) included</span>`:''} <span class="xs muted">· ${ago(r.ts)}</span></span><span class="st ${st==='finished'?'st-finished':st==='reading'?'st-reading':st==='want'?'st-want':''}">${REC_ST[st]}</span><span class="fr-acts"><button class="link-btn sm" data-act="recEdit" data-id="${r.id}">${r.note?'Edit Note':'Add Note'}</button><button class="link-btn sm" data-act="recWithdraw" data-id="${r.id}">Withdraw</button></span></div>`}).join('')}</div></div>`}).join('')}</div>
+      if(recEdit===r.id)return `<div class="from-row rec-edit"><span class="avatar" style="background:${avBg(r.to)}">${avInit(r.to)}</span><input class="inp sm" id="recEditIn" maxlength="140" value="${esc(r.note||'')}" placeholder="Add a note (optional)" aria-label="Note for ${esc(nameOf(r.to))}">${(()=>{const rt=r.rating||myRating(r.titleId);return rt?`<label class="chk xs"><input type="checkbox" id="recEditRate" ${r.rating?'checked':''}> Include my rating (${rt}★)</label>`:''})()}<button class="btn btn-primary sm" data-act="recEditSave" data-id="${r.id}">Save</button><button class="link-btn sm" data-act="recEditCancel">Cancel</button></div>`;
+      return `<div class="from-row"><span class="avatar" style="background:${avBg(r.to)}">${avInit(r.to)}</span><span class="small fr-txt"><b>${esc(nameOf(r.to))}</b>${r.note?` <span class="muted">“${esc(r.note)}”</span>`:''}${r.rating?` <span class="xs muted">· your rating (${r.rating}★) included</span>`:''} <span class="xs muted">· ${ago(r.ts)}</span></span><span class="st ${st==='finished'?'st-finished':st==='reading'?'st-reading':st==='want'?'st-want':''}">${REC_ST[st]}</span><span class="fr-acts"><button class="link-btn sm" data-act="recEdit" data-id="${r.id}">${r.note?'Edit Note':'Add Note'}</button><button class="link-btn sm" data-act="recWithdraw" data-id="${r.id}">Withdraw</button></span></div>`}).join('')}</div></div>`}).join('')}</div>
     <p class="xs muted" style="margin-top:12px">Progress shows only for group members who share their activity; otherwise it stays at Sent. Withdrawing a recommendation takes it off their list without notifying them.</p>`;
 }
 function filtersPanel(){
@@ -3202,7 +3213,7 @@ function copyRow(c){
   else if(mine&&ph)act=c.loanTo?`<button class="btn btn-ghost sm" data-act="cpReturn" data-id="${c.id}">Mark Returned</button>`
     :bd.lend===c.id?`<span class="lend"><select class="inp sm" id="lendTo" aria-label="Lend to">${Object.entries(S.members).map(([k,m])=>`<option value="${k}">${esc(m.name)}</option>`).join('')}</select><button class="btn btn-primary sm" data-act="cpLendGo" data-id="${c.id}">Lend</button><button class="link-btn sm" data-act="cpLend" data-id="">Cancel</button></span>`
     :`<button class="btn btn-ghost sm" data-act="cpLend" data-id="${c.id}">Mark Loaned</button>`;
-  return `<div class="copy"><span class="avatar" style="background:${colorOf(c.owner)}">${initOf(c.owner)}</span><div class="cp-main"><div class="small"><b>${FMT[c.format]}</b>${c.edition?` · ${esc(c.edition)}`:''}${c.where?` · ${esc(c.where)}`:''}</div><div class="xs muted">Owned by ${esc(nameOf(c.owner))}${mine?` · <button type="button" class="link-btn sm copy-edit-link" data-act="cpEdit" data-id="${c.id}" aria-label="Edit ${esc(FMT[c.format])} copy${c.edition?' — '+esc(c.edition):''}">Edit</button>`:''}</div></div>
+  return `<div class="copy"><span class="avatar" style="background:${avBg(c.owner)}">${avInit(c.owner)}</span><div class="cp-main"><div class="small"><b>${FMT[c.format]}</b>${c.edition?` · ${esc(c.edition)}`:''}${c.where?` · ${esc(c.where)}`:''}</div><div class="xs muted">Owned by ${esc(nameOf(c.owner))}${mine?` · <button type="button" class="link-btn sm copy-edit-link" data-act="cpEdit" data-id="${c.id}" aria-label="Edit ${esc(FMT[c.format])} copy${c.edition?' — '+esc(c.edition):''}">Edit</button>`:''}</div></div>
   <span class="avail ${ph?(c.loanTo||hold?'loan':'ok'):''}">${ph?(c.loanTo?(c.loanTo==='me'?'On loan to you':`On loan to ${esc(nameOf(c.loanTo))}`):hold?(hold.from==='me'?'On hold for you':`On hold for ${esc(nameOf(hold.from))} — awaiting pickup`):'Available'):'Digital'}</span>
   <span class="cp-act">${act}${mine&&!S.settings.solo?`<button class="link-btn sm cp-share" data-act="cpShare" data-id="${c.id}" aria-pressed="${!c.private}" title="Show this copy in the ${esc(GN())} Library">${c.private?`${ic('lock')}Only Me`:`${ic('users')}Shared`}</button>`:''}${mine?`<button class="link-btn sm" data-act="cpRemove" data-id="${c.id}">Remove</button>`:''}</span></div>${bd.reqNote===c.id&&!mine&&!mr?`<div class="req-in req-compose"><label class="f"><span>Note to ${esc(nameOf(c.owner))} <span class="sub">(optional)</span></span><textarea class="inp" id="reqNoteTx" rows="2" maxlength="200" data-count="200" aria-describedby="reqNoteCount" placeholder="When you could pick it up, or why you'd like to read it"></textarea>${charCount('reqNoteCount',0,200)}</label><span class="req-btns"><button class="btn btn-ghost sm" data-act="reqNoteOpen" data-id="">Cancel</button><button class="btn btn-primary sm" data-act="reqBorrow" data-id="${c.id}">${free?'Send Request':'Join the Waiting Line'}</button></span></div>`:''}${incoming.map((r,i)=>`<div class="req-in"><span class="small">${free?'':`<span class="xs muted">${ordinal(i+1)} in line · </span>`}<b>${esc(nameOf(r.from))}</b> asked to borrow this ${ago(r.ts)}.${r.note?`<span class="req-msg">“${esc(r.note)}”</span>`:''}</span>${replyBtns(r,free)}</div>`).join('')}`;
 }
@@ -3347,7 +3358,7 @@ function renderBD0(){
     }
   }else if(bd.tab==='activity'){
     const items=S.activity.filter(a=>(a.titleId?a.titleId===t.id:a.book===t.title&&S.titles.filter(x=>x.title===t.title).length===1)&&(a.who!=='me'||S.settings.share)).sort((a,b)=>b.ts-a.ts);
-    body=`<div class="xs muted bd-act-h">${esc(GN())} activity for this book</div>`+(items.length?items.map(a=>{const p=person(a.who);return `<div class="act-top" style="padding:8px 0"><span class="avatar" style="background:${p.color}">${p.init}</span><div class="act-txt"><b>${esc(p.name)}</b> ${esc(a.text)}${a.extra?` <span class="muted">(${esc(a.extra)})</span>`:''}</div><span class="act-when">${ago(a.ts)}</span></div>`}).join('')
+    body=`<div class="xs muted bd-act-h">${esc(GN())} activity for this book</div>`+(items.length?items.map(a=>{const p=person(a.who);return `<div class="act-top" style="padding:8px 0"><span class="avatar" style="background:${p.photo?`url('${p.photo}') center/cover no-repeat, ${p.color}`:p.color}">${p.photo?'':p.init}</span><div class="act-txt"><b>${esc(p.name)}</b> ${esc(a.text)}${a.extra?` <span class="muted">(${esc(a.extra)})</span>`:''}</div><span class="act-when">${ago(a.ts)}</span></div>`}).join('')
       :`<p class="small muted">No group activity for this book yet. Only members who share their reading appear here.</p>`);
   }else{
     body=`<label class="f"><span>Notes <span class="sub">(only you see these)</span></span><textarea class="inp" id="bdNotes" rows="3" maxlength="5000" data-count="5000" aria-describedby="bdNoteCount" placeholder="Thoughts, favorite quotes, where you left off…">${esc(S.notes[t.id]||'')}</textarea>${charCount('bdNoteCount',(S.notes[t.id]||'').length,5000)}</label><div class="xs muted" style="margin-top:6px">Saved as you type.</div>`;
@@ -4004,7 +4015,7 @@ function chStatus(c,p){
   return {k:'active',txt:'Ongoing'};
 }
 const dateRange=c=>c.start&&c.end?`${chDay(c,c.start)} – ${chDay(c,c.end)}`:c.end?`By ${fmtDateY(c.end)}`:c.start?`From ${fmtDateY(c.start)}`:'No end date';
-const avRow=ws=>`<span class="av-stack" aria-hidden="true">${ws.slice(0,6).map(w=>`<span class="avatar" style="background:${colorOf(w)}">${initOf(w)}</span>`).join('')}</span>`;
+const avRow=ws=>`<span class="av-stack" aria-hidden="true">${ws.slice(0,6).map(w=>`<span class="avatar" style="background:${avBg(w)}">${avInit(w)}</span>`).join('')}</span>`;
 const famSize=()=>Object.keys(S.members).length+1;
 /* Small Delete or Hide link in a card's corner. Delete opens the item with its warning showing; Hide works like Hide from My List(s). */
 function cardActs(kind,id,name,del,hide,hidden){
@@ -4145,8 +4156,8 @@ let awEdit=null;
 function givenAwards(){
   const g=[...(S.awardsGiven||[])].sort((a,b)=>b.date.localeCompare(a.date));if(!g.length)return '';
   return `<section class="aw-given"><h3 class="shelf-l">Awards You’ve Given <span class="count">(${g.length})</span></h3><div class="aw-list">${g.map(w=>awEdit===w.id
-    ?`<div class="aw-row aw-edit"><span class="avatar" style="background:${colorOf(w.to)}">${initOf(w.to)}</span><div class="aw-f"><label class="f"><span class="sub">Award for ${esc(nameOf(w.to))}</span><input class="inp sm" id="awgName" maxlength="60" value="${esc(w.name)}"></label><label class="f"><span class="sub">Note (optional)</span><input class="inp sm" id="awgNote" maxlength="120" value="${esc(w.note||'')}"></label><div class="err" id="awgErr" role="alert"></div><div class="aw-acts"><button class="btn btn-primary sm" data-act="awgSave" data-id="${w.id}">Save</button><button class="btn btn-ghost sm" data-act="awgCancel">Cancel</button></div></div></div>`
-    :`<div class="aw-row"><span class="avatar" style="background:${colorOf(w.to)}">${initOf(w.to)}</span><div class="aw-t"><div class="small"><b>${esc(w.name)}</b> <span class="muted">to ${esc(nameOf(w.to))}</span></div><div class="xs muted">${fmtDateY(w.date)}${w.note?` · “${esc(w.note)}”`:''}</div></div><span class="aw-acts"><button class="link-btn sm" data-act="awgEdit" data-id="${w.id}">${ic('pencil')}Edit</button><button class="link-btn sm" data-act="awgRemove" data-id="${w.id}">Remove</button></span></div>`).join('')}</div></section>`;
+    ?`<div class="aw-row aw-edit"><span class="avatar" style="background:${avBg(w.to)}">${avInit(w.to)}</span><div class="aw-f"><label class="f"><span class="sub">Award for ${esc(nameOf(w.to))}</span><input class="inp sm" id="awgName" maxlength="60" value="${esc(w.name)}"></label><label class="f"><span class="sub">Note (optional)</span><input class="inp sm" id="awgNote" maxlength="120" value="${esc(w.note||'')}"></label><div class="err" id="awgErr" role="alert"></div><div class="aw-acts"><button class="btn btn-primary sm" data-act="awgSave" data-id="${w.id}">Save</button><button class="btn btn-ghost sm" data-act="awgCancel">Cancel</button></div></div></div>`
+    :`<div class="aw-row"><span class="avatar" style="background:${avBg(w.to)}">${avInit(w.to)}</span><div class="aw-t"><div class="small"><b>${esc(w.name)}</b> <span class="muted">to ${esc(nameOf(w.to))}</span></div><div class="xs muted">${fmtDateY(w.date)}${w.note?` · “${esc(w.note)}”`:''}</div></div><span class="aw-acts"><button class="link-btn sm" data-act="awgEdit" data-id="${w.id}">${ic('pencil')}Edit</button><button class="link-btn sm" data-act="awgRemove" data-id="${w.id}">Remove</button></span></div>`).join('')}</div></section>`;
 }
 function challengesView(){
   const ORDK={active:0,up:1,done:2,ended:3};
@@ -4180,8 +4191,8 @@ function renderCh(){
     :[[`${fmtV(c,Math.max(0,p.t-p.v))}`,`${c.type==='minutes'?'':unitOf(c,2).trim()+' '}to go`],[left??'—','days left'],[fam?c.participants.length:pc+'%',fam?'participants':'complete']];
   let sec='';
   if(c.mode==='coop'){const rows=c.participants.map(w=>({w,v:valOf(c,w)})).sort((a,b)=>b.v-a.v),vis=rows.filter(r=>r.w==='me'||S.members[r.w]?.share!==false),hid=rows.length-vis.length;
-    sec=`<h3 class="sec-h">Contributions</h3>${vis.map(r=>`<div class="contrib"><span class="avatar" style="background:${colorOf(r.w)}">${initOf(r.w)}</span><span class="small"><b>${esc(nameOf(r.w))}</b></span><span class="small muted">${fmtV(c,r.v)}${unitOf(c,r.v)}</span><div class="bar"><span style="width:${p.t?Math.min(100,r.v/p.t*100):0}%"></span></div></div>`).join('')}${hid?`<p class="xs muted">${hid} member${hid===1?'’s':'s’'} contribution${hid===1?' is':'s are'} private but still counts toward the total.</p>`:''}`}
-  else if(c.mode==='comp'){sec=`<h3 class="sec-h">Everyone’s Progress</h3><p class="xs muted" style="margin:0 0 6px">Counts ${c.type==='goaldays'?'days each person meets their own daily goal':'days each person reads'}, so every reader has a fair shot. A rest day never counts against anyone.</p>${p.ranked.map((r,i)=>{const priv=r.w!=='me'&&S.members[r.w]?.share===false;return `<div class="contrib"><span class="avatar" style="background:${colorOf(r.w)}">${initOf(r.w)}</span><span class="small"><b>${esc(nameOf(r.w))}</b></span><span class="small muted">${priv?'Private':r.v+unitOf(c,r.v)}</span><div class="bar"><span style="width:${priv?0:Math.min(100,r.v/Math.max(1,p.soFar||p.t)*100)}%"></span></div></div>`}).join('')}`}
+    sec=`<h3 class="sec-h">Contributions</h3>${vis.map(r=>`<div class="contrib"><span class="avatar" style="background:${avBg(r.w)}">${avInit(r.w)}</span><span class="small"><b>${esc(nameOf(r.w))}</b></span><span class="small muted">${fmtV(c,r.v)}${unitOf(c,r.v)}</span><div class="bar"><span style="width:${p.t?Math.min(100,r.v/p.t*100):0}%"></span></div></div>`).join('')}${hid?`<p class="xs muted">${hid} member${hid===1?'’s':'s’'} contribution${hid===1?' is':'s are'} private but still counts toward the total.</p>`:''}`}
+  else if(c.mode==='comp'){sec=`<h3 class="sec-h">Everyone’s Progress</h3><p class="xs muted" style="margin:0 0 6px">Counts ${c.type==='goaldays'?'days each person meets their own daily goal':'days each person reads'}, so every reader has a fair shot. A rest day never counts against anyone.</p>${p.ranked.map((r,i)=>{const priv=r.w!=='me'&&S.members[r.w]?.share===false;return `<div class="contrib"><span class="avatar" style="background:${avBg(r.w)}">${avInit(r.w)}</span><span class="small"><b>${esc(nameOf(r.w))}</b></span><span class="small muted">${priv?'Private':r.v+unitOf(c,r.v)}</span><div class="bar"><span style="width:${priv?0:Math.min(100,r.v/Math.max(1,p.soFar||p.t)*100)}%"></span></div></div>`}).join('')}`}
   else if(c.type==='list'){sec=`<h3 class="sec-h">Books</h3>${c.titleIds.map(id=>{const t=titleById(id);return t?`<div class="b-row">${libCover(t)}<div class="cp-main"><div class="small"><b>${esc(t.title)}</b></div><div class="xs muted">${esc(t.author)}</div>${listMiss(c,id)}</div>${listMissR(c,id)||bookAct(id)}</div>`:''}).join('')}`}
 
   if(c.mode!=='comp'&&(c.mode==='personal'||joined))sec+=contribSection(c);
@@ -4368,7 +4379,7 @@ function renderBattle(){
   let body='';
   if(bv.tab==='books')body=list.length?list.map((x,i)=>{const t=titleById(x.id);return `<div class="b-row"><span class="b-n">${i+1}</span>${libCover(t)}<div class="cp-main"><div class="small"><b>${esc(t.title)}</b></div><div class="xs muted">${esc(t.author)} · Picked by ${esc(nameOf(x.w))}</div></div>${bookAct(x.id)}${x.w==='me'&&open?`<button class="link-btn sm" data-act="bRemove" data-id="${x.id}">Remove</button>`:''}</div>`}).join(''):`<p class="small muted">No books yet. Readers add their picks here.</p>`;
   else if(bv.tab==='readers'){const n=list.length;
-    body=Object.keys(b.readers).map(w=>{const priv=w!=='me'&&S.members[w]?.share===false,d=readerDone(b,w),picks=b.readers[w].length;return `<div class="contrib"><span class="avatar" style="background:${colorOf(w)}">${initOf(w)}</span><span class="small"><b>${esc(nameOf(w))}</b> <span class="xs muted">· ${picks} pick${picks===1?'':'s'}</span></span><span class="small muted">${priv?'Progress private':`${d} of ${n} books`}</span><div class="bar"><span style="width:${priv||!n?0:d/n*100}%"></span></div></div>`}).join('')+
+    body=Object.keys(b.readers).map(w=>{const priv=w!=='me'&&S.members[w]?.share===false,d=readerDone(b,w),picks=b.readers[w].length;return `<div class="contrib"><span class="avatar" style="background:${avBg(w)}">${avInit(w)}</span><span class="small"><b>${esc(nameOf(w))}</b> <span class="xs muted">· ${picks} pick${picks===1?'':'s'}</span></span><span class="small muted">${priv?'Progress private':`${d} of ${n} books`}</span><div class="bar"><span style="width:${priv||!n?0:d/n*100}%"></span></div></div>`}).join('')+
       `<div class="contrib"><span class="avatar" style="background:${b.moderator?colorOf(b.moderator):'var(--secondary)'}">${b.moderator?initOf(b.moderator):'?'}</span><span class="small"><b>${b.moderator?esc(nameOf(b.moderator)):'No moderator yet'}</b> <span class="xs muted">· Moderator</span></span><span></span></div>`}
   else body=`<p class="small" style="margin-top:0">${esc(b.desc||'')}</p><div class="small muted">Reading starts ${fmtDateY(b.readStart)} · Battle on ${fmtDateY(b.event)}</div><ul class="small muted" style="padding-left:18px"><li>Each reader adds one or more books; no book can be picked twice.</li><li>Everyone reads every book on the list.</li><li>The moderator runs the in-person battle and doesn’t pick books.</li><li>Reading progress comes from your normal reading logs.</li></ul>`;
   chBody.innerHTML=`<div class="dlg-h"><span class="chc-ic">${ic('library')}</span><div style="flex:1;min-width:0"><h2 id="chTitle">${esc(b.name)}</h2><div class="xs muted">Reading from ${fmtDateY(b.readStart)} · Battle on ${fmtDateY(b.event)}</div><div style="margin-top:6px"><span class="st ${st==='active'?'st-reading':st==='completed'?'st-finished':''}">${BST[st]}</span> <span class="xs muted">Started by ${esc(bCreator(b)==='me'?'You':nameOf(bCreator(b)))} · Moderator: ${b.moderator?esc(nameOf(b.moderator)):'none yet'}</span></div></div><button type="button" class="icon-btn x" data-act="closeCh" aria-label="Close">${ic('x')}</button></div>
@@ -4474,14 +4485,14 @@ function renderHeader(){
   const solo=!!S.settings.solo;
   document.getElementById('grpName').textContent=solo?'Just Me':GN();
   document.getElementById('grpMenu').innerHTML=`<h3>Your Groups</h3><button class="link grp-opt" data-act="grpSel" data-v="group" aria-pressed="${!solo}">${ic('users')}<span>${esc(GN())}</span>${solo?'':ic('check')}</button><button class="link grp-opt" data-act="grpSel" data-v="solo" aria-pressed="${solo}">${ic('book')}<span>Just Me</span>${solo?ic('check'):''}</button><div class="xs muted" style="padding:6px 10px 4px">Prototype: Just Me previews what a reader without a group sees.</div>`;
-  document.getElementById('meAvatar').textContent=S.me.name[0];
-  document.getElementById('meAvatar').style.background=S.me.color;
+  document.getElementById('meAvatar').textContent=avInit('me');
+  document.getElementById('meAvatar').style.background=avBg('me');
   document.getElementById('meName').textContent=S.me.name;
   const bc=document.getElementById('bellCount');const unread=S.notifs.filter(n=>!n.read).length;bc.textContent=unread;bc.hidden=!unread;
   document.getElementById('bellMenu').innerHTML=`<h3>Notifications</h3>${S.notifs.length?S.notifs.map(n=>`<div class="notif ${n.read?'read':''}"><button class="notif-go" ${n.link?`data-act="notifGo" data-id="${n.id}"`:'disabled'}><p>${esc(n.text)}</p>${(()=>{const r=n.req&&(S.loanReqs||[]).find(x=>x.id===n.req);const t=n.reply?r?.reply:r?.note;return t?`<p class="req-msg">“${esc(t)}”</p>`:''})()}<span class="xs muted">${ago(n.ts)}${n.link?' · Open':''}</span></button><button class="icon-btn x" data-act="dismiss" data-id="${n.id}" aria-label="Dismiss">${ic('x')}</button>${(()=>{const r=n.req&&(S.loanReqs||[]).find(x=>x.id===n.req);if(!r||r.status!=='pending')return '';const c=S.copies.find(x=>x.id===r.copyId),free=c&&copyFree(c);
       return `<div class="notif-req">${replyBtns(r,free,`<span class="xs muted" style="align-self:center">Waiting in line until your copy is back.</span>`)}</div>`})()}</div>`).join(''):'<p class="muted small" style="padding:4px 10px 10px;margin:0">You’re all caught up.</p>'}`;
   const th=S.settings.theme;
-  document.getElementById('meMenu').innerHTML=`<h3>${esc(S.me.name)}</h3>
+  document.getElementById('meMenu').innerHTML=`<h3>${esc(S.me.name)}</h3><button class="link" data-act="acctOpen">Account Settings</button>
     ${S.settings.solo?'':`<div class="row"><span class="small">Share My Activity with My Groups</span><button class="switch" role="switch" aria-checked="${S.settings.share}" data-act="share" aria-label="Share My Activity with My Groups"></button></div><div class="xs muted" style="padding:0 10px 6px;margin-top:-4px">Sharing shows what you’re currently reading, finished books, ratings, reading progress, and achievements.</div>`}
     <div class="row"><span class="small">Appearance</span><span class="seg">${['system','light','dark'].map(x=>`<button aria-pressed="${th===x}" data-act="theme" data-v="${x}">${x[0].toUpperCase()+x.slice(1)}</button>`).join('')}</span></div>
     <div class="row"><label class="small" for="palSel">Color Palette</label><select class="inp sm" id="palSel" data-pref="palette">${(o=>`<optgroup label="Colors">${PALETTES.filter(([k])=>!PAL_HC.has(k)).map(o).join('')}</optgroup><optgroup label="High Contrast">${PALETTES.filter(([k])=>PAL_HC.has(k)).map(o).join('')}</optgroup>`)(([k,l])=>`<option value="${k}" ${(S.settings.palette||'sage')===k?'selected':''}>${l}</option>`)}</select></div>
@@ -4991,6 +5002,36 @@ function toast(m,undo,sub,cele){if(saveFailed){showSaveFailure();return;}if(extr
   // that window, where its Undo still works.
   const host=[...document.querySelectorAll('dialog[open]')].pop()||document.body;if(t.parentNode!==host){hideT(t);host.appendChild(t)}
   t.classList.toggle('cele',!!cele);t.innerHTML=`<span><span class="t-main">${esc(m)}</span>${sub?`<span class="t-sub">${esc(sub)}</span>`:''}</span>${undo?'<button class="toast-undo" data-act="undo">Undo</button>':''}`;undoFn=undo||null;showT(t);clearTimeout(toastT);toastT=setTimeout(()=>{hideT(t);undoFn=null},undo?6000:sub?4500:2800)}
+/* ---------- Account Settings ----------
+   Profile picture (a photo, or the initial on a chosen color), the name your groups see, and an optional private full
+   name. The live beta adds email and password (window.RR_ACCT_EXTRA) and saves the profile to Supabase
+   (window.RR_SAVE_PROFILE). */
+let acct=null;
+function acctOpen(){acct={name:S.me.name,full:S.me.fullName||'',color:S.me.color,photo:S.me.photo||''};
+  let d=document.getElementById('acctDlg');if(!d){d=document.createElement('dialog');d.id='acctDlg';d.setAttribute('aria-labelledby','acctTitle');document.body.appendChild(d)}
+  d.innerHTML=`<form class="dlg" id="acctForm" novalidate><div class="dlg-h"><h2 id="acctTitle">Account Settings</h2><button type="button" class="icon-btn x" data-act="acctClose" aria-label="Close">${ic('x')}</button></div>
+  <div class="form"><div class="section-t">Profile Picture</div><div id="acctPic"></div>
+  <label class="f"><span>Display Name <span class="sub">(what your groups see)</span></span><input class="inp" id="acctName" maxlength="60" autocomplete="nickname" value="${esc(acct.name)}"></label>
+  <label class="f"><span>Full Name <span class="sub">(optional, private)</span></span><input class="inp" id="acctFull" maxlength="120" autocomplete="name" value="${esc(acct.full)}" placeholder="For example, Riley Emberton"></label>
+  ${window.RR_ACCT_EXTRA?RR_ACCT_EXTRA():''}
+  <div class="err" id="acctErr" role="alert"></div></div>
+  <div class="dlg-f"><button type="button" class="btn btn-ghost" data-act="acctClose">Cancel</button><button type="submit" class="btn btn-primary" id="acctSave">Save Changes</button></div></form>`;
+  acctPic();d.showModal();setTimeout(()=>document.getElementById('acctName')?.focus(),40);
+  document.getElementById('acctForm').onsubmit=async e=>{e.preventDefault();const name=document.getElementById('acctName').value.trim(),full=document.getElementById('acctFull').value.trim(),er=t=>{document.getElementById('acctErr').textContent=t};
+    if(!name)return er('Enter the name your groups will see.');
+    const btn=document.getElementById('acctSave');btn.disabled=true;
+    try{if(window.RR_SAVE_PROFILE){const m=await RR_SAVE_PROFILE({name,full,color:acct.color,photo:acct.photo});if(m){er(m);return}}}finally{btn.disabled=false}
+    Object.assign(S.me,{name,color:acct.color});if(acct.photo)S.me.photo=acct.photo;else delete S.me.photo;if(full)S.me.fullName=full;else delete S.me.fullName;
+    save();d.close();render();toast('Account settings saved.')}}
+function acctPic(){const el=document.getElementById('acctPic');if(!el)return;const ph=acct.photo,init=esc((document.getElementById('acctName')?.value||acct.name||'?')[0]||'?');
+  el.innerHTML=`<div class="acct-pic"><span class="avatar acct-av" style="background:${ph?`url('${ph}') center/cover no-repeat, ${acct.color}`:acct.color}">${ph?'':init}</span>
+  <div style="display:grid;gap:8px;min-width:0"><div style="display:flex;gap:8px;flex-wrap:wrap"><label class="btn btn-ghost sm">${ic('plus')}${ph?'Change Photo':'Upload a Photo'}<input type="file" id="acctFile" accept="image/jpeg,image/png,image/webp" hidden></label>${ph?'<button type="button" class="link-btn sm" data-act="acctPhotoOff">Remove Photo</button>':''}</div>
+  ${ph?'':`<div class="acct-colors" role="radiogroup" aria-label="Letter color">${AV_COLORS.map(c=>`<button type="button" role="radio" aria-checked="${acct.color===c}" aria-label="Color ${AV_COLORS.indexOf(c)+1}" data-act="acctColor" data-v="${c}" style="background:${c}"></button>`).join('')}</div>`}</div></div>
+  <span class="xs muted">Your photo or initial shows next to your name in your groups.</span>`;
+  document.getElementById('acctFile').onchange=async ev=>{const f=ev.target.files[0];if(!f)return;if(!/^image\/(jpeg|png|webp)$/.test(f.type)){document.getElementById('acctErr').textContent='Choose a JPG, PNG, or WebP image.';return}
+    try{const bmp=await createImageBitmap(f),side=Math.min(bmp.width,bmp.height),cv=document.createElement('canvas');cv.width=cv.height=160;
+      cv.getContext('2d').drawImage(bmp,(bmp.width-side)/2,(bmp.height-side)/2,side,side,0,0,160,160);bmp.close?.();acct.photo=cv.toDataURL('image/jpeg',.85);document.getElementById('acctErr').textContent='';acctPic()}
+    catch(e){document.getElementById('acctErr').textContent='That image couldn’t be opened. Try a different file.'}}}
 function closeMenus(){['bellMenu','meMenu','grpMenu'].forEach(i=>document.getElementById(i).hidden=true)}
 document.addEventListener('change',async e=>{
   if(e.target.id!=='heroUpload')return;
@@ -5211,6 +5252,10 @@ document.addEventListener('click',e=>{
     case 'yirOpen':yirOpen();break;
     case 'yirClose':document.getElementById('yirDlg')?.close();break;
     case 'yirBook':document.getElementById('yirDlg')?.close();openTitle(a.dataset.id);break;
+    case 'acctOpen':closeMenus();acctOpen();break;
+    case 'acctClose':document.getElementById('acctDlg')?.close();break;
+    case 'acctColor':acct.color=a.dataset.v;acctPic();break;
+    case 'acctPhotoOff':acct.photo='';acctPic();break;
     case 'grPick':grPick();break;
     case 'grReset':gi=null;renderAdd();break;
     case 'grAll':gi.showAll=true;renderAdd();break;
