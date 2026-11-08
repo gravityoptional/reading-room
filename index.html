@@ -3340,7 +3340,7 @@ function renderBD0(){
       const prog=progText(r);
       body=`<div class="st st-${r.status}">${STATUS[r.status]}</div> <button class="link-btn sm" data-act="editBook" data-book="${r.id}">${ic('pencil')}Change Status or Details</button>
       ${r.status!=='want'&&r.format!=='unknown'?(hasLen(r)?`<div class="bar" style="margin-top:12px"><span style="width:${pct(r)}%"></span></div><div class="xs muted">${prog} · ${pct(r)}%</div>`:`<div class="len-box"><div class="small">${prog}</div><div class="xs muted">${addLenLink(r)}</div></div>`):''}
-      <div class="xs muted" style="margin-top:6px">${[r.started?`Started ${fmtDateY(r.started)}`:'',r.finished?`Finished ${fmtDateY(r.finished)}`:r.status==='finished'?finUnknown(r):'',r.dnfOn?`Set aside ${fmtDateY(r.dnfOn)}`:''].filter(Boolean).join(' · ')}</div>
+      <div class="xs muted" style="margin-top:6px">${[r.started?`Started ${fmtDateY(r.started)}`:'',r.finished?`Finished ${fmtDateY(r.finished)}`:r.status==='finished'?finUnknown(r):'',r.dnfOn?`Set aside ${fmtDateY(r.dnfOn)}`:''].filter(Boolean).join(' · ')}</div>${(r.with||[]).length?`<div class="xs muted">Read with ${esc((n=>n.length>1?n.slice(0,-1).join(', ')+' and '+n.at(-1):n[0])(r.with.map(nameOf)))}</div>`:''}
       ${r.edition?`<div class="small" style="margin-top:10px">Edition: ${esc(r.edition)}</div>`:''}
       ${r.status==='finished'?`<div class="rate"><span class="small">Your Rating <span class="muted">(${rateWho()})</span></span>${starsFor(r)}</div>`
         :r.status==='dnf'?`<div class="rate dnf-why"><span class="small">${r.dnfWhy||r.dnfNote?`Why you stopped: <b>${esc(dnfWhyL(r.dnfWhy)||'')}</b>${r.dnfNote?` “${esc(r.dnfNote)}”`:''}`:'<span class="muted">No reason given for stopping.</span>'}</span><button class="link-btn sm" data-act="dnfEdit" data-book="${r.id}">${r.dnfWhy||r.dnfNote?'Change':'Add a Reason'}</button></div>`:''}`;
@@ -4061,7 +4061,7 @@ function achievements(){
   const seenT={};let rr=null;fb.forEach(b=>{if(seenT[b.titleId]&&!rr)rr=b.finished;seenT[b.titleId]=1});
   let back=null;for(let i=1;i<days.length;i++)if(daysBetween(days[i-1],days[i])>=14){back=days[i];break}
   const yc={};let beat=null;fin.forEach(d=>{const y=d.slice(0,4);yc[y]=(yc[y]||0)+1;const prev=yc[String(+y-1)]||0;if(!beat&&prev>0&&yc[y]>prev)beat=d});
-  const tog=ss.filter(x=>x.with&&x.with.length).map(x=>x.date);
+  const tog=[...ss.filter(x=>x.with&&x.with.length).map(x=>x.date),...S.books.filter(b=>(b.with||[]).length&&!ss.some(x=>x.bookId===b.id&&x.with&&x.with.length)).map(b=>b.finished||b.started||'').filter(Boolean)].sort();
   const took=fb.find(b=>S.recs.some(r=>r.titleId===b.titleId)),goodRec=S.recsSent.some(r=>r.status==='finished');
   const loans=S.loanCount||0,shared=S.copies.filter(c=>c.owner==='me'&&!c.private).length,cheer=S.activity.filter(a=>a.r&&a.r.me).length;
   const doneDates=S.challenges.filter(c=>isMine(c)&&c.mode!=='comp').map(chDoneDate).filter(Boolean).sort();
@@ -4870,6 +4870,7 @@ function openEdit(id){
     <div class="f2"><label class="f"><span id="ePosL">${audio?'Current Position (h:mm)':'Current Page'}</span><input class="inp" name="pos" value="${audio?fmtPos(b.pos):b.pos}"></label>
     <label class="f">Started On<input class="inp" type="date" name="started" value="${b.started||''}" max="${today()}"></label></div>
     <div data-edit-finish ${b.status==='finished'?'':'hidden'}><label class="f"><span>Finished On <span class="sub">(optional)</span></span><input class="inp" type="date" name="finished" value="${b.finished||''}" max="${today()}"></label><p class="xs muted">Leave blank if the finish date is unknown.</p></div>
+    ${S.settings.solo||!Object.keys(S.members).length?'':`<details class="rt reading-together" ${(b.with||[]).length?'open':''}><summary class="link-btn sm">Read with someone?</summary><div class="chips" style="margin-top:8px">${Object.entries(S.members).map(([k,m])=>`<label class="tog"><input type="checkbox" name="readWith" value="${k}" ${(b.with||[]).includes(k)?'checked':''}><span>${esc(m.name)}</span></label>`).join('')}</div><span class="xs muted">Read this book aloud or side by side with someone? It shows on the book and counts as reading together.</span></details>`}
     ${hasSessions?'<p class="xs muted">Reading format is fixed because this reading has logged sessions. This protects the page or audio positions in your history.</p>':''}
     ${seriesFields(b)}
     ${statusPicker(b)}
@@ -4911,6 +4912,9 @@ editForm.addEventListener('submit',e=>{
   if(b.status==='finished'){if(hasLen(b))b.pos=b.total;if(f.finished){b.finished=f.finished;delete b.readIt;delete b.markedOn}else{delete b.finished;b.readIt=true;b.markedOn=b.markedOn||today()}}
   saveReadingEdition(b,readEdition(editForm,'editReading'));
   const tt=titleById(b.titleId);if(tt){updateBookIdentity(tt,b.title,b.author);if(['print','ebook'].includes(b.format)&&hasLen(b))tt.pages=b.total;const sn=(f.series||'').trim();tt.series=sn||undefined;tt.seriesNo=sn&&String(f.seriesNo||'').trim()!==''&&!isNaN(+f.seriesNo)?+f.seriesNo:undefined;if(sn&&/^\d+$/.test(String(f.seriesLen||'').trim()))(S.seriesLen=S.seriesLen||{})[sn]=+f.seriesLen}
+  {const w=[...editForm.querySelectorAll('[name=readWith]:checked')].map(x=>x.value),added=w.filter(x=>!(b.with||[]).includes(x));
+   if(editForm.querySelector('[name=readWith]')){if(w.length)b.with=w;else delete b.with}
+   if(added.length&&S.settings.share&&!S.settings.solo)S.activity.push({id:uid(),who:'me',kind:'together',text:`read together with ${added.map(nameOf).join(' and ')}`,book:b.title,titleId:b.titleId,ts:Date.now(),r:{}})}
   if(!save())return;editDlg.close();render();if(bookDlg.open)renderBD(true);toast(`Saved changes to ${b.title}.`);
 });
 /* Tabs: Left/Right (and Home/End) move between tabs and switch to them; only the selected tab is a Tab-key stop.
