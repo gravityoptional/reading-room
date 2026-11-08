@@ -31,6 +31,9 @@ between the two sites. Not published; the site only serves index.html.
   (3c), including keeping the current settings when a converted file is restored.
 - **Nov 8, 2026 (later):** `main` fast-forwarded to `next`: the cover picker fix, sharing wording (3e), tour updates
   (3f), and the Goodreads import (3d).
+- **Nov 8, 2026 (night):** `main` fast-forwarded to `next`: long menus scroll inside the screen; challenge wording
+  says exactly what counts, and counting books finished before the start date is for Book List challenges only;
+  Year in Review (shows from Dec 15 on Alpha and the live site).
 
 **Waiting on Beta to move to Alpha:** nothing yet.
 
