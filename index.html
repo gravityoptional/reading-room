@@ -4809,14 +4809,14 @@ function dataConfirm(){const d=dataPick;if(!d)return;const a=dataCounts(d.data),
   <div class="form"><p class="small" style="margin:0"><b>${esc(d.fileName)}</b>${m.name||when?`<span class="xs muted" style="display:block">${[m.name?`${esc(m.name)}’s data`:'',when?`saved ${esc(when)}`:'',m.site?`from ${esc(m.site)}`:''].filter(Boolean).join(' · ')}</span>`:''}</p>
   <table class="small" style="border-collapse:collapse;width:100%"><thead><tr><th style="text-align:left;font-weight:600;padding:4px 0"></th><th style="text-align:right;font-weight:600;padding:4px 8px">In the File</th><th style="text-align:right;font-weight:600;padding:4px 0">Now</th></tr></thead>
   <tbody>${rows.map(([l,k])=>`<tr style="border-top:1px solid var(--border)"><td style="padding:5px 0">${l}</td><td style="text-align:right;padding:5px 8px">${a[k]}</td><td style="text-align:right;padding:5px 0">${b[k]}</td></tr>`).join('')}</tbody></table>
-  <p class="small" style="margin:0">Restoring <b>replaces</b> your reading with the file’s${window.RR_LIVE?', here and on your other devices. Your name and groups stay as they are':''}. You can undo right after.</p>
+  <p class="small" style="margin:0">Restoring <b>replaces</b> your reading with the file’s${window.RR_LIVE?', here and on your other devices. Your name and groups stay as they are':''}. ${m.keepSettings?' Your settings stay as they are.':''} You can undo right after.</p>
   <label class="chk small"><input type="checkbox" id="dataKeep" checked> Download my current data first</label></div>
   <div class="dlg-f"><button type="button" class="btn btn-ghost" data-act="dataCancel">Cancel</button><button type="button" class="btn btn-primary" data-act="dataGo">Restore</button></div></form>`;
   if(!dl.open)dl.showModal();setTimeout(()=>dl.querySelector('[data-act=dataGo]')?.focus(),40)}
 function dataApply(){const d=dataPick;if(!d)return;const dl=document.getElementById('dataDlg');
   if(document.getElementById('dataKeep')?.checked)dataDownload(true);
   const snap=snapshot(),prev=S;
-  try{S=window.RR_IMPORT?RR_IMPORT(JSON.parse(JSON.stringify(d.data)),d.meta):JSON.parse(JSON.stringify(d.data));prepState()}catch(e){S=prev;dl?.close();dataPick=null;toast('That file couldn’t be restored.',null,'Nothing was changed.');return}
+  try{S=window.RR_IMPORT?RR_IMPORT(JSON.parse(JSON.stringify(d.data)),d.meta):JSON.parse(JSON.stringify(d.data));if(d.meta.keepSettings)S.settings=JSON.parse(JSON.stringify(prev.settings));prepState()}catch(e){S=prev;dl?.close();dataPick=null;toast('That file couldn’t be restored.',null,'Nothing was changed.');return}
   dataPick=null;dl?.close();closeMenus();
   if(!save()){S=prev;toast('That file couldn’t be saved, so nothing was changed.');return}
   view='dashboard';render();window.scrollTo(0,0);const n=dataCounts(S);
