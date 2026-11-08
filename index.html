@@ -2452,13 +2452,13 @@ function lcard(t,extra=''){
   ${av?`<div class="avail ${av.cls}">${esc(av.t)}</div>`:''}${extra}
   <div class="lc-act">${cardAction(t)}</div></div>`;
 }
-const LIB0={format:'all',avail:'all',genre:'all',status:'any'};
+const LIB0={format:'all',avail:'all',genre:'all',status:'any',owner:'all'};
 let lib={tab:'family',q:'',f:{...LIB0},sort:'title',open:false,group:'alpha',mb:'all',rv:'disc',fgroup:'year'};
 const finDate=t=>S.books.filter(b=>b.titleId===t.id&&b.status==='finished'&&b.finished).map(b=>b.finished).sort().pop()||'';
 const PER={year:d=>d.slice(0,4),month:d=>d.slice(0,7),week:d=>weekOf(d)};
 const perLabel=(g,k)=>k==='~'?'Date Unknown':g==='year'?k:g==='month'?`${MONF[+k.slice(5,7)-1]} ${k.slice(0,4)}`:`Week of ${fmtDateY(k)}`;
 function periodGroups(list,g){const groups={};list.forEach(t=>{const d=finDate(t),k=d?PER[g](d):'~';(groups[k]=groups[k]||[]).push(t)});return Object.keys(groups).sort((a,b)=>a==='~'?1:b==='~'?-1:b.localeCompare(a)).map(k=>[k,groups[k]])}
-const nFilters=()=>Object.keys(LIB0).filter(k=>lib.f[k]!==LIB0[k]).length;
+const nFilters=()=>Object.keys(LIB0).filter(k=>lib.f[k]!==LIB0[k]&&(k!=='owner'||lib.tab==='family')).length;   // Owner applies to the group library only
 function mbStatus(t){const r=myReading(t.id);if(r)return r.status;return copiesOf(t.id).some(c=>c.owner==='me')?'owned':null}
 function baseList(){
   if(lib.tab==='family')return S.titles.filter(t=>sharedCopiesOf(t.id).length);
@@ -2470,8 +2470,10 @@ function libTitles(){
   if(lib.tab==='mybooks'&&lib.mb!=='all')list=list.filter(t=>mbStatus(t)===lib.mb);
   const q=lib.q.trim().toLowerCase(),f=lib.f;
   list=list.filter(t=>{
-    if(q&&!(t.title+' '+t.author).toLowerCase().includes(q))return false;
     const cs=lib.tab==='family'?sharedCopiesOf(t.id):copiesOf(t.id);
+    // in the group library, a search also matches the names of the people who own a copy
+    if(q&&!(t.title+' '+t.author+(lib.tab==='family'?' '+cs.map(c=>c.owner==='me'?S.me.name:nameOf(c.owner)).join(' '):'')).toLowerCase().includes(q))return false;
+    if(lib.tab==='family'&&f.owner!=='all'&&!cs.some(c=>c.owner===f.owner))return false;
     if(f.format!=='all'&&!cs.some(c=>c.format===f.format)&&!(lib.tab==='mybooks'&&S.books.some(b=>b.titleId===t.id&&(b.format==='print'?'physical':b.format)===f.format)))return false;
     if(f.avail==='available'&&avail(t.id)?.t!=='Available')return false;
     if(f.avail==='loan'&&!cs.some(c=>c.loanTo))return false;
@@ -2480,7 +2482,7 @@ function libTitles(){
     return true;
   });
   const rr=t=>{const r=myReading(t.id);return r?(lastRead(r.id)||r.finished||r.started||''):''};
-  const by={title:(a,b)=>sortKey(a.title).localeCompare(sortKey(b.title)),author:(a,b)=>lastName(a.author).localeCompare(lastName(b.author))||sortKey(a.title).localeCompare(sortKey(b.title)),added:(a,b)=>(b.added||0)-(a.added||0),finished:(a,b)=>finDate(b).localeCompare(finDate(a))||sortKey(a.title).localeCompare(sortKey(b.title)),read:(a,b)=>rr(b).localeCompare(rr(a))};
+  const by={title:(a,b)=>sortKey(a.title).localeCompare(sortKey(b.title)),titleza:(a,b)=>sortKey(b.title).localeCompare(sortKey(a.title)),author:(a,b)=>lastName(a.author).localeCompare(lastName(b.author))||sortKey(a.title).localeCompare(sortKey(b.title)),added:(a,b)=>(b.added||0)-(a.added||0),finished:(a,b)=>finDate(b).localeCompare(finDate(a))||sortKey(a.title).localeCompare(sortKey(b.title)),read:(a,b)=>rr(b).localeCompare(rr(a))};
   return list.sort(by[lib.sort]);
 }
 const MB=[['all','All'],['reading','Currently Reading'],['paused','Paused'],['want','To Read'],['finished','Finished'],['dnf','Did Not Finish'],['owned','Own but Not Started']];
@@ -2527,6 +2529,8 @@ function filtersPanel(){
     <div class="fg"><div class="fl">Format</div><div class="chips">${chips('format',[['all','All'],['physical','Physical'],['ebook','Ebook'],['audio','Audiobook']])}</div></div>
     <div class="fg"><div class="fl">Availability</div><div class="chips">${chips('avail',[['all','All'],['available','Available'],['loan','On Loan']])}</div></div>
     <div class="fg"><label class="fl" for="fGenre">Genre</label><select class="inp sm" id="fGenre" data-lsel="genre"><option value="all">All Genres</option>${genres.map(g=>`<option ${f.genre===g?'selected':''}>${esc(g)}</option>`).join('')}</select></div>
+    ${lib.tab!=='family'||S.settings.solo?'':(()=>{const own=[...new Set(S.titles.flatMap(t=>sharedCopiesOf(t.id).map(c=>c.owner)))].filter(o=>o!=='me').sort((a,b)=>nameOf(a).localeCompare(nameOf(b)));
+      return `<div class="fg"><label class="fl" for="fOwner">Owner</label><select class="inp sm" id="fOwner" data-lsel="owner"><option value="all">All Owners</option><option value="me" ${f.owner==='me'?'selected':''}>You</option>${own.map(o=>`<option value="${esc(o)}" ${f.owner===o?'selected':''}>${esc(nameOf(o))}</option>`).join('')}</select></div>`})()}
     ${lib.tab!=='family'?'':`<div class="fg"><label class="fl" for="fStatus">My Reading</label><select class="inp sm" id="fStatus" data-lsel="status">${[['any','Any'],['none','Not Started'],['want','On To Read'],['reading','Currently Reading'],['paused','Paused'],['finished','Finished'],['dnf','Did Not Finish']].map(([v,l])=>`<option value="${v}" ${f.status===v?'selected':''}>${l}</option>`).join('')}</select></div>`}
     <div class="f-end"><button class="link-btn" data-act="libClear">Clear Filters</button><button class="btn btn-primary sm" data-act="libFilters">Show ${libTitles().length} Book${libTitles().length===1?'':'s'}</button></div>
   </div>`;
@@ -2706,9 +2710,9 @@ function libraryView(){
   ${disc?discoverBody():''}
   ${lib.tab==='mybooks'?mbChips():''}
   ${tools?`<div class="lib-tools">
-    <label class="search">${ic('search')}<input id="libQ" type="search" placeholder="Search by title or author" value="${esc(lib.q)}" aria-label="Search the library" autocomplete="off"></label>
+    <label class="search">${ic('search')}<input id="libQ" type="search" placeholder="${lib.tab==='family'&&!S.settings.solo?'Search by title, author, or owner':'Search by title or author'}" value="${esc(lib.q)}" aria-label="Search the library" autocomplete="off"></label>
     <button class="btn btn-ghost" data-act="libFilters" aria-expanded="${lib.open}" aria-controls="libFilters">${ic('filter')}Filters${n?` (${n})`:''}</button>
-    <label class="sortl"><span class="small muted">Sort</span><select class="inp sm" data-lsel="sort">${[['title','Title A–Z'],['author','Author'],['added','Recently Added'],['read','Recently Read']].concat(lib.tab==='mybooks'?[['finished','Date Finished']]:[]).map(([v,l])=>`<option value="${v}" ${lib.sort===v?'selected':''}>${l}</option>`).join('')}</select></label>
+    <label class="sortl"><span class="small muted">Sort</span><select class="inp sm" data-lsel="sort">${[['title','Title A–Z'],['titleza','Title Z–A'],['author','Author'],['added','Recently Added'],['read','Recently Read']].concat(lib.tab==='mybooks'?[['finished','Date Finished']]:[]).map(([v,l])=>`<option value="${v}" ${lib.sort===v?'selected':''}>${l}</option>`).join('')}</select></label>
     <span class="vseg" role="group" aria-label="View"><button aria-pressed="${!shelf}" data-act="libView" data-v="grid">${ic('grid')}Grid</button><button aria-pressed="${shelf}" data-act="libView" data-v="shelf">${ic('shelf')}Shelf</button></span>
   </div>
   ${lib.open?filtersPanel():''}`:''}
