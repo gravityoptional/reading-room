@@ -524,7 +524,8 @@ button.cal-d{border:0;font:inherit;color:inherit;cursor:pointer;position:relativ
 .te-prev{display:grid;gap:8px;justify-items:center;width:120px}
 .te-prev .cover{width:110px;padding:12px 10px}
 .te-panel{flex:1;min-width:220px;display:grid;gap:10px}
-.te-panel .vseg{flex-wrap:wrap}.te-panel .vseg button{flex:1 1 auto;white-space:nowrap}   /* four sources wrap on a narrow phone */
+.vseg.te-tabs{display:flex;width:100%;margin-bottom:12px}.vseg.te-tabs button{flex:1 1 0;white-space:nowrap;justify-content:center}
+@media (max-width:400px){.vseg.te-tabs{display:grid;grid-template-columns:1fr 1fr}}   /* one row on a computer, two rows of two on a phone */
 #teResults{display:grid;gap:10px}
 .te-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));grid-auto-rows:max-content;align-content:start;gap:8px;max-height:236px;overflow:auto;padding:3px}
 .te-grid button{border:1px solid var(--border);background:var(--surface-alt);padding:0;border-radius:6px;overflow:hidden;aspect-ratio:2/3}
@@ -3391,8 +3392,9 @@ function openTitleEdit(id){
     <label class="f"><span>Books in the Series <span class="sub">(if known)</span></span><input class="inp" name="tSeriesLen" inputmode="numeric" value="${t.series?(S.seriesLen?.[t.series]??''):''}"></label>
     <label class="f"><span>Description <span class="sub">(optional, shown in About)</span></span><textarea class="inp" name="tDesc" rows="2" maxlength="3000" placeholder="What the book is about, without spoilers">${esc(t.descText||'')}</textarea></label>
     <div class="section-t">Cover</div>
+    <div class="vseg addb-tabs te-tabs" role="group" aria-label="Cover source">${[['url','Web Address'],['upload','Upload'],['ol','Open Library'],['gb','Google Books']].map(([k,l])=>`<button type="button" aria-pressed="${te.tab===k}" data-act="teTab" data-v="${k}">${l}</button>`).join('')}</div>
     <div class="te-cover"><div class="te-prev"><div id="tePrev"></div><span class="xs muted" id="teSrc" aria-live="polite"></span><button type="button" class="link-btn sm" data-act="teGen">Use Generated Cover</button></div>
-      <div class="te-panel"><div class="vseg addb-tabs" role="group" aria-label="Cover source">${[['url','Web Address'],['upload','Upload'],['ol','Open Library'],['gb','Google Books']].map(([k,l])=>`<button type="button" aria-pressed="${te.tab===k}" data-act="teTab" data-v="${k}">${l}</button>`).join('')}</div><div id="tePanel"></div></div></div>
+      <div class="te-panel"><div id="tePanel"></div></div></div>
     <div class="err" id="teErr" role="alert"></div>
     <div class="dlg-f"><button type="button" class="btn btn-ghost" data-act="teClose">Cancel</button><button type="submit" class="btn btn-primary">Save Changes</button></div>
   </div>`;
