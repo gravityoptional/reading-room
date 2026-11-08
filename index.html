@@ -3658,10 +3658,72 @@ function renderAdd(keep){
     <div class="f2 am-ap"><label class="f"><span>Author <span class="sub">(optional)</span></span><input class="inp" id="amAuthor" value="${esc(m.author||'')}" autocomplete="off"></label>
     <label class="f"><span>Pages <span class="sub">(if known)</span></span><input class="inp" id="amPages" value="${esc(m.pages||'')}" inputmode="numeric"></label></div>${genreField('am',m.genre||'',m.type||'')}
     <div class="err" id="amErr" role="alert"></div><div class="dlg-f"><button type="button" class="btn btn-primary" data-act="adManualNext">Continue</button></div></div>`;
-  else body=`<div class="empty">${ic('library')}<h3>Import a List</h3><p>Bring in your books and reading history, preview them, and choose reading status, ownership, and sharing before anything is added.</p><p class="xs">Import is coming soon.</p></div>`;
+  else body=gImportBody();
   addBody.innerHTML=`<div class="dlg-h"><h2 id="adTitle">Add a Book</h2><button type="button" class="icon-btn x" data-act="closeAdd" aria-label="Close">${ic('x')}</button></div>
   ${ad.detail?'':`<div class="vseg ad-tabs" role="group" aria-label="How to add the book">${tabs.map(([k,l])=>`<button type="button" aria-pressed="${ad.tab===k}" data-act="adTab" data-v="${k}">${l}</button>`).join('')}</div>`}<div style="margin-top:14px">${body}</div>`;
 }
+/* ---------- Goodreads import (3d) ----------
+   Reads a Goodreads library export (CSV), previews it, and adds books, reading status, dates, ratings, and owned
+   copies. Books already here are matched by Goodreads id, ISBN, or title and author, so importing again never makes
+   duplicates. Nothing is guessed: missing fields stay blank. */
+let gi=null;
+function csvRows(text){const rows=[];let row=[],f='',q=false;for(let i=0;i<text.length;i++){const c=text[i];
+  if(q){if(c==='"'){if(text[i+1]==='"'){f+='"';i++}else q=false}else f+=c;continue}
+  if(c==='"')q=true;else if(c===','){row.push(f);f=''}else if(c==='\n'||c==='\r'){if(c==='\r'&&text[i+1]==='\n')i++;row.push(f);rows.push(row);row=[];f=''}else f+=c}
+  if(f!==''||row.length){row.push(f);rows.push(row)}return rows.filter(r=>r.some(x=>x.trim()!==''))}
+const grClean=v=>String(v||'').replace(/^="?|"$/g,'').replace(/[^0-9Xx]/g,'').toUpperCase();
+const grDate=v=>{const m=String(v||'').trim().match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);return m?`${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`:''};
+function grFormat(binding){const b=String(binding||'').toLowerCase();return /audio|audible|mp3|cd/.test(b)?'audio':/kindle|ebook|e-book|nook|digital/.test(b)?'ebook':'physical'}
+function grParse(text){const rows=csvRows(text.replace(/^\uFEFF/,''));if(!rows.length)return null;const h=rows[0].map(x=>x.trim()),col=n=>h.indexOf(n);
+  if(col('Title')<0||col('Exclusive Shelf')<0||col('Author')<0)return null;
+  const get=(r,n)=>{const i=col(n);return i<0?'':String(r[i]||'').trim()};
+  return rows.slice(1).map(r=>{let title=get(r,'Title'),series='',seriesNo=0;const sm=title.match(/^(.*\S)\s*\(([^()#]+?),?\s*#(\d+(?:\.\d+)?)\)\s*$/);if(sm){title=sm[1];series=sm[2].trim();seriesNo=+sm[3]}
+    const shelf=get(r,'Exclusive Shelf').toLowerCase(),status=shelf==='read'?'finished':shelf==='currently-reading'?'reading':/did-?not-?finish|dnf|abandon/.test(shelf)?'dnf':'want';
+    const isbn=grClean(get(r,'ISBN13'))||grClean(get(r,'ISBN')),pages=parseInt(get(r,'Number of Pages'))||0,rating=parseInt(get(r,'My Rating'))||0,owned=parseInt(get(r,'Owned Copies'))||0;
+    return {grId:get(r,'Book Id'),title,author:get(r,'Author')||'Unknown author',series,seriesNo,isbn:/^(\d{9}[\dX]|\d{13})$/.test(isbn)?isbn:'',pages,rating:rating>=1&&rating<=5?rating:0,status,
+      finished:grDate(get(r,'Date Read')),added:grDate(get(r,'Date Added')),owned:owned>0,format:grFormat(get(r,'Binding')),year:parseInt(get(r,'Original Publication Year'))||parseInt(get(r,'Year Published'))||0}}).filter(x=>x.title)}
+function grMatch(x){return S.titles.find(t=>x.grId&&t.grId===x.grId)||S.titles.find(t=>x.isbn&&t.isbn===x.isbn)||S.titles.find(t=>olKey(t.title)===olKey(x.title)&&olKey(t.author||'')===olKey(x.author))}
+function gImportBody(){
+  if(!gi||!gi.items)return `<div class="form"><div><h3 style="margin:0 0 4px">Import from Goodreads</h3><p class="small muted" style="margin:0">Bring in your shelves, reading dates, ratings, and the books you own. You’ll see everything before it’s added.</p></div>
+    <ol class="small" style="margin:0;padding-left:20px;display:grid;gap:4px"><li>On Goodreads (on a computer, or the website on your phone), open <b>My Books</b>, then <b>Import and export</b>.</li><li>Choose <b>Export Library</b>, wait for the link, and download the file.</li><li>Choose that file here.</li></ol>
+    <div><button type="button" class="btn btn-primary" data-act="grPick">${ic('library')}Choose Goodreads File</button></div><div class="err" id="grErr" role="alert">${gi&&gi.err?esc(gi.err):''}</div>
+    <p class="xs muted" style="margin:0">The file stays on your device; only the books you import are saved.</p></div>`;
+  const it=gi.items,news=it.filter(x=>!x.match),olds=it.filter(x=>x.match),owned=it.filter(x=>x.owned&&(!x.match||gi.old==='update'&&!copiesOf(x.match.id).some(c=>c.owner==='me'&&c.format===x.format)));   // copies this import would add
+  const st={finished:'Finished',reading:'Currently Reading',want:'To Read',dnf:'Did Not Finish'};
+  const group=!S.settings.solo;
+  const rows=it.slice(0,gi.showAll?it.length:40).map((x,i)=>`<div class="gr-row" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 8px;padding:7px 0;border-top:1px solid var(--border)">
+    <span class="small"><b>${esc(x.title)}</b> <span class="muted">· ${esc(x.author)}</span></span><span class="xs ${x.match?'muted':''}" style="text-align:right">${x.match?'Already here':'New'}</span>
+    <span class="xs muted">${st[x.status]}${x.finished?` · ${fmtDateY(x.finished)}`:''}${x.rating?` · ${x.rating}★`:''}${x.owned?` · You own it (${FMT[x.format]})`:''}</span>
+    ${group&&x.owned&&gi.share==='choose'&&owned.includes(x)?`<label class="chk xs" style="justify-self:end"><input type="checkbox" data-grshare="${it.indexOf(x)}" ${gi.pick.has(it.indexOf(x))?'checked':''}> Share</label>`:'<span></span>'}</div>`).join('');
+  return `<div class="form"><div><h3 style="margin:0 0 4px">${it.length} Book${it.length===1?'':'s'} in Your Goodreads File</h3><p class="small muted" style="margin:0">${news.length} new${olds.length?`, ${olds.length} already in your library`:''}${owned.length?`. ${owned.length} marked as books you own.`:'.'}</p></div>
+    ${olds.length?`<fieldset style="border:0;padding:0;margin:0;display:grid;gap:4px"><legend class="small" style="font-weight:600;margin-bottom:4px">Books Already Here</legend><label class="chk small"><input type="radio" name="grOld" value="skip" ${gi.old==='skip'?'checked':''}> Leave them as they are</label><label class="chk small"><input type="radio" name="grOld" value="update" ${gi.old==='update'?'checked':''}> Update their status, dates, and rating from Goodreads</label></fieldset>`:''}
+    ${group&&owned.length?`<fieldset style="border:0;padding:0;margin:0;display:grid;gap:4px"><legend class="small" style="font-weight:600;margin-bottom:4px">Show the ${owned.length} Book${owned.length===1?'':'s'} You Own in the ${esc(GN())} Library?</legend><label class="chk small"><input type="radio" name="grShare" value="all" ${gi.share==='all'?'checked':''}> Share All ${owned.length}</label><label class="chk small"><input type="radio" name="grShare" value="choose" ${gi.share==='choose'?'checked':''}> Let Me Choose</label><label class="chk small"><input type="radio" name="grShare" value="none" ${gi.share==='none'?'checked':''}> Keep All Private</label></fieldset>`:''}
+    <div class="gr-list" style="max-height:300px;overflow:auto">${rows}${it.length>40&&!gi.showAll?`<button type="button" class="link-btn sm" data-act="grAll">Show All ${it.length}</button>`:''}</div>
+    <div class="err" id="grErr" role="alert"></div>
+    <div class="dlg-f"><button type="button" class="btn btn-ghost" data-act="grReset">Choose Another File</button>${(n=>n?`<button type="button" class="btn btn-primary" data-act="grGo">Import ${n} Book${n===1?'':'s'}</button>`:`<button type="button" class="btn btn-primary" disabled>Nothing New to Import</button>`)(gi.old==='update'?it.length:news.length)}</div></div>`}
+function grPick(){const inp=document.createElement('input');inp.type='file';inp.accept='.csv,text/csv';inp.hidden=true;document.body.appendChild(inp);
+  inp.addEventListener('change',async()=>{const f=inp.files[0];inp.remove();if(!f)return;let items=null;try{items=grParse(await f.text())}catch(e){}
+    if(!items){gi={err:'That isn’t a Goodreads library export. Choose the .csv file from Goodreads’ Export Library.'};renderAdd();return}
+    if(!items.length){gi={err:'That file has no books in it.'};renderAdd();return}
+    items.forEach(x=>x.match=grMatch(x));gi={items,old:'skip',share:'all',pick:new Set(items.map((x,i)=>x.owned?i:-1).filter(i=>i>=0)),showAll:false};renderAdd()});
+  inp.click()}
+function grApply(){if(!gi||!gi.items)return;const snap=snapshot(),group=!S.settings.solo;let added=0,updated=0,copies=0;
+  gi.items.forEach((x,i)=>{let t=x.match;const isNew=!t;
+    if(!isNew&&gi.old!=='update'){if(!t.grId&&x.grId)t.grId=x.grId;return}            // left as it is (only remembered for next time)
+    if(!t){t={id:'t'+uid(),title:x.title,author:x.author,c:hashStr(x.title)%COVERS.length,added:x.added?Date.parse(x.added):Date.now()};S.titles.push(t)}
+    if(!t.grId&&x.grId)t.grId=x.grId;if(!t.isbn&&x.isbn)t.isbn=x.isbn;if(!t.pages&&x.pages)t.pages=x.pages;if(!t.series&&x.series){t.series=x.series;t.seriesNo=x.seriesNo}if(!t.year&&x.year)t.year=x.year;
+    let r=S.books.find(b=>b.titleId===t.id&&b.status!=='finished')||S.books.find(b=>b.titleId===t.id);
+    const fmt=x.format==='audio'?'audio':'print',done=x.status==='finished';
+    if(!r){r={id:'r'+uid(),titleId:t.id,title:t.title,author:t.author,format:x.status==='want'?'unknown':fmt,total:x.status==='want'?0:(t.pages||0),pos:0,status:x.status,c:t.c};S.books.push(r);added++}
+    else{Object.assign(r,{status:x.status});if(x.status!=='want'&&r.format==='unknown'){r.format=fmt;r.total=t.pages||r.total||0}updated++}
+    if(done){r.pos=r.total||0;if(x.finished)r.finished=x.finished}
+    if(x.status==='want'&&!r.wantSince&&x.added)r.wantSince=x.added;
+    if(x.rating&&(isNew||gi.old==='update'))r.rating=x.rating;
+    if(x.status==='dnf'&&!r.dnfOn&&x.finished)r.dnfOn=x.finished;
+    if(x.owned&&!copiesOf(t.id).some(c=>c.owner==='me'&&c.format===x.format)){const shared=group&&(gi.share==='all'||gi.share==='choose'&&gi.pick.has(i));
+      S.copies.push({id:'c'+uid(),titleId:t.id,owner:'me',format:x.format,edition:'',loanTo:null,...(shared?{}:{private:true})});copies++}});
+  const n=added+updated;gi=null;save();addDlg.close();view='library';lib.tab='mybooks';render();window.scrollTo(0,0);
+  toast(`Imported ${n} book${n===1?'':'s'} from Goodreads${copies?`, with ${copies} cop${copies===1?'y':'ies'} you own`:''}.`,restoreTo(snap),'Undo removes everything this import added.')}
 function addManual(){adCaptureManual();const m=ad.manual,er=text=>document.getElementById('amErr').textContent=text,title=m.title.trim(),author=m.author.trim()||'Unknown author';
   if(!title)return er('Enter the book’s title.');if(m.pages.trim()&&(!/^\d+$/.test(m.pages.trim())||+m.pages<=0))return er('Enter a positive whole number of pages, or leave it blank.');
   const t=S.titles.find(t=>olKey(t.title)===olKey(title)&&olKey(t.author)===olKey(author));
@@ -3676,6 +3738,8 @@ document.addEventListener('input',e=>{
 });
 document.addEventListener('change',e=>{
   if(e.target.dataset?.sel){const id=e.target.dataset.sel;if(e.target.checked)lib.sel.add(id);else lib.sel.delete(id);const y=window.scrollY;refreshLib();window.scrollTo(0,y);return}
+  if(gi&&gi.items&&(e.target.name==='grOld'||e.target.name==='grShare')){gi[e.target.name==='grOld'?'old':'share']=e.target.value;const y=document.querySelector('.gr-list')?.scrollTop;renderAdd();document.querySelector(`[name=${e.target.name}][value=${e.target.value}]`)?.focus();return}
+  if(gi&&gi.items&&e.target.dataset?.grshare!=null){const i=+e.target.dataset.grshare;if(e.target.checked)gi.pick.add(i);else gi.pick.delete(i);return}
   if(['adStatus','adReadFormat','adOwnCopy'].includes(e.target.id)){adCaptureDetail();if(e.target.id==='adOwnCopy'){if(ad.detail.own&&!ad.detail.readingCopyId&&!ad.detail.readingEdition)ad.detail.readingCopyId='__new';else if(!ad.detail.own&&ad.detail.readingCopyId==='__new'){ad.detail.readingEdition=ad.detail.edition;ad.detail.readingCopyId=''}}if(e.target.id==='adStatus'){if(['reading','paused'].includes(ad.detail.status)&&ad.detail.format==='unknown')ad.detail.format='print';if(ad.detail.status==='want')ad.detail.format='unknown'}if(e.target.id==='adReadFormat'){ad.detail.total=ad.detail.format==='audio'?'':ad.detail.look.pages||'';ad.detail.pos=''}renderAdd();document.getElementById(e.target.id)?.focus();return}
   if(e.target.id==='adShare'){if(ad.detail)ad.detail.share=e.target.checked;return}
   if(e.target.dataset?.copydef){S.settings.copyDefault=e.target.value;save();toast(e.target.value==='shared'?'New copies will show in the group library.':'New copies will start private.');return}
@@ -5056,6 +5120,10 @@ document.addEventListener('click',e=>{
       const gc=a.closest('.dc-card');if(gc&&!bookDlg.open){ghostCard(gc,hk,`${who} won’t be told`,e.detail===0);break}refreshLib();toast(`Removed ${t.title} from your recommendations.`,restoreTo(snap),`${who} won’t be told.`);break}
     case 'addBook':openAdd();break;
     case 'closeAdd':addDlg.close();refreshLib();break;
+    case 'grPick':grPick();break;
+    case 'grReset':gi=null;renderAdd();break;
+    case 'grAll':gi.showAll=true;renderAdd();break;
+    case 'grGo':grApply();break;
     case 'adTab':if(ad.tab==='manual')adCaptureManual();ad.tab=a.dataset.v;ad.detail=null;renderAdd();document.getElementById(ad.tab==='manual'?'amTitle':'adQ')?.focus();break;
     case 'adPick':adChoose(titleById(a.dataset.id));break;
     case 'adPickOL':{const x=ad.ol?.items[+a.dataset.i];if(x)adChoose(olExisting(x),x);break}
