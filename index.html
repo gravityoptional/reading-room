@@ -1534,7 +1534,7 @@ function assertTimerMerge(remote,next){
    Type (Fiction / Nonfiction / Not Set) is optional and stored on the book; it settles genres that can be either. */
 const GENRE_GROUPS={fiction:['Fantasy','Fiction','Historical Fiction','Horror','Mystery','Romance','Science Fiction','Thriller'],
   nonfiction:['Biography','Business','History','Memoir','Nonfiction','Religion','Science','Self-Help'],
-  either:['Classics','Children’s','Young Adult','Graphic Novel','Poetry','Humor']};
+  either:['Classics','Children’s','Young Adult','Comic','Graphic Novel','Manga','Poetry','Humor']};
 const GENRES=Object.values(GENRE_GROUPS).flat().sort((a,b)=>a.localeCompare(b));
 const genreKey=g=>String(g||'').trim().replace(/\s+/g,' ').replace(/[’‘]/g,"'").toLowerCase();
 function genreClass(g){const k=genreKey(g);if(!k)return 'none';return Object.keys(GENRE_GROUPS).find(c=>GENRE_GROUPS[c].some(x=>genreKey(x)===k))||'unknown'}
