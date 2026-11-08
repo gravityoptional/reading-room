@@ -951,6 +951,13 @@ main section.card .card-h .ico{display:none}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .b-confirm{margin-top:14px;padding:12px 14px;border:1px solid color-mix(in srgb,var(--red) 35%,var(--border));border-radius:12px;background:color-mix(in srgb,var(--red) 6%,var(--surface));display:grid;gap:10px}
 .b-confirm .acts{display:flex;flex-wrap:wrap;gap:8px}
+.yir-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:14px 0 4px}
+.yir-tile{display:grid;gap:2px;padding:14px;border-radius:14px;background:var(--surface-alt);border:1px solid var(--border)}
+.yir-tile b{font-family:var(--serif);font-size:32px;line-height:1.1}
+.yir-sec{margin-top:18px;padding-top:14px;border-top:1px solid var(--border)}
+.yir-sec h3{font-family:var(--serif);font-size:19px;margin:0 0 6px}
+.yir-rated{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:14px 10px}
+.yir-book{display:grid;gap:4px;justify-items:start;text-align:left;border:0;background:none;padding:0;color:inherit}
 .btn-del{background:#B42318;color:#fff}.btn-del:hover{background:#912018}.btn-del:disabled{opacity:.45;cursor:not-allowed}
 .b-hidden-t{justify-self:start}
 .inv-box{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:12px 14px;border-radius:12px;background:var(--primary-light)}
@@ -1948,6 +1955,49 @@ function person(who){return who==='me'?{name:'You',color:S.me.color,init:S.me.na
 const ACT_CAT={started:'reading',finished:'reading',dnf:'reading',reread:'reading',resumed:'reading',halfway:'reading',session:'reading',together:'reading',library:'library',loan:'library',rec:'library',goal:'goals',streak:'goals',record:'goals',challenge:'challenges',invite:'challenges',completed:'challenges',battle:'battle',earned:'trophies',award:'trophies',member:'group'};
 const ACT_LBL=[['reading','Reading'],['library','Library'],['goals','Goals and Streaks'],['challenges','Challenges'],['battle','Battle of the Books'],['trophies','Trophies and Awards'],['group','Group']];
 let actOpen=false,actLimit=6;
+/* ---------- Year in Review (Phase 4) ----------
+   From December 15 through January, for the year just ending (always on Beta, marked Preview). Counts books with a
+   finish date in that year; reading time, streak, and goal days only when sessions were logged; any part without
+   real data is left out instead of showing zero. */
+const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+function yirYear(){const t=today(),y=+t.slice(0,4),md=t.slice(5);return md>='12-15'?y:md<='01-31'?y-1:null}
+const yirOpenYear=()=>yirYear()??(NEXT?+today().slice(0,4):null);
+function yirData(Y){const ys=String(Y),fin=S.books.filter(b=>b.status==='finished');
+  const done=fin.filter(b=>(b.finished||'').startsWith(ys)).sort((a,b)=>a.finished.localeCompare(b.finished));
+  const undated=fin.filter(b=>!b.finished).length;
+  const reread=b=>fin.some(o=>o!==b&&o.titleId===b.titleId&&(!o.finished||o.finished<b.finished||o.finished===b.finished&&S.books.indexOf(o)<S.books.indexOf(b)));
+  const pagesOf=b=>{const t=titleById(b.titleId);return b.format==='audio'?(t?.pages||0):(b.total||t?.pages||0)};
+  const months=MONTHS.map((_,i)=>done.filter(b=>+b.finished.slice(5,7)===i+1).length),top=Math.max(0,...months);
+  const sess=S.sessions.filter(x=>!isCU(x)&&(x.date||'').startsWith(ys)&&x.date<=today());
+  const days=[...new Set(sess.map(x=>x.date))].sort();
+  return {Y,done,undated,rereads:done.filter(reread).length,pages:done.reduce((n,b)=>n+pagesOf(b),0),months,top,
+    best:months.map((n,i)=>n===top&&top>0?MONTHS[i]:null).filter(Boolean),
+    rated:done.filter(b=>b.rating).sort((a,b)=>b.rating-a.rating||b.finished.localeCompare(a.finished)).slice(0,5),
+    minutes:sess.reduce((n,x)=>n+(x.minutes||0),0),streak:days.length?longestStreakRange(days):{n:0},goalDays:days.filter(d=>goalState(d).met).length,
+    hasSessions:sess.length>0,imported:done.some(b=>titleById(b.titleId)?.grId)}}
+function yirCard(){const Y=yirOpenYear();if(Y==null)return '';const d=yirData(Y);if(!d.done.length&&!NEXT)return '';
+  return `<section class="card yir-card" aria-labelledby="yirH"><div class="card-h"><span class="ico">${ic('book')}</span><h2 id="yirH">Your ${Y} in Books${yirYear()==null?' <span class="xs muted">(Preview)</span>':''}</h2></div>
+  <p class="small" style="margin:0 0 10px">${d.done.length?`${d.done.length} book${d.done.length===1?'':'s'} finished${d.pages?`, ${d.pages.toLocaleString()} pages`:''}. See your year at a glance.`:`Finish a book in ${Y} and your year in review fills in here.`}</p>
+  ${d.done.length?`<button class="btn btn-primary" data-act="yirOpen">See My Year</button>`:''}</section>`}
+function yirChart(d){const W=360,H=120,pad=18,bw=(W-8)/12,max=Math.max(1,d.top);
+  const bars=d.months.map((n,i)=>{const h=n?Math.max(3,(H-pad-18)*n/max):0,x=4+i*bw+3,y=H-pad-h,w=bw-6;const fav=n===d.top&&n>0;
+    return `<g><title>${MONTHS[i]}: ${n} book${n===1?'':'s'}</title>${n?`<path d="M${x},${H-pad} V${y+4} Q${x},${y} ${x+4},${y} H${x+w-4} Q${x+w},${y} ${x+w},${y+4} V${H-pad} Z" fill="var(--primary)" opacity="${fav?1:.55}"/>`:''}
+    <rect x="${x-3}" y="0" width="${bw}" height="${H}" fill="transparent"/>${fav?`<text x="${x+w/2}" y="${y-4}" text-anchor="middle" font-size="11" fill="var(--text)" font-weight="600">${n}</text>`:''}
+    <text x="${x+w/2}" y="${H-4}" text-anchor="middle" font-size="10" fill="var(--text-2)">${MONTHS[i][0]}</text></g>`}).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Books finished each month in ${d.Y}"><line x1="4" x2="${W-4}" y1="${H-pad}" y2="${H-pad}" stroke="var(--border)"/>${bars}</svg>
+  <table class="sr-only"><caption>Books finished each month</caption>${d.months.map((n,i)=>`<tr><th>${MONTHS[i]}</th><td>${n}</td></tr>`).join('')}</table>`}
+function yirOpen(){const Y=yirOpenYear();if(Y==null)return;const d=yirData(Y);
+  let dl=document.getElementById('yirDlg');if(!dl){dl=document.createElement('dialog');dl.id='yirDlg';dl.setAttribute('aria-labelledby','yirTitle');document.body.appendChild(dl)}
+  const tile=(n,l,sub)=>`<div class="yir-tile"><b>${n}</b><span>${l}</span>${sub?`<span class="xs muted">${sub}</span>`:''}</div>`;
+  const tiles=[tile(d.done.length,`book${d.done.length===1?'':'s'} finished`,d.rereads?`including ${d.rereads} reread${d.rereads===1?'':'s'}`:''),d.pages?tile(d.pages.toLocaleString(),'pages read',d.rereads?'rereads count again':''):''].join('');
+  const time=d.hasSessions?[d.minutes?tile(fmtMin(d.minutes),'reading time logged'):'',d.streak.n?tile(d.streak.n,`day${d.streak.n===1?'':'s'} in your longest streak`):'',d.goalDays?tile(d.goalDays,`day${d.goalDays===1?'':'s'} you met your goal`):''].join(''):'';
+  dl.innerHTML=`<div class="dlg yir"><div class="dlg-h"><div><h2 id="yirTitle">Your ${Y} in Books</h2><p class="small muted" style="margin:2px 0 0">${esc(S.me.name)}${yirYear()==null?' · Preview':''}</p></div><button type="button" class="icon-btn x" data-act="yirClose" aria-label="Close">${ic('x')}</button></div>
+  <div class="yir-tiles">${tiles}</div>
+  ${d.top?`<section class="yir-sec"><h3>Your Favorite Month${d.best.length>1?'s':''}</h3><p class="small" style="margin:0 0 6px">${d.best.join(' and ')}, with ${d.top} book${d.top===1?'':'s'} finished${d.best.length>1?' each':''}.</p>${yirChart(d)}</section>`:''}
+  ${d.rated.length?`<section class="yir-sec"><h3>Your Highest Rated</h3><div class="yir-rated">${d.rated.map(b=>{const t=titleById(b.titleId)||b;return `<button type="button" class="yir-book" data-act="yirBook" data-id="${t.id}">${libCover(t,72)}<span class="small"><b>${esc(t.title)}</b></span><span class="xs" style="color:var(--orange);font-weight:600">${b.rating}★</span></button>`}).join('')}</div></section>`:''}
+  ${time?`<section class="yir-sec"><h3>Your Reading Habit</h3><div class="yir-tiles">${time}</div></section>`:''}
+  <p class="xs muted" style="margin:16px 0 0">${[d.imported?'Includes books imported from Goodreads.':'',d.undated?`${d.undated} finished book${d.undated===1?' has':'s have'} no finish date, so ${d.undated===1?'it isn’t':'they aren’t'} counted.`:''].filter(Boolean).join(' ')}</p></div>`;
+  if(!dl.open)dl.showModal();setTimeout(()=>dl.querySelector('[data-act=yirClose]')?.focus(),40)}
 function activityCard(){
   const hide=S.settings.hideAct||[];
   const all=S.activity.filter(a=>(a.who!=='me'||S.settings.share)&&(!a.ch||canSeeCh(S.challenges.find(c=>c.id===a.ch)||{}))&&!hide.includes(ACT_CAT[a.kind]||'reading')).sort((a,b)=>b.ts-a.ts);
@@ -2172,8 +2222,8 @@ let hist={m:today().slice(0,7),sel:null,panel:null,recYear:false,mode:'month'};
 function monthAdd(m,n){const [y,mo]=m.split('-').map(Number);const d=new Date(y,mo-1+n,1);return `${d.getFullYear()}-${pad(d.getMonth()+1)}`}
 function longestStreak(){return longestStreakRange().n}
 /* Longest streak with its first and last reading day; rest days inside a run don't break it. */
-function longestStreakRange(){
-  const dates=[...new Set(S.sessions.filter(x=>!isCU(x)&&x.date<=today()).map(x=>x.date))].sort();
+function longestStreakRange(only){
+  const dates=only||[...new Set(S.sessions.filter(x=>!isCU(x)&&x.date<=today()).map(x=>x.date))].sort();
   if(!dates.length)return {n:0};
   const allow=S.settings.restDays??1,rests=new Map();let left=0,best={n:0};
   // A sliding window keeps each calendar week's rest budget within one coherent run.
@@ -4370,7 +4420,7 @@ function render(){
   document.querySelectorAll('[data-go]').forEach(b=>{if(b.closest('.nav,.bnav'))b.setAttribute('aria-current',b.dataset.go===view?'page':'false')});
   const m=document.getElementById('main');
   if(view==='dashboard'){
-    m.innerHTML=heroDash()+getStarted()+`<div class="dgrid"><div class="dmain">${readingCard()}<div class="pair">${pausedBlock()}${upNextRow()}</div>${nextReadStrip()}<div class="pair">${challengesCard()}${trophiesCard()}</div></div><aside class="dside" aria-label="Activity and calendar">${S.settings.solo?'':activityCard()}${calCard()}</aside></div>`;
+    m.innerHTML=heroDash()+yirCard()+getStarted()+`<div class="dgrid"><div class="dmain">${readingCard()}<div class="pair">${pausedBlock()}${upNextRow()}</div>${nextReadStrip()}<div class="pair">${challengesCard()}${trophiesCard()}</div></div><aside class="dside" aria-label="Activity and calendar">${S.settings.solo?'':activityCard()}${calCard()}</aside></div>`;
   }else if(view==='challenges'){
     m.innerHTML=challengesView();
   }else if(view==='library'){
@@ -5121,6 +5171,9 @@ document.addEventListener('click',e=>{
       const gc=a.closest('.dc-card');if(gc&&!bookDlg.open){ghostCard(gc,hk,`${who} won’t be told`,e.detail===0);break}refreshLib();toast(`Removed ${t.title} from your recommendations.`,restoreTo(snap),`${who} won’t be told.`);break}
     case 'addBook':openAdd();break;
     case 'closeAdd':addDlg.close();refreshLib();break;
+    case 'yirOpen':yirOpen();break;
+    case 'yirClose':document.getElementById('yirDlg')?.close();break;
+    case 'yirBook':document.getElementById('yirDlg')?.close();openTitle(a.dataset.id);break;
     case 'grPick':grPick();break;
     case 'grReset':gi=null;renderAdd();break;
     case 'grAll':gi.showAll=true;renderAdd();break;
