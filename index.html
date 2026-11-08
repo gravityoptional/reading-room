@@ -70,6 +70,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .avatar{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:600;color:#fff;flex:none}
 .menu{position:absolute;right:0;top:calc(100% + 8px);width:300px;background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:0 12px 32px rgba(15,23,42,.14);padding:8px;z-index:20}
 .menu[hidden]{display:none}
+.menu{max-height:calc(100vh - 90px);overflow-y:auto;overscroll-behavior:contain}   /* a long menu scrolls inside instead of running off the screen */
 .menu h3{font-size:16px;padding:8px 10px 4px}
 .menu .row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;border-radius:10px}
 .menu .row:hover{background:var(--surface-alt)}
@@ -671,7 +672,7 @@ button.cal-d{border:0;font:inherit;color:inherit;cursor:pointer;position:relativ
   .bnav button svg.i{width:22px;height:22px}
   .bnav button[aria-current="page"]{color:var(--primary);font-weight:600}
   .toast{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
-  .menu{position:fixed;left:12px;right:12px;width:auto;top:calc(60px + env(safe-area-inset-top,0px))}
+  .menu{position:fixed;left:12px;right:12px;width:auto;top:calc(60px + env(safe-area-inset-top,0px));max-height:calc(100vh - 150px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));max-height:calc(100dvh - 150px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));z-index:60}   /* clear of the bottom bar */
 }
 @media (min-width:721px){.toast,.toast[popover]{top:calc(78px + env(safe-area-inset-top,0px));bottom:auto;max-width:min(560px,calc(100vw - 40px));padding:12px 18px;box-shadow:0 14px 36px rgba(15,23,42,.28)}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -950,7 +951,7 @@ main section.card .card-h .ico{display:none}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .b-confirm{margin-top:14px;padding:12px 14px;border:1px solid color-mix(in srgb,var(--red) 35%,var(--border));border-radius:12px;background:color-mix(in srgb,var(--red) 6%,var(--surface));display:grid;gap:10px}
 .b-confirm .acts{display:flex;flex-wrap:wrap;gap:8px}
-.btn-del{background:#B42318;color:#fff}.btn-del:hover{background:#912018}
+.btn-del{background:#B42318;color:#fff}.btn-del:hover{background:#912018}.btn-del:disabled{opacity:.45;cursor:not-allowed}
 .b-hidden-t{justify-self:start}
 .inv-box{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:12px 14px;border-radius:12px;background:var(--primary-light)}
 /* Coordinated palettes: surfaces, typography, controls, and the default hero scene. */
