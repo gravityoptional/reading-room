@@ -524,6 +524,7 @@ button.cal-d{border:0;font:inherit;color:inherit;cursor:pointer;position:relativ
 .te-prev{display:grid;gap:8px;justify-items:center;width:120px}
 .te-prev .cover{width:110px;padding:12px 10px}
 .te-panel{flex:1;min-width:220px;display:grid;gap:10px}
+.te-panel .vseg{flex-wrap:wrap}.te-panel .vseg button{flex:1 1 auto;white-space:nowrap}   /* four sources wrap on a narrow phone */
 #teResults{display:grid;gap:10px}
 .te-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));grid-auto-rows:max-content;align-content:start;gap:8px;max-height:236px;overflow:auto;padding:3px}
 .te-grid button{border:1px solid var(--border);background:var(--surface-alt);padding:0;border-radius:6px;overflow:hidden;aspect-ratio:2/3}
@@ -3372,8 +3373,9 @@ titleDlg.addEventListener('close',teInvalidateSearch);
 function openTitleEdit(id){
   teInvalidateSearch();
   const t=titleById(id);if(!canEditTitle(t))return;
-  te={id,cover:t.cover||'',src:t.cover?(t.cover.startsWith('data:')?'upload':/openlibrary\.org/.test(t.cover)?'ol':'url'):'gen',tab:'ol',url:'',q:t.isbn||`${t.title} ${t.author!=='Unknown author'?t.author:''}`.trim(),ol:null,bad:false,touched:false};
+  te={id,cover:t.cover||'',src:t.cover?(t.cover.startsWith('data:')?'upload':/openlibrary\.org/.test(t.cover)?'ol':/books\.google(usercontent)?\.com/.test(t.cover)?'gb':'url'):'gen',gb:null,tab:'ol',url:'',q:t.isbn||`${t.title} ${t.author!=='Unknown author'?t.author:''}`.trim(),ol:null,bad:false,touched:false};
   if(te.src==='url'){te.tab='url';te.url=t.cover}
+  if(te.src==='gb')te.tab='gb';
   const genres=[...new Set(S.titles.map(x=>x.genre).filter(Boolean))].sort(),series=[...new Set(S.titles.map(x=>x.series).filter(Boolean))].sort();
   titleForm.innerHTML=`<div class="dlg-h"><div style="flex:1;min-width:0"><h2 id="teTitle">Edit Book</h2><div class="muted small">Book details apply to everyone${S.settings.solo?'':` in the ${esc(GN())} Library`} and to every reading. Copy details apply only to your copies.</div></div><button type="button" class="icon-btn x" data-act="teClose" aria-label="Close">${ic('x')}</button></div>
   <div class="form">
@@ -3390,7 +3392,7 @@ function openTitleEdit(id){
     <label class="f"><span>Description <span class="sub">(optional, shown in About)</span></span><textarea class="inp" name="tDesc" rows="2" maxlength="3000" placeholder="What the book is about, without spoilers">${esc(t.descText||'')}</textarea></label>
     <div class="section-t">Cover</div>
     <div class="te-cover"><div class="te-prev"><div id="tePrev"></div><span class="xs muted" id="teSrc" aria-live="polite"></span><button type="button" class="link-btn sm" data-act="teGen">Use Generated Cover</button></div>
-      <div class="te-panel"><div class="vseg addb-tabs" role="group" aria-label="Cover source">${[['url','Web Address'],['upload','Upload'],['ol','Open Library']].map(([k,l])=>`<button type="button" aria-pressed="${te.tab===k}" data-act="teTab" data-v="${k}">${l}</button>`).join('')}</div><div id="tePanel"></div></div></div>
+      <div class="te-panel"><div class="vseg addb-tabs" role="group" aria-label="Cover source">${[['url','Web Address'],['upload','Upload'],['ol','Open Library'],['gb','Google Books']].map(([k,l])=>`<button type="button" aria-pressed="${te.tab===k}" data-act="teTab" data-v="${k}">${l}</button>`).join('')}</div><div id="tePanel"></div></div></div>
     <div class="err" id="teErr" role="alert"></div>
     <div class="dlg-f"><button type="button" class="btn btn-ghost" data-act="teClose">Cancel</button><button type="submit" class="btn btn-primary">Save Changes</button></div>
   </div>`;
@@ -3399,7 +3401,7 @@ function openTitleEdit(id){
 function tePreview(){
   const t=titleById(te.id),v=n=>titleForm.querySelector(`[name=${n}]`)?.value.trim();
   document.getElementById('tePrev').innerHTML=cover({title:v('tTitle')||t.title,author:v('tAuthor')||'Unknown author',c:t.c,cover:te.cover,format:'print'},110);
-  document.getElementById('teSrc').textContent=te.bad?'That image didn’t load.':{gen:'Generated cover',url:'From a web address',upload:'Uploaded image, saved in this browser',ol:'From Open Library'}[te.src];
+  document.getElementById('teSrc').textContent=te.bad?'That image didn’t load.':{gen:'Generated cover',url:'From a web address',upload:'Uploaded image, saved in this browser',ol:'From Open Library',gb:'From Google Books'}[te.src];
   if(te.cover){const im=new Image();im.onload=()=>{if(te.bad){te.bad=false;tePreview()}};im.onerror=()=>{if(!te.bad){te.bad=true;tePreview()}};im.src=te.cover}
 }
 function tePanel(){
@@ -3407,6 +3409,16 @@ function tePanel(){
   titleForm.querySelectorAll('[data-act=teTab]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===te.tab));
   if(te.tab==='url')el.innerHTML=`<label class="f"><span>Image Web Address</span><input class="inp" name="teUrl" type="url" inputmode="url" value="${esc(te.url)}" placeholder="https://…" autocomplete="off"></label><span class="xs muted">Paste the address of an image, ending in .jpg, .png, or .webp.</span>`;
   else if(te.tab==='upload')el.innerHTML=`<label class="btn btn-ghost" style="justify-self:start">${ic('plus')}Choose an Image<input type="file" id="teFile" accept="image/jpeg,image/png,image/webp" hidden></label><span class="xs muted">JPG, PNG, or WebP. It’s resized and saved in this browser for now, so other devices won’t see it yet.</span>`;
+  else if(te.tab==='gb'){
+    const o=te.gb;
+    el.innerHTML=`<div class="te-row"><input class="inp" id="teQ" type="search" value="${esc(te.q)}" placeholder="ISBN or title" aria-label="Search Google Books covers by ISBN or title" autocomplete="off"><button type="button" class="btn btn-ghost sm" data-act="teSearch">${ic('search')}Search</button></div>
+    <div id="teResults">${!o?`<span class="xs muted">Search by ISBN or title to see covers from Google Books, then pick one.</span>`
+    :o.state==='loading'?`<span class="xs muted" role="status">Searching Google Books…</span>`
+    :o.state==='error'?`<span class="xs muted" role="status">Google Books didn’t answer. Check your connection and try again.</span>`
+    :!o.urls.length?`<span class="xs muted" role="status">No covers found. Try the ISBN, or a shorter title.</span>`
+    :`<span class="xs muted" role="status">${o.urls.length} cover${o.urls.length===1?'':'s'} found. Pick one.</span><div class="te-grid">${o.urls.map((u,i)=>`<button type="button" data-act="tePickGB" data-v="${i}" aria-pressed="${te.cover===u}" aria-label="Cover ${i+1}"><img src="${esc(u)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.remove()"></button>`).join('')}</div>`}</div>
+    <img src="https://books.google.com/googlebooks/images/poweredby.png" alt="Powered by Google" width="62" height="14" style="justify-self:start" referrerpolicy="no-referrer">`;
+  }
   else{
     const o=te.ol;
     el.innerHTML=`<div class="te-row"><input class="inp" id="teQ" type="search" value="${esc(te.q)}" placeholder="ISBN or title" aria-label="Search Open Library covers by ISBN or title" autocomplete="off"><button type="button" class="btn btn-ghost sm" data-act="teSearch">${ic('search')}Search</button></div>
@@ -3417,7 +3429,22 @@ function tePanel(){
     :`<span class="xs muted" role="status">${o.ids.length} cover${o.ids.length===1?'':'s'} found. Pick one.</span><div class="te-grid">${o.ids.map(i=>{const u=`https://covers.openlibrary.org/b/id/${i}-M.jpg`;return `<button type="button" data-act="tePick" data-v="${i}" aria-pressed="${te.cover===u}" aria-label="Cover ${o.ids.indexOf(i)+1}"><img src="${u}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.remove()"></button>`}).join('')}</div>`}</div>`;
   }
 }
+/* Covers from Google Books: the same Books API as the descriptions; the cover is Google's own image link. */
+async function teSearchGB(){
+  const q=te.q.trim(),id=te.id,editor=te;if(!q)return;
+  teInvalidateSearch();const seq=teSearchSeq,ctl=new AbortController();teSearchCtl=ctl;
+  const current=()=>te===editor&&teSearchSeq===seq&&te.id===id&&te.q.trim()===q&&titleDlg.open&&te.tab==='gb';
+  te.gb={q,state:'loading',urls:[]};tePanel();
+  try{const isbn=olIsbn(q);
+    const r=await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(isbn?'isbn:'+isbn:q)}&maxResults=30&printType=books&country=${GB_COUNTRY}&key=${GB_KEY}&fields=items(volumeInfo/imageLinks)`,{signal:ctl.signal});
+    if(!r.ok)throw new Error('Google Books '+r.status);
+    const urls=[...new Set(((await r.json()).items||[]).map(x=>x.volumeInfo?.imageLinks?.thumbnail).filter(Boolean).map(u=>u.replace(/^http:/,'https:').replace('&edge=curl','')))].slice(0,24);
+    if(!current())return;te.gb={q,state:'done',urls};
+  }catch(e){if(!current())return;te.gb={q,state:'error',urls:[]}}
+  if(current())tePanel();
+}
 async function teSearch(){
+  if(te.tab==='gb')return teSearchGB();
   const q=te.q.trim(),id=te.id,editor=te;if(!q)return;
   teInvalidateSearch();const seq=teSearchSeq,ctl=new AbortController();teSearchCtl=ctl;
   const current=()=>te===editor&&teSearchSeq===seq&&te.id===id&&te.q.trim()===q&&titleDlg.open&&te.tab==='ol';
@@ -3444,7 +3471,7 @@ async function teUpload(file){
 titleForm.addEventListener('input',e=>{
   const n=e.target.name;
   if(n==='teUrl'){te.url=e.target.value.trim();te.touched=true;if(/^https?:\/\/\S+$/i.test(te.url)){te.cover=te.url;te.src='url'}else if(te.src==='url'){te.cover='';te.src='gen'}te.bad=false;tePreview()}
-  else if(e.target.id==='teQ'){te.q=e.target.value;teInvalidateSearch();te.ol=null;const results=document.getElementById('teResults');if(results)results.innerHTML='<span class="xs muted">Search by ISBN or title to see covers from Open Library, then pick one.</span>';}
+  else if(e.target.id==='teQ'){te.q=e.target.value;teInvalidateSearch();te.ol=null;const results=document.getElementById('teResults');te.gb=null;if(results)results.innerHTML='<span class="xs muted">Search by ISBN or title to see covers from '+(te.tab==='gb'?'Google Books':'Open Library')+', then pick one.</span>';}
   else if(n==='tTitle'||n==='tAuthor')tePreview();
 });
 titleForm.addEventListener('change',e=>{if(e.target.id==='teFile'){const f=e.target.files?.[0];e.target.value='';if(f)teUpload(f)}});
@@ -5248,6 +5275,7 @@ document.addEventListener('click',e=>{
     case 'teClose':titleDlg.close();break;
     case 'teTab':teInvalidateSearch();if(te.ol?.state==='loading')te.ol=null;te.tab=a.dataset.v;tePanel();break;
     case 'teSearch':teSearch();break;
+    case 'tePickGB':{const u=te.gb?.urls?.[+a.dataset.v];if(te.gb?.state!=='done'||te.gb.q!==te.q.trim()||!u)break;te.cover=u;te.src='gb';te.bad=false;te.touched=true;tePanel();tePreview();break}
     case 'tePick':if(te.ol?.state!=='done'||te.ol.q!==te.q.trim()||!te.ol.ids.includes(+a.dataset.v))break;te.cover=`https://covers.openlibrary.org/b/id/${a.dataset.v}-M.jpg`;te.src='ol';te.bad=false;te.touched=true;tePanel();tePreview();break;
     case 'teGen':te.cover='';te.url='';te.src='gen';te.bad=false;te.touched=true;tePanel();tePreview();break;
     case 'startNew':drawNew();if(!logDlg.open)logDlg.showModal();setTimeout(()=>document.getElementById('newQ')?.focus(),30);break;
