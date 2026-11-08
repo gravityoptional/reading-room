@@ -524,7 +524,7 @@ button.cal-d{border:0;font:inherit;color:inherit;cursor:pointer;position:relativ
 .te-prev .cover{width:110px;padding:12px 10px}
 .te-panel{flex:1;min-width:220px;display:grid;gap:10px}
 #teResults{display:grid;gap:10px}
-.te-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px;max-height:236px;overflow:auto;padding:3px}
+.te-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));grid-auto-rows:max-content;align-content:start;gap:8px;max-height:236px;overflow:auto;padding:3px}
 .te-grid button{border:1px solid var(--border);background:var(--surface-alt);padding:0;border-radius:6px;overflow:hidden;aspect-ratio:2/3}
 .te-grid button[aria-pressed="true"]{outline:3px solid var(--primary);outline-offset:2px}
 .te-grid img{width:100%;height:100%;object-fit:cover;display:block}
@@ -1975,7 +1975,7 @@ const tourPrefs=()=>S.settings.tour||(S.settings.tour={seen:false,notNow:0,visit
 const privateCopies=()=>S.copies.filter(c=>c.owner==='me'&&c.private).length;
 function privacyExtra(){
   const n=privateCopies();
-  return `<div class="tour-act"><div class="row"><span class="small"><b>Share My Activity with ${esc(GN())}</b><span class="xs muted" style="display:block">${S.settings.share?'Your group sees what you’re reading, finished books, and achievements.':'Right now only you see your reading.'}</span></span><button class="switch" role="switch" aria-checked="${!!S.settings.share}" data-act="tourShare" aria-label="Share My Activity with ${esc(GN())}"></button></div>
+  return `<div class="tour-act"><div class="row"><span class="small"><b>Share My Activity with ${esc(GN())}</b><span class="xs muted" style="display:block">${S.settings.share?'Your group sees what you’re currently reading, finished books, ratings, reading progress, and achievements.':'Right now only you see your reading.'}</span></span><button class="switch" role="switch" aria-checked="${!!S.settings.share}" data-act="tourShare" aria-label="Share My Activity with ${esc(GN())}"></button></div>
   ${n?`<div class="tour-books"><span class="small">Show your ${n} book${n===1?'':'s'} in the ${esc(GN())} Library?</span><span class="tour-btns"><button class="btn btn-ghost sm" data-act="tourShareBooks">Show All</button><button class="btn btn-ghost sm" data-act="tourChooseBooks">Choose Books</button></span></div>`:''}</div>`;
 }
 function tourSteps(mode){
@@ -1985,13 +1985,13 @@ function tourSteps(mode){
     text:()=>`Every page counts. A few minutes today is how a reading habit starts, and Reading Room will keep track of the rest. Find this tour anytime under Take the Tour in your account menu.${solo?' Reading with family or a book club? You can join or start a group anytime.':''}`,
     final:()=>S.books.length?{act:'tourLog',label:'Log Your Reading'}:{act:'tourFind',label:'Add Your First Book'}};
   if(mode==='group')return [
-    {id:'gwelcome',page:'dashboard',title:`Welcome to ${G}`,text:()=>'You’re reading with a group now. Here’s what’s new, in a few quick stops. Your reading stays yours and counts in every group you join.'},
+    {id:'gwelcome',page:'dashboard',title:`Welcome to ${G}`,text:()=>(window.RR_INVITER?`${esc(RR_INVITER)} invited you. `:'')+'You’re reading with a group now. Here’s what’s new, in a few quick stops. Your reading stays yours and counts in every group you join.'},
     {id:'glib',page:'library',tab:'family',sel:'[data-tour=lib-family]',title:`The ${G} Library`,text:()=>'Books members own, in one place. See who has a copy and ask to borrow it.'},
     {id:'gact',page:'dashboard',sel:'[data-tour=activity]',title:'Group Activity',text:()=>'What your group is reading and finishing. Cheer people on with a reaction. Only members who share appear here.'},
     {id:'gch',page:'challenges',sel:'[data-tour=ch-family]',title:'Group Challenges and Battle of the Books',text:()=>'Join a challenge your group started, or organize a Battle of the Books, where everyone adds books to a shared list, reads them all, and then meets for an in-person quiz.'},
     {id:'gpriv',page:'dashboard',sel:'[data-tour=account]',title:'Your Privacy',text:()=>'Choose what your group sees. You can change this anytime in your account menu.',extra:privacyExtra,final:()=>({act:'tourEnd',label:'Done'})}];
   return [
-    {id:'welcome',page:'dashboard',title:solo?'Welcome to Reading Room':`Welcome to ${G}`,text:()=>`A quick look around, about a minute. Leave anytime with Skip${matchMedia('(pointer: fine)').matches?' or Esc':''}.`},
+    {id:'welcome',page:'dashboard',title:solo?'Welcome to Reading Room':`Welcome to ${G}`,text:()=>`${!solo&&window.RR_INVITER?`${esc(RR_INVITER)} invited you. `:''}A quick look around, about a minute. Leave anytime with Skip${matchMedia('(pointer: fine)').matches?' or Esc':''}.`},
     {id:'privacy',cond:!solo,page:'dashboard',sel:'[data-tour=account]',title:'First, Your Privacy',text:()=>'You’re joining people who can see each other’s reading. New accounts start private; choose what your group sees. You can change this anytime in your account menu.',extra:privacyExtra},
     {id:'goal',page:'dashboard',sel:'[data-tour=goal]',title:'Today’s Goal and Streak',text:()=>'The ring fills as you read toward today’s goal. Your streak counts reading days, and rest days keep it going. Use Edit Goal to choose minutes, pages, or both, and how many rest days you get each week.'},
     {id:'log',page:'dashboard',sel:'[data-tour=log]',title:'Log Reading and the Timer',text:()=>'Log Reading records pages or minutes in a few seconds. Start Timer counts the minutes while you read, then logs them for you.'},
@@ -2002,7 +2002,7 @@ function tourSteps(mode){
     {id:'library',page:'library',tab:solo?'mybooks':'family',sel:'[data-tour=library]',title:'Your Library',text:()=>`${solo?'My Books holds every book connected to you, from To Read to Finished.':`My Books holds every book connected to you, and the ${G} Library shows what everyone owns.`} Add a Book searches by title, author, or ISBN.${S.books.length?'':' Books you add will show up here.'} Tap any book, wherever you see it, to open it: from there you can start or log reading, change its status, rate it, add notes, add your copy${solo?', or edit its details':', edit its details, recommend it to someone, or ask to borrow it'}.`},
     {id:'discover',page:'library',tab:'discover',sel:'[data-tour=lib-discover]',title:'Discover',text:()=>'Discover, a tab in your Library, suggests books you might like, says why, and shows where to get each one.'},
     {id:'challenges',page:'challenges',sel:'[data-tour=challenge-tabs]',title:'Challenges and Trophies',text:()=>solo?'Set personal challenges, like 12 books this year. Trophies you earn collect on the Trophy Wall.':'Join group challenges, set personal goals, or organize a Battle of the Books, where everyone adds books to a shared list, reads them all, and then meets for an in-person quiz. Trophies you earn collect on the Trophy Wall, where you can also give awards to each other, like Read-Aloud Star or Most Improved.'},
-    {id:'admin',cond:!solo&&admin,page:'challenges',sel:'[data-tour=groups]',title:'For Group Admins',text:()=>`You’re an admin of ${G}. That means you can also correct shared book details with Edit Book on any book, and record the winner when a Battle of the Books ends. Everyone can join and start battles and challenges.`},
+    {id:'admin',cond:!solo&&admin,page:'challenges',sel:'[data-tour=groups]',title:'For Group Admins',text:()=>`You’re an admin of ${G}. That means you can also correct shared book details with Edit Book on any book, and record the winner when a Battle of the Books ends.${window.RR_LIVE?' Invite people, and see who’s in the group, from the group menu (Invite People and Members).':''} Everyone can join and start battles and challenges.`},
     {id:'history',page:'history',sel:'[data-tour=calendar]',title:'History',text:()=>S.sessions.length?'Your reading over time. Darker days mean more reading; tap a day to see what you read. Records and yearly totals are below.':'Each day you read will fill in here, darker for more reading. Tap a day to see what you read; records and yearly totals are below.'},
     finish].filter(x=>x.cond!==false);
 }
@@ -4334,7 +4334,7 @@ function renderHeader(){
       return `<div class="notif-req">${replyBtns(r,free,`<span class="xs muted" style="align-self:center">Waiting in line until your copy is back.</span>`)}</div>`})()}</div>`).join(''):'<p class="muted small" style="padding:4px 10px 10px;margin:0">You’re all caught up.</p>'}`;
   const th=S.settings.theme;
   document.getElementById('meMenu').innerHTML=`<h3>${esc(S.me.name)}</h3>
-    ${S.settings.solo?'':`<div class="row"><span class="small">Share My Activity with My Groups</span><button class="switch" role="switch" aria-checked="${S.settings.share}" data-act="share" aria-label="Share My Activity with My Groups"></button></div>`}
+    ${S.settings.solo?'':`<div class="row"><span class="small">Share My Activity with My Groups</span><button class="switch" role="switch" aria-checked="${S.settings.share}" data-act="share" aria-label="Share My Activity with My Groups"></button></div><div class="xs muted" style="padding:0 10px 6px;margin-top:-4px">Sharing shows what you’re currently reading, finished books, ratings, reading progress, and achievements.</div>`}
     <div class="row"><span class="small">Appearance</span><span class="seg">${['system','light','dark'].map(x=>`<button aria-pressed="${th===x}" data-act="theme" data-v="${x}">${x[0].toUpperCase()+x.slice(1)}</button>`).join('')}</span></div>
     <div class="row"><label class="small" for="palSel">Color Palette</label><select class="inp sm" id="palSel" data-pref="palette">${(o=>`<optgroup label="Colors">${PALETTES.filter(([k])=>!PAL_HC.has(k)).map(o).join('')}</optgroup><optgroup label="High Contrast">${PALETTES.filter(([k])=>PAL_HC.has(k)).map(o).join('')}</optgroup>`)(([k,l])=>`<option value="${k}" ${(S.settings.palette||'sage')===k?'selected':''}>${l}</option>`)}</select></div>
     <div class="row"><label class="small" for="hfSel">Heading Font</label><select class="inp sm" id="hfSel" data-pref="hfont">${HFONTS.map(([k,l])=>`<option value="${k}" ${(S.settings.hfont||'source')===k?'selected':''}>${l}</option>`).join('')}</select></div>
