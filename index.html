@@ -4177,11 +4177,11 @@ function renderCh(){
 const chDay=(c,d)=>c.start&&c.end&&c.start.slice(0,4)!==c.end.slice(0,4)?`${fmtDate(d)}, ${d.slice(0,4)}`:fmtDateY(d);
 const KIND_L={books:'books',sessions:'reading sessions',days:'reading days'};
 function ruleText(c){
-  if(c.type==='list')return `Books on this list you finish${c.countPrior?`${c.end?` by ${chDay(c,c.end)}`:''}, including ones you finished before ${c.start?chDay(c,c.start):'the challenge started'}`:c.start?` from ${chDay(c,c.start)}${c.end?` to ${chDay(c,c.end)}`:''}`:''}.`;
+  if(c.type==='list')return `Books on this list you finish${c.countPrior?`${c.end?` by ${chDay(c,c.end)}`:''}, including those you finished before ${c.start?chDay(c,c.start):'the challenge started'}`:c.start?` from ${chDay(c,c.start)}${c.end?` to ${chDay(c,c.end)}`:''}`:''}.`;
   const r=c.rule||'all',what={books:'Books you finish',pages:'Pages from your reading sessions',minutes:'Minutes from your reading sessions',days:'Days you read'}[c.type];
   if(r==='none')return 'Only what you add. Nothing is counted automatically.';
   const filt=r==='author'?` by ${esc(c.ruleVal||'')}`:r==='genre'?` in ${esc(c.ruleVal||'')}`:'';
-  const win=c.countPrior?(c.end?` through ${chDay(c,c.end)}, including ${c.type==='books'?'ones':'reading'} from before ${c.start?chDay(c,c.start):'the start date'}`:' at any time'):c.start?` from ${chDay(c,c.start)}${c.end?` to ${chDay(c,c.end)}`:''}`:'';
+  const win=c.countPrior?(c.end?` through ${chDay(c,c.end)}, including ${c.type==='books'?'those':'reading'} from before ${c.start?chDay(c,c.start):'the start date'}`:' at any time'):c.start?` from ${chDay(c,c.start)}${c.end?` to ${chDay(c,c.end)}`:''}`:'';
   return `${what}${filt}${win}, plus anything you add.`;
 }
 function contribSection(c){
