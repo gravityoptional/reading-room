@@ -3919,7 +3919,9 @@ const daysBetween=(a,b)=>Math.round((new Date(b+'T12:00:00')-new Date(a+'T12:00:
 const ordinal=n=>{const x=['th','st','nd','rd'],v=n%100;return n+(x[(v-20)%10]||x[v]||x[0])};
 function ruleOk(c,tid){const r=c.rule||'all';if(r==='none')return false;if(r==='all')return true;const t=titleById(tid);if(!t)return false;
   if(r==='author')return t.author.toLowerCase().includes((c.ruleVal||'').trim().toLowerCase());if(r==='genre')return !!genreKey(c.ruleVal)&&genreKey(t.genre)===genreKey(c.ruleVal);return true}
-const inWin=(c,d)=>!!d&&d<=today()&&(!c.end||d<=c.end)&&(c.countPrior||!c.start||d>=c.start);
+/* Counting books finished before the start date is for Book List challenges only (decided Nov 8); every other kind counts its dates. */
+const chPrior=c=>c.type==='list'&&!!c.countPrior;
+const inWin=(c,d)=>!!d&&d<=today()&&(!c.end||d<=c.end)&&(chPrior(c)||!c.start||d>=c.start);
 const titleOfSession=x=>book(x.bookId)?.titleId;
 function contrib(c){
   const I=c.inc||{},X=c.exc||{},T=today(),items=[];
@@ -4177,11 +4179,11 @@ function renderCh(){
 const chDay=(c,d)=>c.start&&c.end&&c.start.slice(0,4)!==c.end.slice(0,4)?`${fmtDate(d)}, ${d.slice(0,4)}`:fmtDateY(d);
 const KIND_L={books:'books',sessions:'reading sessions',days:'reading days'};
 function ruleText(c){
-  if(c.type==='list')return `Books on this list you finish${c.countPrior?`${c.end?` by ${chDay(c,c.end)}`:''}, including those you finished before ${c.start?chDay(c,c.start):'the challenge started'}`:c.start?` from ${chDay(c,c.start)}${c.end?` to ${chDay(c,c.end)}`:''}`:''}.`;
+  if(c.type==='list')return `Books on this list you finish${chPrior(c)?`${c.end?` by ${chDay(c,c.end)}`:''}, including those you finished before ${c.start?chDay(c,c.start):'the challenge started'}`:c.start?` from ${chDay(c,c.start)}${c.end?` to ${chDay(c,c.end)}`:''}`:''}.`;
   const r=c.rule||'all',what={books:'Books you finish',pages:'Pages from your reading sessions',minutes:'Minutes from your reading sessions',days:'Days you read'}[c.type];
   if(r==='none')return 'Only what you add. Nothing is counted automatically.';
   const filt=r==='author'?` by ${esc(c.ruleVal||'')}`:r==='genre'?` in ${esc(c.ruleVal||'')}`:'';
-  const win=c.countPrior?(c.end?` through ${chDay(c,c.end)}, including ${c.type==='books'?'those':'reading'} from before ${c.start?chDay(c,c.start):'the start date'}`:' at any time'):c.start?` from ${chDay(c,c.start)}${c.end?` to ${chDay(c,c.end)}`:''}`:'';
+  const win=c.start?` from ${chDay(c,c.start)}${c.end?` to ${chDay(c,c.end)}`:''}`:'';
   return `${what}${filt}${win}, plus anything you add.`;
 }
 function contribSection(c){
@@ -4268,7 +4270,7 @@ function renderChForm(){
     ${cf.mode!=='comp'&&cf.type!=='list'?`<div class="f"><label class="fl" for="cfRule" style="margin:0">Count Automatically</label><select class="inp" id="cfRule" data-cfrule>${[['all',{books:'All books I finish',pages:'Pages from all my reading',minutes:'Minutes from all my reading',days:'Every day I read'}[cf.type]],['author','Only books by an author'],['genre','Only books in a genre'],['none','Nothing. I’ll add progress myself.']].map(([v,l])=>`<option value="${v}" ${cf.rule===v?'selected':''}>${l}</option>`).join('')}</select>
       ${cf.rule==='author'?`<input class="inp" id="cfRuleVal" placeholder="Author name, for example Stephen King" value="${esc(cf.ruleVal)}" autocomplete="off" aria-label="Author">`:cf.rule==='genre'?`<select class="inp" id="cfRuleVal" aria-label="Genre"><option value="">Choose a Genre</option>${[...new Set(S.titles.map(t=>t.genre).filter(Boolean))].sort().map(g=>`<option ${cf.ruleVal===g?'selected':''}>${esc(g)}</option>`).join('')}</select>`:''}
       <span class="xs muted">${cf.rule==='none'?'Good for things only you know, like books by women or reading on vacation. Use Add Progress on the challenge to choose them.':'You can still add or remove individual items later with Add Progress.'}</span></div>`:''}
-    ${cf.mode!=='comp'&&(cf.type==='list'||cf.rule!=='none')?`<label class="chk"><input type="checkbox" id="cfPrior" ${cf.countPrior?'checked':''}> ${cf.type==='list'||cf.type==='books'?'Also count books finished before the start date':'Also count reading from before the start date'}</label>`:''}
+    ${cf.mode!=='comp'&&cf.type==='list'?`<label class="chk"><input type="checkbox" id="cfPrior" ${cf.countPrior?'checked':''}> Also count books finished before the start date</label>`:''}
     ${cf.mode!=='personal'&&!cf.id?`<div class="f"><span class="fl" style="margin:0">Who Can Join</span><div class="vseg ad-tabs" role="group" aria-label="Who can join">${[['all',`Anyone in ${esc(GN())}`],['invite','Only People I Invite']].map(([k,l])=>`<button aria-pressed="${cf.who===k}" data-act="cfWho" data-v="${k}">${l}</button>`).join('')}</div>
       ${cf.who==='invite'?`<div class="chips">${Object.entries(S.members).map(([k,m])=>`<label class="chk"><input type="checkbox" name="cfInv" value="${k}" ${cf.invite.includes(k)?'checked':''}> ${esc(m.name)}</label>`).join('')}</div><span class="xs muted">Only the people you invite see this challenge. Each gets a notification and can accept or decline.</span>`:`<span class="xs muted">Everyone in the group gets a notification and can join.</span>`}</div>`:''}
     <div class="f2"><label class="f">Start Date<input class="inp" type="date" id="cfStart" value="${cf.start}"></label><label class="f"><span>End Date${cf.mode==='comp'?'':' <span class="sub">(optional)</span>'}</span><input class="inp" type="date" id="cfEnd" value="${cf.end}"></label></div>
@@ -4278,7 +4280,7 @@ function renderChForm(){
   </div>`;
 }
 /* A start date after books on the list were finished: they won't count unless "Also count books finished before the start date" is on. */
-function cfWarn(){if(cf.mode==='comp'||!cf.start||cf.countPrior||!['list','books'].includes(cf.type))return '';
+function cfWarn(){if(cf.mode==='comp'||!cf.start||(cf.type==='list'&&cf.countPrior)||!['list','books'].includes(cf.type))return '';
   const inc=(cf.id&&S.challenges.find(x=>x.id===cf.id)?.inc?.books)||[],early=S.books.filter(b=>b.status==='finished'&&b.finished&&b.finished<cf.start&&!inc.includes(b.id)&&(cf.type!=='list'||cf.titleIds.includes(b.titleId)));
   if(cf.type==='list'&&early.length)return `⚠ ${early.length===1?`You finished ${esc(early[0].title)} before ${fmtDateY(cf.start)}, so it won’t count`:`You finished ${early.length} books on this list before ${fmtDateY(cf.start)}, so they won’t count`}. Change the start date, or turn on “Also count books finished before the start date.”`;
   if(cf.start>today())return `⚠ This starts ${fmtDateY(cf.start)}. Books you finish before then won’t count.`;return ''}
@@ -4296,7 +4298,7 @@ function saveCf(){
   if(cf.mode==='comp'&&(!cf.start||!cf.end))return er('Competitions need a start and end date.');
   if(cf.start&&cf.end&&cf.end<cf.start)return er('The end date must be after the start date.');
   if(cf.mode!=='personal'&&!cf.id&&cf.who==='invite'&&!cf.invite.length)return er('Choose at least one person to invite.');
-  const data={name:cf.name.trim(),desc:cf.desc.trim(),type:cf.type,target,titleIds:cf.type==='list'?cf.titleIds:undefined,start:cf.start||null,end:cf.end||null,countPrior:!!cf.countPrior,rule:cf.type==='list'?'all':cf.rule,ruleVal:cf.ruleVal};
+  const data={name:cf.name.trim(),desc:cf.desc.trim(),type:cf.type,target,titleIds:cf.type==='list'?cf.titleIds:undefined,start:cf.start||null,end:cf.end||null,countPrior:cf.type==='list'&&!!cf.countPrior,rule:cf.type==='list'?'all':cf.rule,ruleVal:cf.ruleVal};
   if(cf.id){Object.assign(S.challenges.find(x=>x.id===cf.id),data);save();openCh(cf.id);toast('Challenge updated.');return}
   const c={id:'ch'+uid(),mode:cf.mode,creator:'me',participants:['me'],sample:{},...data};
   if(c.mode!=='personal'&&cf.who==='invite'){c.inviteOnly=true;c.invited=[...cf.invite]}
