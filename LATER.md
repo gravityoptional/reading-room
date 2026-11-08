@@ -29,6 +29,8 @@ between the two sites. Not published; the site only serves index.html.
   battles, and the 320-px battle search fix.
 - **Nov 8, 2026:** `main` fast-forwarded to `next` after James tested Beta: Download My Data and Restore from File
   (3c), including keeping the current settings when a converted file is restored.
+- **Nov 8, 2026 (later):** `main` fast-forwarded to `next`: the cover picker fix, sharing wording (3e), tour updates
+  (3f), and the Goodreads import (3d).
 
 **Waiting on Beta to move to Alpha:** nothing yet.
 
