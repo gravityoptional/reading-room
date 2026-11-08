@@ -5041,7 +5041,9 @@ document.addEventListener('change',async e=>{
     const bmp=await createImageBitmap(file),max=1600,sc=Math.min(1,max/bmp.width,max/bmp.height);
     const cv=document.createElement('canvas');cv.width=Math.round(bmp.width*sc);cv.height=Math.round(bmp.height*sc);
     cv.getContext('2d').drawImage(bmp,0,0,cv.width,cv.height);bmp.close?.();
-    localStorage.setItem(HERO_KEY,cv.toDataURL('image/jpeg',.78));closeMenus();render();toast('Photo saved. It’s stored in this browser only.');
+    const url=cv.toDataURL('image/jpeg',.78);localStorage.setItem(HERO_KEY,url);closeMenus();render();
+    /* the live site keeps it with the account so every device shows it (window.RR_HERO_SAVE) */
+    if(window.RR_HERO_SAVE)RR_HERO_SAVE(url).then(m=>toast(m||'Photo saved. It shows on all your devices.'));else toast('Photo saved. It’s stored in this browser only.');
   }catch(err){toast('That photo couldn’t be saved. Try a smaller image.')}
 });
 document.addEventListener('click',e=>{
@@ -5092,7 +5094,7 @@ document.addEventListener('click',e=>{
     case 'awPreset':{const i=document.getElementById('awName');if(i){i.value=a.dataset.v;i.focus()}break}
     case 'grpSel':{const was=!!S.settings.solo;S.settings.solo=a.dataset.v==='solo';if(was&&!S.settings.solo&&!tourPrefs().groupSeen)setTimeout(()=>showTourOffer('group'),400);}if(S.settings.solo){if(lib.tab==='family')lib.tab='mybooks';if(chTab==='family')chTab='mine'}save();closeMenus();render();toast(S.settings.solo?'Showing the solo view: no group features.':`Showing ${GN()}.`);break;
     case 'heroPhoto':document.getElementById('heroUpload').click();break;
-    case 'heroRemove':try{localStorage.removeItem(HERO_KEY)}catch(e){}closeMenus();render();toast('Dashboard photo removed.');break;
+    case 'heroRemove':try{localStorage.removeItem(HERO_KEY)}catch(e){}closeMenus();render();if(window.RR_HERO_SAVE)RR_HERO_SAVE(null).then(m=>toast(m||'Dashboard photo removed from all your devices.'));else toast('Dashboard photo removed.');break;
     case 'goToRead':view='library';lib.tab='mybooks';lib.mb='want';closeMenus();render();window.scrollTo(0,0);break;
     case 'jumpShelf':document.getElementById(a.dataset.v)?.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});break;
     case 'closeLog':logDlg.close();break;
