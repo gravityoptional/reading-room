@@ -3972,7 +3972,7 @@ function chStatus(c,p){
   if(c.end){const d=daysBetween(t,c.end);return {k:'active',txt:`${d} day${d===1?'':'s'} left`}}
   return {k:'active',txt:'Ongoing'};
 }
-const dateRange=c=>c.start&&c.end?`${fmtDateY(c.start)} – ${fmtDateY(c.end)}`:c.end?`By ${fmtDateY(c.end)}`:c.start?`From ${fmtDateY(c.start)}`:'No end date';
+const dateRange=c=>c.start&&c.end?`${chDay(c,c.start)} – ${chDay(c,c.end)}`:c.end?`By ${fmtDateY(c.end)}`:c.start?`From ${fmtDateY(c.start)}`:'No end date';
 const avRow=ws=>`<span class="av-stack" aria-hidden="true">${ws.slice(0,6).map(w=>`<span class="avatar" style="background:${colorOf(w)}">${initOf(w)}</span>`).join('')}</span>`;
 const famSize=()=>Object.keys(S.members).length+1;
 /* Small Delete or Hide link in a card's corner. Delete opens the item with its warning showing; Hide works like Hide from My List(s). */
@@ -4173,13 +4173,15 @@ function renderCh(){
   ${sec?`<div style="margin-top:14px">${sec}</div>`:''}
   <div class="bd-acts" style="margin-top:16px">${acts}</div>${confirmBox}${cv.inv&&fam&&joined?invitePicker('ch',c.participants||[],c.invited||[],c.declined||[]):''}`;
 }
+/* A challenge's dates: both show the year when the start and end fall in different years. */
+const chDay=(c,d)=>c.start&&c.end&&c.start.slice(0,4)!==c.end.slice(0,4)?`${fmtDate(d)}, ${d.slice(0,4)}`:fmtDateY(d);
 const KIND_L={books:'books',sessions:'reading sessions',days:'reading days'};
 function ruleText(c){
-  if(c.type==='list')return `Books on this list you finish${c.countPrior?', including ones you’d already finished':c.start?` from ${fmtDateY(c.start)}`:''}.`;
+  if(c.type==='list')return `Books on this list you finish${c.countPrior?`${c.end?` by ${chDay(c,c.end)}`:''}, including ones you finished before ${c.start?chDay(c,c.start):'the challenge started'}`:c.start?` from ${chDay(c,c.start)}${c.end?` to ${chDay(c,c.end)}`:''}`:''}.`;
   const r=c.rule||'all',what={books:'Books you finish',pages:'Pages from your reading sessions',minutes:'Minutes from your reading sessions',days:'Days you read'}[c.type];
   if(r==='none')return 'Only what you add. Nothing is counted automatically.';
   const filt=r==='author'?` by ${esc(c.ruleVal||'')}`:r==='genre'?` in ${esc(c.ruleVal||'')}`:'';
-  const win=c.countPrior?' at any time':c.start?` from ${fmtDateY(c.start)}${c.end?` to ${fmtDateY(c.end)}`:''}`:'';
+  const win=c.countPrior?(c.end?` through ${chDay(c,c.end)}, including ${c.type==='books'?'ones':'reading'} from before ${c.start?chDay(c,c.start):'the start date'}`:' at any time'):c.start?` from ${chDay(c,c.start)}${c.end?` to ${chDay(c,c.end)}`:''}`:'';
   return `${what}${filt}${win}, plus anything you add.`;
 }
 function contribSection(c){
@@ -4266,7 +4268,7 @@ function renderChForm(){
     ${cf.mode!=='comp'&&cf.type!=='list'?`<div class="f"><label class="fl" for="cfRule" style="margin:0">Count Automatically</label><select class="inp" id="cfRule" data-cfrule>${[['all',{books:'All books I finish',pages:'Pages from all my reading',minutes:'Minutes from all my reading',days:'Every day I read'}[cf.type]],['author','Only books by an author'],['genre','Only books in a genre'],['none','Nothing. I’ll add progress myself.']].map(([v,l])=>`<option value="${v}" ${cf.rule===v?'selected':''}>${l}</option>`).join('')}</select>
       ${cf.rule==='author'?`<input class="inp" id="cfRuleVal" placeholder="Author name, for example Stephen King" value="${esc(cf.ruleVal)}" autocomplete="off" aria-label="Author">`:cf.rule==='genre'?`<select class="inp" id="cfRuleVal" aria-label="Genre"><option value="">Choose a Genre</option>${[...new Set(S.titles.map(t=>t.genre).filter(Boolean))].sort().map(g=>`<option ${cf.ruleVal===g?'selected':''}>${esc(g)}</option>`).join('')}</select>`:''}
       <span class="xs muted">${cf.rule==='none'?'Good for things only you know, like books by women or reading on vacation. Use Add Progress on the challenge to choose them.':'You can still add or remove individual items later with Add Progress.'}</span></div>`:''}
-    ${cf.mode!=='comp'&&(cf.type==='list'||cf.rule!=='none')?`<label class="chk"><input type="checkbox" id="cfPrior" ${cf.countPrior?'checked':''}> ${cf.type==='list'||cf.type==='books'?'Count books I’ve already finished':'Count reading from before the start date'}</label>`:''}
+    ${cf.mode!=='comp'&&(cf.type==='list'||cf.rule!=='none')?`<label class="chk"><input type="checkbox" id="cfPrior" ${cf.countPrior?'checked':''}> ${cf.type==='list'||cf.type==='books'?'Also count books finished before the start date':'Also count reading from before the start date'}</label>`:''}
     ${cf.mode!=='personal'&&!cf.id?`<div class="f"><span class="fl" style="margin:0">Who Can Join</span><div class="vseg ad-tabs" role="group" aria-label="Who can join">${[['all',`Anyone in ${esc(GN())}`],['invite','Only People I Invite']].map(([k,l])=>`<button aria-pressed="${cf.who===k}" data-act="cfWho" data-v="${k}">${l}</button>`).join('')}</div>
       ${cf.who==='invite'?`<div class="chips">${Object.entries(S.members).map(([k,m])=>`<label class="chk"><input type="checkbox" name="cfInv" value="${k}" ${cf.invite.includes(k)?'checked':''}> ${esc(m.name)}</label>`).join('')}</div><span class="xs muted">Only the people you invite see this challenge. Each gets a notification and can accept or decline.</span>`:`<span class="xs muted">Everyone in the group gets a notification and can join.</span>`}</div>`:''}
     <div class="f2"><label class="f">Start Date<input class="inp" type="date" id="cfStart" value="${cf.start}"></label><label class="f"><span>End Date${cf.mode==='comp'?'':' <span class="sub">(optional)</span>'}</span><input class="inp" type="date" id="cfEnd" value="${cf.end}"></label></div>
@@ -4275,10 +4277,10 @@ function renderChForm(){
     <div class="dlg-f"><button class="btn btn-ghost" data-act="closeCh">Cancel</button><button class="btn btn-primary" data-act="cfSave">${cf.id?'Save Changes':'Create Challenge'}</button></div>
   </div>`;
 }
-/* A start date after books on the list were finished: they won't count unless "Count books I've already finished" is on. */
+/* A start date after books on the list were finished: they won't count unless "Also count books finished before the start date" is on. */
 function cfWarn(){if(cf.mode==='comp'||!cf.start||cf.countPrior||!['list','books'].includes(cf.type))return '';
   const inc=(cf.id&&S.challenges.find(x=>x.id===cf.id)?.inc?.books)||[],early=S.books.filter(b=>b.status==='finished'&&b.finished&&b.finished<cf.start&&!inc.includes(b.id)&&(cf.type!=='list'||cf.titleIds.includes(b.titleId)));
-  if(cf.type==='list'&&early.length)return `⚠ ${early.length===1?`You finished ${esc(early[0].title)} before ${fmtDateY(cf.start)}, so it won’t count`:`You finished ${early.length} books on this list before ${fmtDateY(cf.start)}, so they won’t count`}. Change the start date, or turn on “Count books I’ve already finished.”`;
+  if(cf.type==='list'&&early.length)return `⚠ ${early.length===1?`You finished ${esc(early[0].title)} before ${fmtDateY(cf.start)}, so it won’t count`:`You finished ${early.length} books on this list before ${fmtDateY(cf.start)}, so they won’t count`}. Change the start date, or turn on “Also count books finished before the start date.”`;
   if(cf.start>today())return `⚠ This starts ${fmtDateY(cf.start)}. Books you finish before then won’t count.`;return ''}
 document.addEventListener('input',e=>{if(chMode==='form'&&['cfStart','cfPrior','cfEnd'].includes(e.target.id)){captureCf();const w=document.getElementById('cfWarn');if(w)w.innerHTML=cfWarn()}});
 function cfResults(){const q=cf.q.trim().toLowerCase();if(!q)return '';return S.titles.filter(t=>!cf.titleIds.includes(t.id)&&(t.title+' '+t.author).toLowerCase().includes(q)).slice(0,6).map(t=>`<button type="button" class="pick" data-act="cfAdd" data-id="${t.id}">${libCover(t)}<span><span class="pick-t">${esc(t.title)}</span><span class="xs muted">${esc(t.author)}</span></span></button>`).join('')||'<span class="xs muted">No matches.</span>'}
