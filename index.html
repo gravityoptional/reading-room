@@ -1126,6 +1126,14 @@ body:has(.menu:not([hidden])) .tour-offer{display:none}
 .ns-i{display:grid;gap:3px;width:100%;text-align:left;border:1px solid var(--border);background:var(--surface);border-radius:12px;padding:10px 12px;color:inherit;min-width:0;overflow-wrap:anywhere}
 .ns-i:hover{border-color:var(--primary)}
 .ns-i mark{background:color-mix(in srgb,var(--primary) 22%,transparent);color:inherit;border-radius:3px;padding:0 1px}
+.lastnote{margin-top:12px}
+.lastnote summary{cursor:pointer;color:var(--primary);font-weight:600;font-size:14px;list-style:none;display:inline-flex;align-items:center;gap:6px}
+.lastnote summary::-webkit-details-marker{display:none}
+.lastnote summary::before{content:'›';display:inline-block;transition:transform .15s;font-size:16px;line-height:1}
+.lastnote[open] summary::before{transform:rotate(90deg)}
+.ln-box{background:color-mix(in srgb,var(--border) 35%,var(--surface));border-radius:12px;padding:12px 14px;margin-top:8px;display:grid;gap:6px;min-width:0}
+.ln-t{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.ln-list{display:grid;gap:8px}
 .dc-card{position:relative;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px;min-width:0}
 .dc-card .lc-open{color:inherit;text-decoration:none}
 .dc-card .lc-open .cover{width:88px}
@@ -2364,6 +2372,13 @@ function notesSnip(text,q){const t=String(text).replace(/\s+/g,' '),i=t.toLowerC
 function notesResults(){const q=hist.nq||'';if(q.trim().length<2)return '';const r=notesSearch(q);
   return r.length?`<p class="xs muted" role="status" style="margin:0">${r.length} note${r.length===1?'':'s'} found</p><ul class="ns-list">${r.slice(0,50).map(x=>`<li><button class="ns-i" ${x.act}><span class="xs muted">${x.where}</span><span class="small">${notesSnip(x.text,q)}</span></button></li>`).join('')}</ul>${r.length>50?'<p class="xs muted">Showing the 50 most recent. Add a word to narrow it down.</p>':''}`
     :`<p class="small muted" role="status" style="margin:0">No notes match “${esc(q.trim())}”.</p>`}
+/* F5 My Last Note: the latest session note for a reading, shown in My Reading so a paused book is easy to pick back
+   up (open for Paused, closed while Reading). See All My Notes opens the Notes tab, which lists every session note. */
+function sessNoteWhere(x){const b=book(x.bookId);const pg=x.start!=null&&x.end!=null?(b&&b.format==='audio'?`${fmtPos(x.start)}–${fmtPos(x.end)}`:`pages ${x.start}–${x.end}`):x.pages?`${x.pages} pages`:'';
+  return ['Session note',fmtDateY(x.date),pg].filter(Boolean).join(' · ')}
+const sessNotesFor=ids=>S.sessions.filter(x=>ids.includes(x.bookId)&&String(x.note||'').trim()).sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.ts||0)-(a.ts||0));
+function lastNoteBox(r){if(!['reading','paused'].includes(r.status))return '';const x=sessNotesFor([r.id])[0];if(!x)return '';
+  return `<details class="lastnote" ${r.status==='paused'?'open':''}><summary>My Last Note</summary><div class="ln-box"><div class="xs muted">${sessNoteWhere(x)}</div><p class="ln-t">${esc(x.note)}</p><button class="link-btn sm" data-act="bdTab" data-v="notes" style="padding:0">See All My Notes</button></div></details>`}
 function historyView(){
   requestAnimationFrame(clampNotes);
   const y=today().slice(0,4),ys=S.sessions.filter(x=>x.date.slice(0,4)===y);
@@ -3418,6 +3433,7 @@ function renderBD0(){
       body=`<div class="st st-${r.status}">${STATUS[r.status]}</div> <button class="link-btn sm" data-act="editBook" data-book="${r.id}">${ic('pencil')}Change Status or Details</button>
       ${r.status!=='want'&&r.format!=='unknown'?(hasLen(r)?`<div class="bar" style="margin-top:12px"><span style="width:${pct(r)}%"></span></div><div class="xs muted">${prog} · ${pct(r)}%</div>`:`<div class="len-box"><div class="small">${prog}</div><div class="xs muted">${addLenLink(r)}</div></div>`):''}
       <div class="xs muted" style="margin-top:6px">${[r.started?`Started ${fmtDateY(r.started)}`:'',r.finished?`Finished ${fmtDateY(r.finished)}`:r.status==='finished'?finUnknown(r):'',r.dnfOn?`Set aside ${fmtDateY(r.dnfOn)}`:''].filter(Boolean).join(' · ')}</div>${(r.with||[]).length?`<div class="xs muted">Read with ${esc((n=>n.length>1?n.slice(0,-1).join(', ')+' and '+n.at(-1):n[0])(r.with.map(nameOf)))}</div>`:''}
+      ${lastNoteBox(r)}
       ${r.edition?`<div class="small" style="margin-top:10px">Edition: ${esc(r.edition)}</div>`:''}
       ${r.status==='finished'?`<div class="rate"><span class="small">Your Rating <span class="muted">(${rateWho()})</span></span>${starsFor(r)}</div>`
         :r.status==='dnf'?`<div class="rate dnf-why"><span class="small">${r.dnfWhy||r.dnfNote?`Why you stopped: <b>${esc(dnfWhyL(r.dnfWhy)||'')}</b>${r.dnfNote?` “${esc(r.dnfNote)}”`:''}`:'<span class="muted">No reason given for stopping.</span>'}</span><button class="link-btn sm" data-act="dnfEdit" data-book="${r.id}">${r.dnfWhy||r.dnfNote?'Change':'Add a Reason'}</button></div>`:''}`;
@@ -3427,7 +3443,8 @@ function renderBD0(){
     body=`<div class="xs muted bd-act-h">${esc(GN())} activity for this book</div>`+(items.length?items.map(a=>{const p=person(a.who);return `<div class="act-top" style="padding:8px 0"><span class="avatar" style="background:${p.photo?`url('${p.photo}') center/cover no-repeat, ${p.color}`:p.color}">${p.photo?'':p.init}</span><div class="act-txt"><b>${esc(p.name)}</b> ${esc(a.text)}${a.extra?` <span class="muted">(${esc(a.extra)})</span>`:''}</div><span class="act-when">${ago(a.ts)}</span></div>`}).join('')
       :`<p class="small muted">No group activity for this book yet. Only members who share their reading appear here.</p>`);
   }else{
-    body=`<label class="f"><span>Notes <span class="sub">(only you see these)</span></span><textarea class="inp" id="bdNotes" rows="3" maxlength="5000" data-count="5000" aria-describedby="bdNoteCount" placeholder="Thoughts, favorite quotes, where you left off…">${esc(S.notes[t.id]||'')}</textarea>${charCount('bdNoteCount',(S.notes[t.id]||'').length,5000)}</label><div class="xs muted" style="margin-top:6px">Saved as you type.</div>`;
+    body=`<label class="f"><span>Notes <span class="sub">(only you see these)</span></span><textarea class="inp" id="bdNotes" rows="3" maxlength="5000" data-count="5000" aria-describedby="bdNoteCount" placeholder="Thoughts, favorite quotes, where you left off…">${esc(S.notes[t.id]||'')}</textarea>${charCount('bdNoteCount',(S.notes[t.id]||'').length,5000)}</label><div class="xs muted" style="margin-top:6px">Saved as you type.</div>${(()=>{const ns=sessNotesFor(S.books.filter(b=>b.titleId===t.id).map(b=>b.id));
+      return ns.length?`<div class="section-t" style="margin-top:16px">Session Notes <span class="cnt small muted">${ns.length}</span></div><div class="ln-list">${ns.map(x=>`<div class="ln-box"><div class="xs muted">${sessNoteWhere(x)}</div><p class="ln-t">${esc(x.note)}</p></div>`).join('')}</div>`:''})()}`;
   }
   bookBody.innerHTML=`<div class="dlg-h bd-h">${libCover(t,84)}<div style="flex:1;min-width:0"><h2 id="bdTitle">${esc(dispT(t.title))}</h2><div class="muted">${esc(t.author)}</div><div class="xs muted" style="margin-top:4px">${[t.series?`${esc(t.series)} #${t.seriesNo??'?'}`:'',t.genre?esc(t.genre):'',t.pages?`${t.pages} pages`:''].filter(Boolean).join(' · ')}</div>
  ${dsc&&dsc.src!=='gb'&&bd.tab!=='about'?`<div class="bd-prev"><span class="bd-prev-t">${esc(dsc.text.replace(/\s+/g,' '))}</span><button class="link-btn sm" data-act="bdTab" data-v="about">More</button></div>`:''}
