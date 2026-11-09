@@ -1107,6 +1107,19 @@ body:has(.menu:not([hidden])) .tour-offer{display:none}
 .dc-rh .link-btn svg.i{width:14px;height:14px}
 .dc-scroll{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:14px}
 .dc-three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.ser-list{display:grid;gap:14px}
+.ser-card{display:grid;gap:10px;padding:16px;min-width:0}
+.ser-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.ser-h h3{margin:0;font-family:var(--serif);font-size:20px}
+.ser-bar{height:6px;border-radius:99px;background:color-mix(in srgb,var(--border) 70%,transparent);overflow:hidden}
+.ser-bar span{display:block;height:100%;background:var(--primary)}
+.ser-books{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}
+.ser-b{display:flex;gap:10px;align-items:center;width:100%;text-align:left;border:1px solid var(--border);background:var(--surface);border-radius:12px;padding:8px;color:inherit;min-width:0}
+.ser-b:hover{border-color:var(--primary)}
+.ser-t{display:grid;gap:1px;min-width:0}
+.ser-n{font-weight:600;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+.ser-s{color:var(--text-2)}.ser-s.finished{color:var(--primary);font-weight:600}.ser-s.reading,.ser-s.paused{color:var(--text);font-weight:600}
+.ser-gap{align-self:center;padding:4px 2px}
 .dc-card{position:relative;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px;min-width:0}
 .dc-card .lc-open{color:inherit;text-decoration:none}
 .dc-card .lc-open .cover{width:88px}
@@ -2487,7 +2500,35 @@ function libTitles(){
 }
 const MB=[['all','All'],['reading','Currently Reading'],['paused','Paused'],['want','To Read'],['finished','Finished'],['dnf','Did Not Finish'],['owned','Own but Not Started']];
 const MB_ORDER=['reading','paused','want','owned','finished','dnf'],MB_LABEL={reading:'Currently Reading',paused:'Paused',want:'To Read',owned:'Own but Not Started',finished:'Finished',dnf:'Did Not Finish'};
-function mbChips(){const base=baseList();return `<div class="chips mb-chips" role="group" aria-label="Filter by status">${MB.map(([k,l])=>{const n=k==='all'?base.length:base.filter(t=>mbStatus(t)===k).length;return `<button class="tab sm" aria-pressed="${lib.mb===k}" data-act="mbChip" data-v="${k}">${l} <span class="cnt">${n}</span></button>`}).join('')}</div>`}
+function mbChips(){const base=baseList();return `<div class="chips mb-chips" role="group" aria-label="Filter by status">${MB.map(([k,l])=>{const n=k==='all'?base.length:base.filter(t=>mbStatus(t)===k).length;return `<button class="tab sm" aria-pressed="${lib.mb===k}" data-act="mbChip" data-v="${k}">${l} <span class="cnt">${n}</span></button>`}).join('')}${(()=>{const n=mySeries().length;return n?`<button class="tab sm" aria-pressed="${lib.mb==='series'}" data-act="mbChip" data-v="series">Series <span class="cnt">${n}</span></button>`:''})()}</div>`}
+/* Series (My Books → Series): every series with at least one of my books, in order, with how many I've finished,
+   each book's status, and the next one to read. Books the group owns in the series are included; numbers no one
+   has added show as a gap up to the known length (Books in the Series). */
+function mySeries(){
+  const mine=new Set(baseList().map(t=>t.id)),by={};
+  S.titles.forEach(t=>{if(t.series&&t.seriesNo!=null)(by[t.series]=by[t.series]||[]).push(t)});
+  return Object.keys(by).filter(sn=>by[sn].some(t=>mine.has(t.id))).map(sn=>{
+    const ts=by[sn].sort((a,b)=>a.seriesNo-b.seriesNo||sortKey(a.title).localeCompare(sortKey(b.title)));
+    const st=t=>myReading(t.id)?.status||(copiesOf(t.id).some(c=>c.owner==='me')?'owned':'none');
+    const done=ts.filter(t=>st(t)==='finished').length,len=Math.max(S.seriesLen?.[sn]||0,Math.ceil(ts[ts.length-1].seriesNo),ts.length);
+    const cur=ts.find(t=>st(t)==='reading'||st(t)==='paused'),next=cur||ts.find(t=>!['finished','dnf'].includes(st(t))&&!hiddenT(t));
+    return {sn,ts,st,done,len,cur,next,complete:done>=len}});
+}
+const SER_ST={finished:'Finished',reading:'Reading',paused:'Paused',want:'To Read',dnf:'Did Not Finish',owned:'Own, Not Started',none:'Not Started'};
+function seriesView(){
+  const q=lib.q.trim().toLowerCase();
+  const list=mySeries().filter(x=>!q||(x.sn+' '+x.ts.map(t=>t.title+' '+t.author).join(' ')).toLowerCase().includes(q))
+    .sort((a,b)=>(a.complete-b.complete)||((b.done>0&&!b.complete)-(a.done>0&&!a.complete))||sortKey(a.sn).localeCompare(sortKey(b.sn)));   // in progress first, finished series last
+  if(!list.length)return `<div class="empty">${ic('book')}<h3>${q?'No Series Found':'No Series Yet'}</h3><p>${q?'Try a different search.':'Add a series name and book number in Edit Book, and your series show here.'}</p></div>`;
+  return `<div class="lib-count"><span class="small muted">${list.length} series</span></div><div class="ser-list">${list.map(x=>{
+    const nums=new Set(x.ts.map(t=>Math.floor(t.seriesNo))),gaps=[];for(let n=1;n<=x.len;n++)if(!nums.has(n))gaps.push(n);
+    const nextLine=x.complete?'You’ve read the whole series.':x.next?`${x.cur?(x.st(x.cur)==='paused'?'Paused':'Reading now'):'Next'}: <button class="link-btn sm" data-act="openTitle" data-id="${x.next.id}" style="padding:0 2px">${ti(x.next.title)}</button> (Book ${x.next.seriesNo})`:gaps.length?`Next: Book ${gaps[0]}, not in your library yet.`:'';
+    return `<section class="card ser-card" aria-label="${esc(x.sn)}"><div class="ser-h"><h3>${esc(x.sn)}</h3><span class="small muted">${x.done} of ${x.len} read</span></div>
+      <div class="ser-bar" role="img" aria-label="${x.done} of ${x.len} read"><span style="width:${Math.min(100,Math.round(x.done/x.len*100))}%"></span></div>
+      ${nextLine?`<p class="small" style="margin:0">${nextLine}</p>`:''}
+      <ol class="ser-books">${x.ts.map(t=>{const k=x.st(t);return `<li><button class="ser-b" data-act="openTitle" data-id="${t.id}" aria-label="Book ${t.seriesNo}: ${esc(dispT(t.title))}, ${SER_ST[k]}">${libCover(t,44)}<span class="ser-t"><span class="xs muted">Book ${t.seriesNo}</span><span class="small ser-n">${esc(dispT(t.title))}</span><span class="xs ser-s ${k}">${SER_ST[k]}</span></span></button></li>`}).join('')}
+      ${gaps.length?`<li class="ser-gap xs muted">${gaps.length===1?`Book ${gaps[0]} isn’t in your library.`:`Books ${gaps.slice(0,-1).join(', ')} and ${gaps[gaps.length-1]} aren’t in your library.`}</li>`:''}</ol></section>`}).join('')}</div>`;
+}
 function mbCard(t){
   const st=mbStatus(t),r=myReading(t.id),cs=copiesOf(t.id),mine=cs.some(c=>c.owner==='me');
   const own=mine?'You own it':cs.length?`Owned by ${ownerNames(t.id)}`:'Not owned';
@@ -2685,6 +2726,7 @@ function setShared(ids,on){
 }
 function libResults(){
   if(lib.tab==='recs'&&lib.rv==='from')return fromMe();
+  if(lib.tab==='mybooks'&&lib.mb==='series')return seriesView();
   const list=libTitles(),shelf=S.settings.libView==='shelf';
   const gs=(lib.tab==='mybooks'?[['status','Status'],['year','Year Finished'],['month','Month Finished'],['week','Week Finished']]:[]).concat([['alpha','Title'],['author','Author'],['genre','Genre']]);
   const fgrid=!shelf&&lib.tab==='mybooks'&&lib.sort==='finished';
@@ -2711,9 +2753,9 @@ function libraryView(){
   ${lib.tab==='mybooks'?mbChips():''}
   ${tools?`<div class="lib-tools">
     <label class="search">${ic('search')}<input id="libQ" type="search" placeholder="${lib.tab==='family'&&!S.settings.solo?'Search by title, author, or owner':'Search by title or author'}" value="${esc(lib.q)}" aria-label="Search the library" autocomplete="off"></label>
-    <button class="btn btn-ghost" data-act="libFilters" aria-expanded="${lib.open}" aria-controls="libFilters">${ic('filter')}Filters${n?` (${n})`:''}</button>
+${lib.tab==='mybooks'&&lib.mb==='series'?'':`    <button class="btn btn-ghost" data-act="libFilters" aria-expanded="${lib.open}" aria-controls="libFilters">${ic('filter')}Filters${n?` (${n})`:''}</button>
     <label class="sortl"><span class="small muted">Sort</span><select class="inp sm" data-lsel="sort">${[['title','Title A–Z'],['titleza','Title Z–A'],['author','Author'],['added','Recently Added'],['read','Recently Read']].concat(lib.tab==='mybooks'?[['finished','Date Finished']]:[]).map(([v,l])=>`<option value="${v}" ${lib.sort===v?'selected':''}>${l}</option>`).join('')}</select></label>
-    <span class="vseg" role="group" aria-label="View"><button aria-pressed="${!shelf}" data-act="libView" data-v="grid">${ic('grid')}Grid</button><button aria-pressed="${shelf}" data-act="libView" data-v="shelf">${ic('shelf')}Shelf</button></span>
+    <span class="vseg" role="group" aria-label="View"><button aria-pressed="${!shelf}" data-act="libView" data-v="grid">${ic('grid')}Grid</button><button aria-pressed="${shelf}" data-act="libView" data-v="shelf">${ic('shelf')}Shelf</button></span>`}
   </div>
   ${lib.open?filtersPanel():''}`:''}
   ${disc?'':`<div id="libResults">${libResults()}</div>`}</div></div>`;
