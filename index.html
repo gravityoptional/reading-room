@@ -1206,7 +1206,7 @@ body:has(.menu:not([hidden])) .tour-offer{display:none}
 .bd-quiet .link-btn:hover{color:var(--text)}
 @media (max-width:560px){.bd-h>div>.bd-quiet,.bd-prev{grid-column:1/-1}}
 .dc-acts{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding-top:4px}
-.dc-acts>.btn{flex:1;min-width:0;white-space:nowrap;padding-left:6px;padding-right:6px}
+.dc-acts>.btn{flex:1;min-width:0;white-space:normal;text-align:center;line-height:1.25;padding-left:6px;padding-right:6px}
 .dc-acts>.btn svg.i{display:none}
 a.btn{text-decoration:none}
 /* Each card spans three shared rows (details, buttons, Get This Book), so buttons line up across a row. */
@@ -4493,7 +4493,7 @@ function renderHeader(){
   document.getElementById('meAvatar').style.background=avBg('me');
   document.getElementById('meName').textContent=S.me.name;
   const bc=document.getElementById('bellCount');const unread=S.notifs.filter(n=>!n.read).length;bc.textContent=unread;bc.hidden=!unread;
-  document.getElementById('bellMenu').innerHTML=`<h3>Notifications</h3>${S.notifs.length?S.notifs.map(n=>`<div class="notif ${n.read?'read':''}"><button class="notif-go" ${n.link?`data-act="notifGo" data-id="${n.id}"`:'disabled'}><p>${esc(n.text)}</p>${(()=>{const r=n.req&&(S.loanReqs||[]).find(x=>x.id===n.req);const t=n.reply?r?.reply:r?.note;return t?`<p class="req-msg">“${esc(t)}”</p>`:''})()}<span class="xs muted">${ago(n.ts)}${n.link?' · Open':''}</span></button><button class="icon-btn x" data-act="dismiss" data-id="${n.id}" aria-label="Dismiss">${ic('x')}</button>${(()=>{const r=n.req&&(S.loanReqs||[]).find(x=>x.id===n.req);if(!r||r.status!=='pending')return '';const c=S.copies.find(x=>x.id===r.copyId),free=c&&copyFree(c);
+  document.getElementById('bellMenu').innerHTML=`<h3>Notifications</h3>${S.notifs.length?S.notifs.map(n=>`<div class="notif ${n.read&&!bellNew.has(n.id)?'read':''}"><button class="notif-go" ${n.link?`data-act="notifGo" data-id="${n.id}"`:'disabled'}><p>${esc(n.text)}</p>${(()=>{const r=n.req&&(S.loanReqs||[]).find(x=>x.id===n.req);const t=n.reply?r?.reply:r?.note;return t?`<p class="req-msg">“${esc(t)}”</p>`:''})()}<span class="xs muted">${ago(n.ts)}${n.link?' · Open':''}</span></button><button class="icon-btn x" data-act="dismiss" data-id="${n.id}" aria-label="Dismiss">${ic('x')}</button>${(()=>{const r=n.req&&(S.loanReqs||[]).find(x=>x.id===n.req);if(!r||r.status!=='pending')return '';const c=S.copies.find(x=>x.id===r.copyId),free=c&&copyFree(c);
       return `<div class="notif-req">${replyBtns(r,free,`<span class="xs muted" style="align-self:center">Waiting in line until your copy is back.</span>`)}</div>`})()}</div>`).join(''):'<p class="muted small" style="padding:4px 10px 10px;margin:0">You’re all caught up.</p>'}`;
   const th=S.settings.theme;
   document.getElementById('meMenu').innerHTML=`<h3>${esc(S.me.name)}</h3><button class="link" data-act="acctOpen">Account Settings</button>
@@ -5036,7 +5036,9 @@ function acctPic(){const el=document.getElementById('acctPic');if(!el)return;con
     try{const bmp=await createImageBitmap(f),side=Math.min(bmp.width,bmp.height),cv=document.createElement('canvas');cv.width=cv.height=160;
       cv.getContext('2d').drawImage(bmp,(bmp.width-side)/2,(bmp.height-side)/2,side,side,0,0,160,160);bmp.close?.();acct.photo=cv.toDataURL('image/jpeg',.85);document.getElementById('acctErr').textContent='';acctPic()}
     catch(e){document.getElementById('acctErr').textContent='That image couldn’t be opened. Try a different file.'}}}
-function closeMenus(){['bellMenu','meMenu','grpMenu'].forEach(i=>document.getElementById(i).hidden=true)}
+/* Notifications seen when the bell opened stay highlighted until it closes (they're already marked read). */
+let bellNew=new Set();
+function closeMenus(){['bellMenu','meMenu','grpMenu'].forEach(i=>document.getElementById(i).hidden=true);if(bellNew.size){bellNew=new Set();renderHeader?.()}}
 document.addEventListener('change',async e=>{
   if(e.target.id!=='heroUpload')return;
   const file=e.target.files?.[0];e.target.value='';if(!file)return;
@@ -5053,7 +5055,8 @@ document.addEventListener('change',async e=>{
 document.addEventListener('click',e=>{
   const go=e.target.closest('[data-go]');
   if(go){view=go.dataset.go;if(view==='discover'){view='library';lib.tab='discover';lib.rv='disc'}if(go.dataset.ch)chTab=go.dataset.ch;if(chDlg.open)chDlg.close();if(nextDlg.open)nextDlg.close();closeMenus();render();window.scrollTo(0,0);return}
-  if(e.target.closest('#bellBtn')){const m=document.getElementById('bellMenu');const h=m.hidden;closeMenus();m.hidden=!h;return}
+  if(e.target.closest('#bellBtn')){const m=document.getElementById('bellMenu');const h=m.hidden;closeMenus();m.hidden=!h;
+    if(h){const un=S.notifs.filter(n=>!n.read);bellNew=new Set(un.map(n=>n.id));if(un.length){un.forEach(n=>n.read=true);save();const bc=document.getElementById('bellCount');bc.textContent=0;bc.hidden=true}}return}
   if(e.target.closest('#grpBtn')){const m=document.getElementById('grpMenu');const h=m.hidden;closeMenus();m.hidden=!h;return}
   if(e.target.closest('#meBtn')){const m=document.getElementById('meMenu');const h=m.hidden;closeMenus();m.hidden=!h;return}
   const a=e.target.closest('[data-act]');
@@ -5400,6 +5403,8 @@ document.addEventListener('click',e=>{
       if(L.type==='ch'){view='challenges';chTab='family';render();window.scrollTo(0,0);openCh(L.id)}
       else if(L.type==='battle'){view='challenges';chTab='battle';render();window.scrollTo(0,0);openBattle(L.id)}
       else if(L.type==='title'){openTitle(L.id,'copies')}
+      else if(L.type==='rec'){openTitle(L.id)}
+      else if(L.type==='feedback'){window.RR_FEEDBACK?.openInbox?.()}
       else{view='library';lib.tab='discover';lib.rv='from';render();window.scrollTo(0,0)}
       break}
     case 'dismiss':S.notifs=S.notifs.filter(n=>n.id!==a.dataset.id);save();renderHeader();document.getElementById('bellMenu').hidden=false;break;
