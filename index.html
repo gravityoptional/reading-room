@@ -1120,6 +1120,12 @@ body:has(.menu:not([hidden])) .tour-offer{display:none}
 .ser-n{font-weight:600;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
 .ser-s{color:var(--text-2)}.ser-s.finished{color:var(--primary);font-weight:600}.ser-s.reading,.ser-s.paused{color:var(--text);font-weight:600}
 .ser-gap{align-self:center;padding:4px 2px}
+.ns{display:grid;gap:8px;max-width:640px}
+.ns-res:empty{display:none}.ns-res{display:grid;gap:8px}
+.ns-list{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.ns-i{display:grid;gap:3px;width:100%;text-align:left;border:1px solid var(--border);background:var(--surface);border-radius:12px;padding:10px 12px;color:inherit;min-width:0;overflow-wrap:anywhere}
+.ns-i:hover{border-color:var(--primary)}
+.ns-i mark{background:color-mix(in srgb,var(--primary) 22%,transparent);color:inherit;border-radius:3px;padding:0 1px}
 .dc-card{position:relative;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px;min-width:0}
 .dc-card .lc-open{color:inherit;text-decoration:none}
 .dc-card .lc-open .cover{width:88px}
@@ -2345,6 +2351,19 @@ function clampNotes(){
   });
 }
 addEventListener('resize',()=>{if(view==='history')clampNotes()});
+/* F4 Search My Notes (History): book notes, reading-session notes, and calendar notes. Results show where the note
+   is and a short snippet around the match, and open the original. Nothing is copied; notes stay private. */
+function notesSearch(q){q=q.trim().toLowerCase();if(q.length<2)return [];const out=[],hit=t=>String(t||'').toLowerCase().includes(q);
+  Object.entries(S.notes||{}).forEach(([tid,tx])=>{const t=titleById(tid);if(t&&hit(tx))out.push({kind:'book',text:tx,where:`Book note · ${ti(dispT(t.title))}`,act:`data-act="openTitle" data-id="${tid}" data-tab="notes"`,sort:'9'})});
+  S.sessions.forEach(x=>{if(!hit(x.note))return;const b=book(x.bookId);out.push({kind:'sess',text:x.note,where:`Session note · ${fmtDateY(x.date)}${b?` · ${ti(b.title)}`:''}`,act:`data-act="notesGo" data-v="${x.date}"`,sort:x.date})});
+  (S.journal||[]).forEach(n=>{if(hit(n.text))out.push({kind:'cal',text:n.text,where:`Calendar note · ${noteRange(n)}`,act:`data-act="notesGo" data-v="${n.start}"`,sort:n.start})});
+  return out.sort((a,b)=>b.sort.localeCompare(a.sort));
+}
+function notesSnip(text,q){const t=String(text).replace(/\s+/g,' '),i=t.toLowerCase().indexOf(q.trim().toLowerCase()),n=q.trim().length,a=Math.max(0,i-60),z=Math.min(t.length,i+n+90);
+  return (a?'…':'')+esc(t.slice(a,i))+'<mark>'+esc(t.slice(i,i+n))+'</mark>'+esc(t.slice(i+n,z))+(z<t.length?'…':'')}
+function notesResults(){const q=hist.nq||'';if(q.trim().length<2)return '';const r=notesSearch(q);
+  return r.length?`<p class="xs muted" role="status" style="margin:0">${r.length} note${r.length===1?'':'s'} found</p><ul class="ns-list">${r.slice(0,50).map(x=>`<li><button class="ns-i" ${x.act}><span class="xs muted">${x.where}</span><span class="small">${notesSnip(x.text,q)}</span></button></li>`).join('')}</ul>${r.length>50?'<p class="xs muted">Showing the 50 most recent. Add a word to narrow it down.</p>':''}`
+    :`<p class="small muted" role="status" style="margin:0">No notes match “${esc(q.trim())}”.</p>`}
 function historyView(){
   requestAnimationFrame(clampNotes);
   const y=today().slice(0,4),ys=S.sessions.filter(x=>x.date.slice(0,4)===y);
@@ -2388,6 +2407,7 @@ function historyView(){
   const rereads=rr.length?rr.map(([tid,v])=>{const tt=titleById(tid);return `<div class="rr"><button class="sess-b" data-act="openTitle" data-id="${tid}">${esc(tt.title)}</button>${[...v].sort((a,b)=>{const k=x=>x.started||x.finished||(['reading','paused','want'].includes(x.status)?'9999':'0000');return k(a).localeCompare(k(b))}).map((b,i)=>`<div class="small muted rr-row">Read-through ${i+1}: ${b.started?`started ${fmtDateY(b.started)}`:'start date unknown'}${b.finished?`, finished ${fmtDateY(b.finished)}`:b.status==='finished'?', finished, date unknown':''} <span class="st st-${b.status}">${STATUS[b.status]}</span>${b.edition?` · Edition: ${esc(b.edition)}`:''} <button class="link-btn sm" data-act="editBook" data-book="${b.id}">Edit Reading</button></div>`).join('')}</div>`}).join('')
     :`<p class="small muted" style="margin:0">When you read a book again, each read-through appears here with its own dates.</p>`;
   return `<div class="hist"><div><h1 class="page-h">History</h1><p class="muted" style="margin:2px 0 0">Your reading over time. Only you can see this page.</p></div>
+  <section class="ns" aria-label="Search My Notes"><label class="search">${ic('search')}<input id="notesQ" type="search" placeholder="Search my notes" value="${esc(hist.nq||'')}" aria-label="Search my book, session, and calendar notes" autocomplete="off"></label><div id="notesRes" class="ns-res">${notesResults()}</div></section>
   <section class="card"><div class="card-h"><span class="ico">${ic('chart')}</span><h2>This Year</h2></div><div class="stats hstats">${stats.map(([i,n,l,c])=>`<div class="stat ${i==='flame'?'o':''}">${ic(i)}<div class="n">${n}</div><div class="l">${l}</div>${c||''}</div>`).join('')}</div>${hist.panel==='read'?(()=>{const last={};ys.forEach(x=>{const id=book(x.bookId)?.titleId;if(id&&(!last[id]||x.date>last[id]))last[id]=x.date});const ids=Object.keys(last).sort((a,b)=>last[b].localeCompare(last[a]));
     return bookPanel(`Books you logged reading for in ${y}, most recent first`,ids.map(id=>[id,`Last read ${fmtDate(last[id])}`]))})():hist.panel==='fin'?bookPanel(`Books you finished in ${y}, most recent first`,finishedIn(y)):''}</section>
   <div class="hgrid"><section class="card" data-tour="calendar"><div class="card-h"><span class="ico">${ic('cal')}</span><h2>${hist.mode==='year'?Y:`${MONF[M-1]} ${Y}`}</h2><span class="vseg cal-mode" role="group" aria-label="Calendar view"><button aria-pressed="${hist.mode!=='year'}" data-act="histMode" data-v="month">Month</button><button aria-pressed="${hist.mode==='year'}" data-act="histMode" data-v="year">Year</button></span><span class="cal-nav"><button class="icon-btn" data-act="histM" data-v="${hist.mode==='year'?-12:-1}" aria-label="Previous ${hist.mode==='year'?'year':'month'}">${ic('chevL')}</button><button class="icon-btn" data-act="histM" data-v="${hist.mode==='year'?12:1}" aria-label="Next ${hist.mode==='year'?'year':'month'}" ${(hist.mode==='year'?String(Y)>=t.slice(0,4):m>=t.slice(0,7))?'disabled':''}>${ic('chevR')}</button></span></div>
@@ -3868,6 +3888,7 @@ function addManual(){adCaptureManual();const m=ad.manual,er=text=>document.getEl
   adChoose(t,{title,author,pages:+m.pages||undefined,genre:genreValue(m.genre),type:m.type||undefined},true);
 }
 document.addEventListener('input',e=>{
+  if(e.target.id==='notesQ'){hist.nq=e.target.value;document.getElementById('notesRes').innerHTML=notesResults()}
   if(e.target.id==='libQ'){lib.q=e.target.value;document.getElementById('libResults').innerHTML=libResults()}
   else if(e.target.id==='adQ'){ad.q=e.target.value;olQueue();document.getElementById('adRes').innerHTML=adResults()}
   else if(['amTitle','amAuthor','amPages','amGenre','amType'].includes(e.target.id)||e.target.closest?.('[data-gt=am]'))adCaptureManual();
@@ -5252,6 +5273,7 @@ document.addEventListener('click',e=>{
     case 'histM':hist.m=monthAdd(hist.m,+a.dataset.v);if(hist.m>today().slice(0,7))hist.m=today().slice(0,7);hist.sel=null;render();break;
     case 'histMode':hist.mode=a.dataset.v;hist.sel=null;render();break;
     case 'histOpenM':hist.m=a.dataset.v;hist.mode='month';hist.sel=null;render();break;
+    case 'notesGo':{const d=a.dataset.v;hist.mode='month';hist.m=d.slice(0,7);hist.sel=d;render();setTimeout(()=>{const c=document.querySelector('.sess-day');(c||document.querySelector('.hgrid'))?.scrollIntoView({block:'start',behavior:'smooth'})},30);break}
     case 'histDay':{hist.sel=a.dataset.v&&hist.sel!==a.dataset.v?a.dataset.v:null;const y=window.scrollY;render();window.scrollTo(0,y);break}
     case 'histPanel':{hist.panel=hist.panel===a.dataset.v?null:a.dataset.v;const y=window.scrollY;render();window.scrollTo(0,y);break}
     case 'recYear':{hist.recYear=!hist.recYear;const y=window.scrollY;render();window.scrollTo(0,y);break}
