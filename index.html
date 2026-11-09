@@ -1493,7 +1493,7 @@ function seed(){
    saved data. Beta keeps the test bed's data (the rr-next names it has always used). Alpha took over from the main
    prototype on Nov 4, 2026: the first time Alpha opens in a browser that has the test bed's data, it carries that
    data over once, keeping the old main data as a "-before-alpha" backup. */
-const BETA=/\/beta\//.test(location.pathname),NEXT=BETA;
+const BETA=true,NEXT=BETA;   // Nov 9, 2026: Alpha retired; the one test copy (site address, and /beta/ forwards to it) keeps Beta's label and saved data
 document.title=document.title.replace('Reading Room',BETA?'Reading Room Beta':'Reading Room Alpha');
 document.querySelector('.brand').insertAdjacentHTML('beforeend',BETA?' <span class="next-tag beta-tag">Beta</span>':' <span class="next-tag">Alpha</span>');
 if(!BETA){try{const ls=localStorage;if(!ls.getItem('rr-alpha-carried')){if(ls.getItem('rr-next-v1'))[['rr-next-v1','rr-editorial-proto-v1'],['rr_next_hero_v1','rr_editorial_hero_v1'],['rr_next_drafts_v1','rr_drafts_v1'],['rr-next-disc-v1','rr-disc-v1']].forEach(([from,to])=>{const v=ls.getItem(from);if(v==null)return;try{const old=ls.getItem(to);if(old!=null)ls.setItem(to+'-before-alpha',old)}catch(e){}try{ls.setItem(to,v)}catch(e){}});ls.setItem('rr-alpha-carried','1')}}catch(e){}}

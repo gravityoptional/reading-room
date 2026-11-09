@@ -1,8 +1,9 @@
-# Publishes Alpha (the main branch) at the site address and Beta (the next branch, the test bed) at /beta/.
+# Publishes the test copy (the main branch) at the site address. Alpha was retired Nov 9, 2026; /beta/ forwards to
+# the site address so old links keep working.
 name: Publish site
 on:
   push:
-    branches: [main, next]
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
@@ -22,16 +23,13 @@ jobs:
         with:
           ref: main
           path: main
-      - uses: actions/checkout@v4
-        with:
-          ref: next
-          path: next
-        continue-on-error: true
       - name: Assemble the site
         run: |
           mkdir -p _site/beta
           cp main/index.html _site/
-          if [ -f next/index.html ]; then cp next/index.html _site/beta/; else rm -rf _site/beta; fi
+          printf '%s\n' '<!doctype html><meta charset="utf-8"><title>Reading Room Beta</title><meta name="robots" content="noindex">' \
+            '<script>location.replace("../"+location.search+location.hash)</script>' \
+            '<p>Reading Room Beta has moved to <a href="../">the site address</a>.</p>' > _site/beta/index.html
           touch _site/.nojekyll
       - uses: actions/upload-pages-artifact@v3
       - id: deploy

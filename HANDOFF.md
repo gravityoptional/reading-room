@@ -5,33 +5,28 @@ Handoff from the Discover build session to the RC session · November 4, 2026
 *Reading Room* is a placeholder name. The app is one file, `index.html` (vanilla JavaScript, HTML, and CSS, no build
 step), published with GitHub Pages.
 
-## The two live sites
+## The test site
 
 | Site | Address | Label | Branch | Purpose |
 |---|---|---|---|---|
-| **Alpha** | https://gravityoptional.github.io/reading-room/ | orange-red ALPHA | `main` | The current prototype. Replaced the old main prototype on Nov 4, 2026. |
-| **Beta** | https://gravityoptional.github.io/reading-room/beta/ | yellow BETA | `next` | The test bed. New work goes here first. |
+| **Beta** (test copy) | https://gravityoptional.github.io/reading-room/ | yellow BETA | `main` | The prototype with sample data. New work is built and tested here first. |
+| **Live beta** | https://reading-ember.pages.dev | — | `gravityoptional/reading-room-live` | Members' real site, built from this repo's `main` by `tools/build_live.py`. |
 
-- `/next/` is no longer published, and nothing redirects from it.
-- Both sites run the **same code**. The address decides the label and which saved data the page uses.
-- Publishing: any push to `main` or `next` runs `.github/workflows/pages.yml`, which builds both sites (Alpha from
-  `main`, Beta from `next`). When both branches are pushed together, the first run is usually cancelled and the
-  second publishes both. That's normal.
+- **Alpha was retired Nov 9, 2026** (James: testers moved to the live beta). `/beta/` now forwards to the site
+  address, and the site keeps Beta's label and saved data (`rr-next-…` names). The `next` branch is no longer used.
+- Publishing: any push to `main` runs `.github/workflows/pages.yml`.
 
 ## How work flows
 
-1. Build and test on **Beta** (`next`).
+1. Build and test on `main` (the test copy).
 2. Show James phone and desktop previews, and ask before pushing anything.
-3. Move to **Alpha** (`main`) only with James's approval.
-4. Fixes that belong on both go to Alpha first, then get merged into Beta.
-
-Branch names stay `main` and `next` so the publishing setup keeps working.
+3. Move to the live site (reading-room-live) only with James's approval.
 
 ## Repositories
 
 | Repository | Visibility | What's in it |
 |---|---|---|
-| `gravityoptional/reading-room` | your repo | The app. Branches: `main` (Alpha), `next` (Beta). Older branches `fix/mobile-current-cover` and `open-library-search` are from earlier work and aren't used. |
+| `gravityoptional/reading-room` | your repo | The app. Branches: `main` (the test copy); `next` (former Beta) is retired. Older branches `fix/mobile-current-cover` and `open-library-search` are from earlier work and aren't used. |
 | `gravityoptional/reading-room-chatgpt` | public | ChatGPT's copy, used for trying appearance ideas cheaply. Its own site: https://gravityoptional.github.io/reading-room-chatgpt/ (blue ChatGPT label, its own `rr-chatgpt-*` saved data). Nothing flows between it and this repo automatically. |
 | `gravityoptional/reading-room-notes` | private | Packaged sessions: the original Main session, and (when packaged) this one as **Discover Build Prototype - Reading Room**. |
 
