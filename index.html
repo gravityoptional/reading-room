@@ -1127,6 +1127,7 @@ body:has(.menu:not([hidden])) .tour-offer{display:none}
 .ns-i:hover{border-color:var(--primary)}
 .ns-i mark{background:color-mix(in srgb,var(--primary) 22%,transparent);color:inherit;border-radius:3px;padding:0 1px}
 .f[hidden],#startLenHint[hidden]{display:none}
+.ch-pace{color:var(--primary);font-weight:600;margin-top:2px}
 .lastnote{margin-top:12px}
 .lastnote summary{cursor:pointer;color:var(--primary);font-weight:600;font-size:14px;list-style:none;display:inline-flex;align-items:center;gap:6px}
 .lastnote summary::-webkit-details-marker{display:none}
@@ -4098,6 +4099,21 @@ function chProg(c){
   const est=myEst(c);
   return {v,t,label:`${fmtV(c,v)} of ${fmtV(c,t)}${unitOf(c,t)}${est?` (includes ~${fmtMin(est)} estimated)`:''}`};
 }
+/* Yearly goal pace (Phase 5, built early): on a Books challenge with an end date, project the finish from the pace so
+   far ("On track for 26 this year"). Behind pace says what keeps it on track ("About 2 a month reaches 24"), never
+   a deficit. A calendar-year personal goal adds how far ahead of last year you are, only when you are ahead. */
+function chPace(c,p){
+  if(c.type!=='books'||c.mode==='comp'||!c.start||!c.end||!p.t)return '';const td=today();if(td<c.start||td>c.end||p.v>=p.t)return '';
+  const el=daysBetween(c.start,td)+1,tot=daysBetween(c.start,c.end)+1,left=tot-el;if(el<14&&p.v<2)return '';   // too early to say
+  const yr=c.start.slice(5)==='01-01'&&c.end.slice(5)==='12-31'&&c.start.slice(0,4)===c.end.slice(0,4),when=yr?(c.start.slice(0,4)===td.slice(0,4)?'this year':`in ${c.start.slice(0,4)}`):`by ${fmtDate(c.end)}`;
+  const proj=Math.round(p.v/el*tot),out=[];
+  if(proj>=p.t)out.push(`On track for ${proj} ${when}`);
+  else{const need=p.t-p.v,w=Math.max(1,left/7),m=left/30.44;out.push(m>=1.5?`About ${Math.ceil(need/m)} a month reaches ${p.t}`:`About ${Math.ceil(need/w)} a week reaches ${p.t}`)}
+  if(yr&&c.mode==='personal'&&c.start.slice(0,4)===td.slice(0,4)){const ly=String(+td.slice(0,4)-1),cut=ly+td.slice(4);
+    const prev=S.books.filter(b=>b.status==='finished'&&b.finished&&b.finished>=ly+'-01-01'&&b.finished<=cut).length,now=S.books.filter(b=>b.status==='finished'&&b.finished&&b.finished>=td.slice(0,4)+'-01-01'&&b.finished<=td).length;
+    if(prev>0&&now>prev)out.push(`${now-prev} ahead of last year`)}
+  return out.join(' · ');
+}
 function chStatus(c,p){
   const t=today();
   if(c.start&&t<c.start)return {k:'up',txt:`Starts ${fmtDateY(c.start)}`};
@@ -4121,7 +4137,7 @@ function chCard(c){
   const act=fam&&st.k!=='ended'?(joined?`<span class="joined">${ic('check')}Joined</span>`:inv?`<span class="inv-acts"><button class="link-btn sm" data-act="chDecline" data-id="${c.id}">Decline</button><button class="btn btn-primary sm" data-act="chJoin" data-id="${c.id}">${ic('check')}Accept</button></span>`:`<button class="btn btn-ghost sm" data-act="chJoin" data-id="${c.id}">${ic('plus')}Join</button>`):'';
   const fin=st.k==='done'||st.k==='ended',hid=hiddenC().includes(c.id),ca=cardActs('ch',c.id,c.name,c.creator==='me'&&(!fam||!fin),fam&&fin,hid);
   return `<div class="chcard ${ca?'has-acts':''}">${ca}<button class="chc-open" data-act="openCh" data-id="${c.id}"><span class="chc-ic">${ic(CT[c.type].ic)}</span><span><span class="chc-t">${esc(c.name)}</span><span class="xs muted">${dateRange(c)} · ${MODE_L[c.mode]}</span>${fam?`<span class="xs ${inv?'inv-t':'muted'}" style="display:block">${inv?`${esc(nameOf(c.creator))} invited you`:c.inviteOnly?`Invite only, started by ${esc(nameOf(c.creator))}`:`Started by ${esc(nameOf(c.creator))}`}</span>`:''}</span></button>
-  <div class="bar"><span style="width:${pc}%"></span></div><div class="chc-row"><span class="small">${p.label}</span>${c.mode==='comp'?'':`<span class="small muted">${pc}%</span>`}</div>
+  <div class="bar"><span style="width:${pc}%"></span></div><div class="chc-row"><span class="small">${p.label}</span>${c.mode==='comp'?'':`<span class="small muted">${pc}%</span>`}</div>${(t=>t?`<div class="xs ch-pace">${t}</div>`:'')(chPace(c,p))}
   ${fam?`<div class="lc-own">${avRow(c.participants)}<span class="xs muted">${c.inviteOnly?`${c.participants.length} of ${(c.invited||[]).length+1} invited taking part`:`${c.participants.length} of ${famSize()} participating`}</span></div>`:''}
   <div class="chc-foot"><span class="xs ${st.k==='done'?'own-me':'muted'}">${st.txt}</span>${act}</div></div>`;
 }
@@ -4303,7 +4319,7 @@ function renderCh(){
   chBody.innerHTML=`<div class="dlg-h"><span class="chc-ic">${ic(CT[c.type].ic)}</span><div style="flex:1;min-width:0"><h2 id="chTitle">${esc(c.name)}</h2><div class="xs muted">${MODE_L[c.mode]} · ${CT[c.type].l}${fam?` · Started by ${esc(nameOf(c.creator))}`:''}</div><div class="xs muted">${dateRange(c)} · ${st.txt}</div></div><button type="button" class="icon-btn x" data-act="closeCh" aria-label="Close">${ic('x')}</button></div>
   ${c.desc?`<p class="small" style="margin:0 0 10px">${esc(c.desc)}</p>`:''}
   <div class="bar" style="height:10px"><span style="width:${pc}%"></span></div><div class="chc-row"><span class="small">${p.label}</span>${c.mode==='comp'?'':`<span class="small muted">${pc}%</span>`}</div>
-  <div class="stats ch-stats">${stats.map(([n,l])=>`<div class="stat"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('')}</div>
+  <div class="stats ch-stats">${stats.map(([n,l])=>`<div class="stat"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('')}</div>${(t=>t?`<p class="small ch-pace" style="margin:8px 0 0">${t}</p>`:'')(chPace(c,p))}
   ${sec?`<div style="margin-top:14px">${sec}</div>`:''}
   <div class="bd-acts" style="margin-top:16px">${acts}</div>${confirmBox}${cv.inv&&fam&&joined?invitePicker('ch',c.participants||[],c.invited||[],c.declined||[]):''}`;
 }
