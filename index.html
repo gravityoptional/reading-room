@@ -3581,9 +3581,16 @@ function removeReadings(ids,titleId){
   if(ids.includes(selBook))selBook=null;
   if(titleId){S.copies=S.copies.filter(c=>!cs.includes(c));delete S.notes[titleId]}
   save();
-  if(card){rmUndo=restoreTo(snap);requestAnimationFrame(()=>ghostCard(card,t.id,'',false,{label:'Removed',act:'rmUndo',done:()=>{rmUndo=null;render()}}))}
+  if(card){rmUndo=restoreTo(snap);
+    // remember the cards on either side, so the ghost can return to its spot if the Library redraws (closing Book
+    // Details and Edit Book does that a moment later)
+    const near=el=>el?.querySelector('.lc-open')?.dataset.id||null,ghost=card.cloneNode(true);
+    rmGhost={node:ghost,prev:near(card.previousElementSibling),next:near(card.nextElementSibling)};card.replaceWith(ghost);
+    ghostCard(ghost,t.id,'',false,{label:'Removed',act:'rmUndo',done:()=>{rmGhost=null;rmUndo=null;render()}})}
   else{render();toast(`Removed ${t?t.title:'the book'} from My Books.`,restoreTo(snap))}return ''}
-let rmUndo=null;
+let rmUndo=null,rmGhost=null;
+new MutationObserver(()=>{const g=rmGhost;if(!g||g.node.isConnected||view!=='library')return;const at=id=>id&&document.querySelector(`#libResults .lc-open[data-id="${CSS.escape(id)}"]`)?.closest('.lcard,.dc-card');
+  const p=at(g.prev),n=at(g.next);if(p)p.after(g.node);else if(n)n.before(g.node);else document.querySelector('#libResults .lib-grid')?.prepend(g.node)}).observe(document.body,{childList:true,subtree:true});
 /* Rating on a My Books card: the star bar opens over the card (pointing at the rating on a computer, tapping it on a
    phone), with the same half-star stars as Book Details. Tapping the current rating again clears it. */
 function crOpen(btn){const card=btn.closest('.lcard');if(!card||card.querySelector('.cr-bar'))return;crClose();const r=book(btn.dataset.id);if(!r)return;
@@ -5531,7 +5538,7 @@ document.addEventListener('click',e=>{
     case 'rwbPickOL':{const x=rwb.ol?.items[+a.dataset.i];if(!x)break;const ex=olExisting(x);rwb.pick=ex?{t:ex}:{x};if(ex&&ex.id===rwb.from){rwb.pick=null;toast('That’s the same book.');break}rwbRender();break}
     case 'rwbBack':rwb.pick=null;rwbRender();setTimeout(()=>document.getElementById('rwbQ')?.focus(),20);break;
     case 'rwbGo':rwbReplace();break;
-    case 'rmUndo':{clearTimeout(ghostT);const u=rmUndo;rmUndo=null;if(u)u();render();break}
+    case 'rmUndo':{clearTimeout(ghostT);const u=rmUndo;rmUndo=null;rmGhost=null;if(u)u();render();break}
     case 'favTog':{const id=a.dataset.id;S.favs=isFav(id)?S.favs.filter(x=>x!==id):[...(S.favs||[]),id];save();refreshLib();document.querySelector(`#libResults [data-act=favTog][data-id="${CSS.escape(id)}"]`)?.focus({preventScroll:true});break}
     case 'crOpen':crOpen(a);break;
     case 'crClose':crClose();break;
