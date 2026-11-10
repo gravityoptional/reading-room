@@ -1128,6 +1128,7 @@ body:has(.menu:not([hidden])) .tour-offer{display:none}
 .ns-i mark{background:color-mix(in srgb,var(--primary) 22%,transparent);color:inherit;border-radius:3px;padding:0 1px}
 .f[hidden],#startLenHint[hidden]{display:none}
 .ch-pace{color:var(--primary);font-weight:600;margin-top:2px}
+.rm-box{border-top:1px solid var(--border);padding-top:12px;margin-top:4px}.rm-box summary{cursor:pointer}.rm-go{color:var(--red,#B42318)}
 .lastnote{margin-top:12px}
 .lastnote summary{cursor:pointer;color:var(--primary);font-weight:600;font-size:14px;list-style:none;display:inline-flex;align-items:center;gap:6px}
 .lastnote summary::-webkit-details-marker{display:none}
@@ -3473,6 +3474,19 @@ let te={id:null,cover:'',src:'',tab:'url',url:'',q:'',ol:null,bad:false,touched:
 let teSearchSeq=0,teSearchCtl=null;
 function teInvalidateSearch(){teSearchSeq++;teSearchCtl?.abort();teSearchCtl=null}
 titleDlg.addEventListener('close',teInvalidateSearch);
+/* Remove from My Books (Nov 10): a closed section at the bottom of Edit Reading (one read-through) and Edit Book (the
+   whole book: every read-through, my copies, my book note). Undo is offered; the server also keeps an earlier copy
+   (Recover Earlier Reading). The shared catalog entry, other members' copies, and group activity stay. */
+const rmBox=(act,txt)=>`<details class="rm-box"><summary class="small muted">Remove from My Books</summary><p class="small muted" style="margin:6px 0 8px">${txt}</p><button type="button" class="btn btn-ghost sm rm-go" data-act="${act}">Remove from My Books</button></details>`;
+function removeReadings(ids,titleId){
+  if(S.timer&&ids.includes(S.timer.bookId))return 'Log or discard this book’s timer first.';
+  const cs=titleId?S.copies.filter(c=>c.titleId===titleId&&c.owner==='me'):[];
+  if(cs.some(copyHasCommitment))return 'Resolve this book’s loan, hold, or requests first.';
+  const snap=snapshot(),t=titleById(titleId||book(ids[0])?.titleId);
+  S.books=S.books.filter(b=>!ids.includes(b.id));S.sessions=S.sessions.filter(x=>!ids.includes(x.bookId));S.upNext=(S.upNext||[]).filter(id=>!ids.includes(id));
+  if(ids.includes(selBook))selBook=null;
+  if(titleId){S.copies=S.copies.filter(c=>!cs.includes(c));delete S.notes[titleId]}
+  save();render();toast(`Removed ${t?t.title:'the book'} from My Books.`,restoreTo(snap));return ''}
 function openTitleEdit(id){
   teInvalidateSearch();
   const t=titleById(id);if(!canEditTitle(t))return;
@@ -3498,6 +3512,8 @@ function openTitleEdit(id){
     <div class="te-cover"><div class="te-prev"><div id="tePrev"></div><span class="xs muted" id="teSrc" aria-live="polite"></span><button type="button" class="link-btn sm" data-act="teGen">Use Generated Cover</button></div>
       <div class="te-panel"><div id="tePanel"></div></div></div>
     <div class="err" id="teErr" role="alert"></div>
+    ${(()=>{const rs=S.books.filter(x=>x.titleId===id).length,cs=S.copies.filter(c=>c.titleId===id&&c.owner==='me').length;if(!rs&&!cs&&!S.notes[id])return '';
+      return rmBox('rmTitle',`Removes this book from My Books: ${[rs?(rs>1?`all ${rs} read-throughs with their sessions and ratings`:'your reading with its sessions and rating'):'',cs?(cs>1?`your ${cs} copies`:'your copy'):'',S.notes[id]?'your book note':''].filter(Boolean).join(', ').replace(/, ([^,]*)$/,' and $1')}. The book stays in the shared catalog for others.`)})()}
     <div class="dlg-f"><button type="button" class="btn btn-ghost" data-act="teClose">Cancel</button><button type="submit" class="btn btn-primary">Save Changes</button></div>
   </div>`;
   tePanel();tePreview();titleDlg.showModal();
@@ -4999,6 +5015,7 @@ function openEdit(id){
     ${seriesFields(b)}
     ${statusPicker(b)}
     <div class="err" id="editErr" role="alert"></div>
+    ${rmBox('rmReading',S.books.filter(x=>x.titleId===b.titleId).length>1?'Removes this read-through, its reading sessions, and its rating. Your other read-throughs of this book stay.':'Removes this book from My Books with its reading sessions and rating. Copies you own stay; remove them under Copies.')}
     <div class="dlg-f"><button type="button" class="btn btn-ghost" data-act="closeEdit">Cancel</button><button type="submit" class="btn btn-primary">Save Changes</button></div>
   </div>`;
   editDlg.showModal();
@@ -5328,6 +5345,8 @@ document.addEventListener('click',e=>{
     case 'histM':hist.m=monthAdd(hist.m,+a.dataset.v);if(hist.m>today().slice(0,7))hist.m=today().slice(0,7);hist.sel=null;render();break;
     case 'histMode':hist.mode=a.dataset.v;hist.sel=null;render();break;
     case 'histOpenM':hist.m=a.dataset.v;hist.mode='month';hist.sel=null;render();break;
+    case 'rmReading':{const b=book(editForm.dataset.id);if(!b)break;const m=removeReadings([b.id]);if(m){document.getElementById('editErr').textContent=m;break}editDlg.close();if(bookDlg?.open)bookDlg.close();break}
+    case 'rmTitle':{const tid=te?.id;if(!tid)break;const m=removeReadings(S.books.filter(b=>b.titleId===tid).map(b=>b.id),tid);if(m){document.getElementById('teErr').textContent=m;break}titleDlg.close();if(bookDlg?.open)bookDlg.close();break}
     case 'notesGo':{const d=a.dataset.v;hist.mode='month';hist.m=d.slice(0,7);hist.sel=d;render();setTimeout(()=>{const c=document.querySelector('.sess-day');(c||document.querySelector('.hgrid'))?.scrollIntoView({block:'start',behavior:'smooth'})},30);break}
     case 'histDay':{hist.sel=a.dataset.v&&hist.sel!==a.dataset.v?a.dataset.v:null;const y=window.scrollY;render();window.scrollTo(0,y);break}
     case 'histPanel':{hist.panel=hist.panel===a.dataset.v?null:a.dataset.v;const y=window.scrollY;render();window.scrollTo(0,y);break}
