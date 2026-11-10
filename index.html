@@ -1146,6 +1146,10 @@ body:has(.menu:not([hidden])) .tour-offer{display:none}
 .cr-bar{position:absolute;left:6px;right:6px;top:40%;transform:translateY(-50%);display:flex;align-items:center;justify-content:center;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:6px;box-shadow:0 6px 18px rgba(15,23,42,.14);z-index:2}
 .cr-bar .hstars{flex:none}.cr-bar.cr-wide .hstar{font-size:34px}.cr-bar .hstar{font-size:min(28px,calc((100cqw - 34px)/5.3))}
 @media (max-width:360px){.mbc-top{grid-template-columns:1fr;gap:6px}.mbc-side{flex-direction:row;flex-wrap:wrap;align-items:center;padding-top:0;position:static}.mbc-fav{top:6px;right:6px;font-size:22px}.mb-al{padding-left:0}}
+.te-ro{gap:2px}.te-ro .small{color:var(--text-2);overflow-wrap:anywhere}
+.rwb-swap{display:flex;align-items:center;gap:12px;justify-content:center;flex-wrap:wrap}
+.rwb-b{display:grid;justify-items:center;gap:4px;max-width:140px;text-align:center}.rwb-arrow{font-size:22px;color:var(--text-2)}
+.addb-more{border-top:1px solid var(--border);padding-top:10px}.addb-more summary{cursor:pointer}
 .rm-box{border-top:1px solid var(--border);padding-top:12px;margin-top:4px}.rm-box summary{cursor:pointer}.rm-go{color:var(--red,#B42318)}
 .lastnote{margin-top:12px}
 .lastnote summary{cursor:pointer;color:var(--primary);font-weight:600;font-size:14px;list-style:none;display:inline-flex;align-items:center;gap:6px}
@@ -1849,7 +1853,7 @@ const monthPages=()=>S.sessions.filter(s=>s.date.slice(0,7)===today().slice(0,7)
 
 /* ---------- rendering pieces ---------- */
 function cover(b,w){
-  const bg=COVERS[b.c%COVERS.length],src=b.cover||(b.titleId&&titleById(b.titleId)?.cover)||'';
+  const bg=COVERS[b.c%COVERS.length],src=b.cover||(b.titleId&&(myEd(b.titleId).cover||titleById(b.titleId)?.cover))||'';
   return `<div class="cover" style="background:linear-gradient(160deg,${bg},color-mix(in srgb,${bg} 70%,#000));${w?`width:${w}px`:''}" aria-hidden="true"><div class="ct">${esc(b.title)}</div><div class="ca">${esc(b.author)}</div>${src?`<img class="cimg" src="${esc(src)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`:''}${b.format==='audio'?`<span class="fmt">${ic('head')}</span>`:''}</div>`;
 }
 function ring(val,max,unit,size){
@@ -2521,7 +2525,7 @@ function avStack(tid,cs=copiesOf(tid)){const owners=[...new Set(cs.map(c=>c.owne
   return `<span class="av-stack" aria-hidden="true">${owners.slice(0,3).map(o=>`<span class="avatar" style="background:${avBg(o)}">${avInit(o)}</span>`).join('')}</span><span class="xs muted">${owners.length===1?`Owned by ${esc(nameOf(owners[0]))}`:`${owners.length} owners`}</span>`}
 const fmtChips=(tid,cs=copiesOf(tid))=>[...new Set(cs.map(c=>c.format))].map(f=>`<span class="fchip">${FMT[f]}</span>`).join('');
 const STATUS={reading:'Currently Reading',paused:'Paused',finished:'Finished',dnf:'Did Not Finish',want:'On To Read'};
-const libCover=(t,w)=>cover({title:t.title,author:t.author,c:t.c,cover:t.cover,titleId:t.titleId,format:'print'},w);
+const libCover=(t,w)=>cover({title:t.title,author:t.author,c:t.c,cover:(t.id&&myEd(t.id).cover)||t.cover,titleId:t.titleId,format:'print'},w);
 function cardAction(t){
   const r=myReading(t.id);
   if(r&&r.status==='want')return `<button class="btn btn-ghost sm on" data-act="toggleWant" data-id="${t.id}" aria-pressed="true">${ic('check')}On To Read</button>`;
@@ -3458,7 +3462,7 @@ function renderBD0(){
   else if(r&&r.status==='dnf')prim=`<button class="btn btn-primary" data-act="pickup" data-book="${r.id}">${ic('play')}Pick Up Again</button>`;
   else prim=`<button class="btn btn-primary" data-act="toggleWant" data-id="${t.id}">${ic('plus')}Add to To Read</button>`;
   if(!S.settings.solo)prim+=`<button class="btn btn-ghost" data-act="bdRec" aria-expanded="${bd.rec}">${ic('send')}Recommend</button>`;
-  if(canEditTitle(t))prim+=`<button class="btn btn-ghost" data-act="teOpen" data-id="${t.id}">${ic('pencil')}Edit Book</button>`;
+  if(canEditTitle(t)||inMyBooks(t.id))prim+=`<button class="btn btn-ghost" data-act="teOpen" data-id="${t.id}">${ic('pencil')}Edit Book</button>`;
   const tabs=[['about','About'],['copies',bd.tab==='copies'?`Copies (${cs.length})`:'Copies'],['mine','My Reading'],['activity','Activity'],['notes','Notes']].filter(x=>!(S.settings.solo&&x[0]==='activity'));
   let body='';
   const dsc=descOf(t);
@@ -3508,7 +3512,13 @@ function renderBD0(){
 /* ---------- edit a library entry ---------- */
 /* Edits the shared title record. Owners of a copy and group admins can edit; every reading of the title follows. */
 const titleDlg=document.getElementById('titleDlg'),titleForm=document.getElementById('titleForm');
-const canEditTitle=t=>!!t&&(S.me.admin||copiesOf(t.id).some(c=>c.owner==='me'));
+/* Who may change a book's shared details (Nov 10): the same rule as the live database: the person who added it, anyone
+   who owns a copy, or the site administrator. Everyone with the book in My Books still gets Edit Book, to fill in what's
+   missing, choose their own cover and ISBN, suggest a correction, replace it with the right book, or remove it. */
+const isSiteAdmin=()=>window.RR_GROUPS?!!RR_GROUPS.isSiteAdmin:!!S.me.admin;
+const canEditTitle=t=>!!t&&(isSiteAdmin()||t.by==='me'||copiesOf(t.id).some(c=>c.owner==='me'));
+const inMyBooks=id=>S.books.some(b=>b.titleId===id)||S.copies.some(c=>c.titleId===id&&c.owner==='me')||!!S.notes[id]||isFav(id);
+const myEd=id=>(S.myEd||{})[id]||{};   // my own edition of a book: {cover, isbn}; private, never shared
 let te={id:null,cover:'',src:'',tab:'url',url:'',q:'',ol:null,bad:false,touched:false};
 let teSearchSeq=0,teSearchCtl=null;
 function teInvalidateSearch(){teSearchSeq++;teSearchCtl?.abort();teSearchCtl=null}
@@ -3517,6 +3527,49 @@ titleDlg.addEventListener('close',teInvalidateSearch);
    whole book: every read-through, my copies, my book note). Undo is offered; the server also keeps an earlier copy
    (Recover Earlier Reading). The shared catalog entry, other members' copies, and group activity stay. */
 const rmBox=(act,txt)=>`<details class="rm-box"><summary class="small muted">Remove from My Books</summary><p class="small muted" style="margin:6px 0 8px">${txt}</p><button type="button" class="btn btn-ghost sm rm-go" data-act="${act}">Remove from My Books</button></details>`;
+/* Suggest a Correction (Nov 10): for a shared detail you can't change. The live site sends it to the site
+   administrator's feedback inbox (window.RR_SUGGEST); the test site only says thanks. */
+function sgOpen(tid){const t=titleById(tid);if(!t)return;let d=document.getElementById('sgDlg');if(!d){d=document.createElement('dialog');d.id='sgDlg';d.setAttribute('aria-labelledby','sgTitle');document.body.appendChild(d)}
+  d.innerHTML=`<form class="dlg" id="sgForm" novalidate><div class="dlg-h"><div style="flex:1;min-width:0"><h2 id="sgTitle">Suggest a Correction</h2><div class="small muted">${esc(t.title)} · ${esc(t.author)}</div></div><button type="button" class="icon-btn x" data-act="sgClose" aria-label="Close">${ic('x')}</button></div>
+  <div class="form"><label class="f"><span>What should change?</span><textarea class="inp" id="sgText" rows="3" maxlength="1000" placeholder="For example: the title should be Watchmen, not Watchmen #1"></textarea></label>
+  <p class="xs muted" style="margin:0">Your suggestion goes to the site administrator, who can fix the book for everyone.</p><div class="err" id="sgErr" role="alert"></div></div>
+  <div class="dlg-f"><button type="button" class="btn btn-ghost" data-act="sgClose">Cancel</button><button type="submit" class="btn btn-primary">Send Suggestion</button></div></form>`;
+  d.showModal();setTimeout(()=>document.getElementById('sgText').focus(),40);
+  document.getElementById('sgForm').onsubmit=async e=>{e.preventDefault();const text=document.getElementById('sgText').value.trim();if(!text){document.getElementById('sgErr').textContent='Describe what should change.';return}
+    const btn=d.querySelector('[type=submit]');btn.disabled=true;let m='';try{if(window.RR_SUGGEST)m=await RR_SUGGEST(t,text)||''}catch(x){m='Your suggestion couldn’t be sent just now. Try again in a moment.'}btn.disabled=false;
+    if(m){document.getElementById('sgErr').textContent=m;return}d.close();toast('Thanks. Your suggestion went to the site administrator.')}}
+/* Replace with the Right Book (Nov 10): search for the correct book and move my reading (every read-through and its
+   sessions, ratings, and dates), my copies, my book note, my favorite, my own cover and ISBN, and my personal Book List
+   challenges onto it. The old book stays in the shared catalog for anyone else; nobody else's book changes. */
+let rwb=null,rwbCtl=null,rwbTimer=null;
+function rwbOpen(fromId){const t=titleById(fromId);if(!t)return;rwb={from:fromId,q:'',ol:null,pick:null};let d=document.getElementById('rwbDlg');if(!d){d=document.createElement('dialog');d.id='rwbDlg';d.setAttribute('aria-labelledby','rwbTitle');document.body.appendChild(d)}
+  d.innerHTML=`<div class="dlg"><div class="dlg-h"><div style="flex:1;min-width:0"><h2 id="rwbTitle">Replace with the Right Book</h2><div class="small muted">Replacing ${ti(t.title)} · ${esc(t.author)}</div></div><button type="button" class="icon-btn x" data-act="rwbClose" aria-label="Close">${ic('x')}</button></div>
+  <div class="form"><label class="search">${ic('search')}<input id="rwbQ" type="search" placeholder="Search by title, author, or ISBN" autocomplete="off" aria-label="Search for the right book"></label><div id="rwbRes"></div></div></div>`;
+  d.showModal();rwbRender();setTimeout(()=>document.getElementById('rwbQ').focus(),40)}
+function rwbRender(){const el=document.getElementById('rwbRes');if(!el||!rwb)return;const from=titleById(rwb.from);
+  if(rwb.pick){const to=rwb.pick.t||{title:rwb.pick.x.title,author:rwb.pick.x.author,c:hashStr(rwb.pick.x.title)%COVERS.length,cover:rwb.pick.x.coverId?`https://covers.openlibrary.org/b/id/${rwb.pick.x.coverId}-M.jpg`:''};
+    const rs=S.books.filter(b=>b.titleId===rwb.from).length,cs=S.copies.filter(c=>c.titleId===rwb.from&&c.owner==='me').length;
+    el.innerHTML=`<div class="rwb-swap"><div class="rwb-b">${libCover(from,56)}<span class="xs"><b>${esc(from.title)}</b></span></div><span aria-hidden="true" class="rwb-arrow">→</span><div class="rwb-b">${libCover(to,56)}<span class="xs"><b>${esc(to.title)}</b><br>${esc(to.author)}</span></div></div>
+    <p class="small" style="margin:10px 0 0">Moves ${[rs?(rs>1?`your ${rs} read-throughs with their sessions and ratings`:'your reading with its sessions and rating'):'',cs?(cs>1?`your ${cs} copies`:'your copy'):'',S.notes[rwb.from]?'your book note':'',isFav(rwb.from)?'your favorite':''].filter(Boolean).join(', ').replace(/, ([^,]*)$/,' and $1')||'this book'} to ${ti(to.title)}. ${esc(from.title)} stays in the shared catalog for anyone else.</p>
+    <div class="err" id="rwbErr" role="alert"></div><div class="dlg-f"><button type="button" class="btn btn-ghost" data-act="rwbBack">Back</button><button type="button" class="btn btn-primary" data-act="rwbGo">Replace</button></div>`;return}
+  const q=rwb.q.trim().toLowerCase();if(!q){el.innerHTML='<p class="xs muted" style="margin:0">Type the title of the book you actually read.</p>';return}
+  const local=S.titles.filter(t=>t.id!==rwb.from&&(t.title+' '+t.author).toLowerCase().includes(q)).slice(0,8);
+  const o=rwb.ol,ols=o&&o.state==='done'?o.items.map((x,i)=>({x,i})).filter(({x})=>{const e=olExisting(x);return !(e&&(e.id===rwb.from||local.includes(e)))}):[];
+  el.innerHTML=(local.length?`<div class="pick-h">In Reading Ember</div><div class="pick-list">${local.map(t=>`<button type="button" class="pick addb-choice" data-act="rwbPick" data-id="${esc(t.id)}">${libCover(t)}<span class="addb-choice-info"><span class="pick-t">${esc(t.title)}</span><span class="xs muted">${esc(t.author)}${t.pages?` · ${t.pages} pages`:''}</span></span></button>`).join('')}</div>`:'')
+   +(q.length<3?'':!o||o.state==='loading'?'<div class="pick-h">From Open Library</div><p class="xs muted" role="status">Searching Open Library…</p>':o.state==='error'?'<p class="xs muted">Open Library didn’t answer. Check your connection and try again.</p>':ols.length?`<div class="pick-h">From Open Library</div><div class="pick-list">${ols.map(({x,i})=>`<button type="button" class="pick addb-choice" data-act="rwbPickOL" data-i="${i}">${libCover({title:x.title,author:x.author,c:hashStr(x.title)%COVERS.length,cover:x.coverId?`https://covers.openlibrary.org/b/id/${x.coverId}-S.jpg`:''})}<span class="addb-choice-info"><span class="pick-t">${esc(x.title)}</span><span class="xs muted">${[esc(x.author),x.year,x.pages?`${x.pages} pages`:''].filter(Boolean).join(' · ')}</span></span></button>`).join('')}</div>`:local.length?'':'<p class="xs muted">No matches. Check the spelling, or try the author or ISBN.</p>')}
+function rwbSearch(){clearTimeout(rwbTimer);const raw=rwb.q.trim();if(raw.length<3){rwbCtl?.abort();rwb.ol=null;rwbRender();return}rwb.ol={state:'loading',items:[]};rwbRender();
+  rwbTimer=setTimeout(async()=>{rwbCtl?.abort();rwbCtl=new AbortController();const mine=rwb;try{const items=await olSearch(raw,rwbCtl.signal);if(rwb===mine&&rwb.q.trim()===raw){rwb.ol={state:'done',items};rwbRender()}}catch(e){if(e.name!=='AbortError'&&rwb===mine){rwb.ol={state:'error',items:[]};rwbRender()}}},350)}
+function rwbReplace(){const from=titleById(rwb.from),er=m=>{document.getElementById('rwbErr').textContent=m};
+  const cs=S.copies.filter(c=>c.titleId===rwb.from&&c.owner==='me');if(cs.some(copyHasCommitment))return er('Resolve this book’s loan, hold, or requests first.');
+  const snap=snapshot(),to=rwb.pick.t||olTitleFrom(rwb.pick.x);if(!rwb.pick.t&&!S.titles.includes(to))S.titles.push(to);if(to.id===rwb.from)return er('That’s the same book.');
+  S.books.filter(b=>b.titleId===rwb.from).forEach(b=>Object.assign(b,{titleId:to.id,title:to.title,author:to.author,c:to.c}));
+  cs.forEach(c=>c.titleId=to.id);
+  if(S.notes[rwb.from]){S.notes[to.id]=S.notes[to.id]?S.notes[to.id]+'\n\n'+S.notes[rwb.from]:S.notes[rwb.from];delete S.notes[rwb.from]}
+  if(isFav(rwb.from)){S.favs=S.favs.filter(x=>x!==rwb.from);if(!isFav(to.id))S.favs.push(to.id)}
+  if(S.myEd?.[rwb.from]){if(!S.myEd[to.id])S.myEd[to.id]=S.myEd[rwb.from];delete S.myEd[rwb.from]}
+  S.challenges.filter(c=>c.mode==='personal'&&(c.titleIds||[]).includes(rwb.from)).forEach(c=>c.titleIds=[...new Set(c.titleIds.map(x=>x===rwb.from?to.id:x))]);
+  save();document.getElementById('rwbDlg').close();if(titleDlg.open)titleDlg.close();if(bookDlg.open)bookDlg.close();render();
+  toast(`Moved your reading to ${to.title}.`,restoreTo(snap));rwb=null}
 function removeReadings(ids,titleId){
   if(S.timer&&ids.includes(S.timer.bookId))return 'Log or discard this book’s timer first.';
   const cs=titleId?S.copies.filter(c=>c.titleId===titleId&&c.owner==='me'):[];
@@ -3546,10 +3599,12 @@ document.addEventListener('mouseover',e=>{const b=e.target.closest?.('.mb-rate')
 document.addEventListener('mouseout',e=>{if(!matchMedia('(hover: hover)').matches)return;const c=e.target.closest?.('.lcard.cr-on');if(c&&!c.contains(e.relatedTarget))crClose()});   // computers only: a phone tap also sends mouseout
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.querySelector('.cr-bar'))crClose()});
 document.addEventListener('pointerdown',e=>{const open=document.querySelector('.cr-bar');if(open&&!e.target.closest?.('.cr-bar,.mb-rate'))crClose()},true);   // a tap outside closes it
+const teField=(edit,label,name,val,attrs='')=>edit?`<label class="f"><span>${label}</span><input class="inp" name="${name}" value="${esc(String(val??''))}" ${attrs} autocomplete="off"></label>`:teRO(label.replace(/ <span.*$/,''),val);
+const teRO=(label,val)=>`<div class="f te-ro"><span class="fl">${label}</span><span class="small">${esc(String(val||'—'))}</span></div>`;
 function openTitleEdit(id){
   teInvalidateSearch();
-  const t=titleById(id);if(!canEditTitle(t))return;
-  te={id,cover:t.cover||'',src:t.cover?(t.cover.startsWith('data:')?'upload':/openlibrary\.org/.test(t.cover)?'ol':/books\.google(usercontent)?\.com/.test(t.cover)?'gb':'url'):'gen',gb:null,tab:'ol',url:'',q:t.isbn||`${t.title} ${t.author!=='Unknown author'?t.author:''}`.trim(),ol:null,bad:false,touched:false};
+  const t=titleById(id);if(!t||!canEditTitle(t)&&!inMyBooks(id))return;const full=canEditTitle(t),me=myEd(id);
+  te={id,full,cover:full?(t.cover||''):(me.cover||t.cover||''),src:t.cover?(t.cover.startsWith('data:')?'upload':/openlibrary\.org/.test(t.cover)?'ol':/books\.google(usercontent)?\.com/.test(t.cover)?'gb':'url'):'gen',gb:null,tab:'ol',url:'',q:t.isbn||`${t.title} ${t.author!=='Unknown author'?t.author:''}`.trim(),ol:null,bad:false,touched:false};
   if(te.src==='url'){te.tab='url';te.url=t.cover}
   if(te.src==='gb')te.tab='gb';
   const genres=[...new Set(S.titles.map(x=>x.genre).filter(Boolean))].sort(),series=[...new Set(S.titles.map(x=>x.series).filter(Boolean))].sort();
@@ -3557,18 +3612,24 @@ function openTitleEdit(id){
   <div class="form">
     <section id="teCopies">${copyAccess(t.id)}</section>
     <div class="section-t">Book Details</div>
-    <label class="f">Title<input class="inp" name="tTitle" value="${esc(t.title)}" autocomplete="off"></label>
-    <label class="f">Author<input class="inp" name="tAuthor" value="${esc(t.author==='Unknown author'?'':t.author)}" placeholder="Unknown author" autocomplete="off"></label>
-    <div class="f2"><label class="f"><span>Number of Pages <span class="sub">(if known)</span></span><input class="inp" name="tPages" inputmode="numeric" value="${t.pages||''}"></label>
-    <label class="f"><span>ISBN <span class="sub">(optional)</span></span><input class="inp" name="tIsbn" inputmode="numeric" value="${esc(t.isbn||'')}" autocomplete="off"></label></div>
-    ${genreField('t',t.genre,t.type)}
-    <div class="f2"><label class="f"><span>Series Name <span class="sub">(optional)</span></span><input class="inp" name="tSeries" list="teSeries" value="${esc(t.series||'')}" autocomplete="off"><datalist id="teSeries">${series.map(n=>`<option value="${esc(n)}">`).join('')}</datalist></label>
+    ${inMyBooks(id)?`<p class="small" style="margin:-4px 0 0">Wrong book? <button type="button" class="link-btn sm" data-act="rwbOpen" data-id="${id}" style="padding:0 2px">Replace It with the Right Book</button></p>`:''}
+    ${full?'':`<p class="xs muted" style="margin:0">These details are shared with everyone who has this book. Fill in anything that’s missing; to change something already filled in, suggest a correction.</p>`}
+    ${teField(full,'Title','tTitle',t.title)}
+    ${teField(full,'Author','tAuthor',t.author==='Unknown author'?'':t.author,'placeholder="Unknown author"')}
+    <div class="f2">${teField(full||!t.pages,'Number of Pages <span class="sub">(if known)</span>','tPages',t.pages||'','inputmode="numeric"')}
+    ${teField(full||!t.year,'Year Published <span class="sub">(first published)</span>','tYear',t.year||'','inputmode="numeric" maxlength="4"')}</div>
+    ${full?`<label class="f"><span>ISBN <span class="sub">(optional)</span></span><input class="inp" name="tIsbn" inputmode="numeric" value="${esc(t.isbn||'')}" autocomplete="off"></label>`:''}
+    <label class="f"><span>${full?'My Edition’s ISBN':'ISBN of My Edition'} <span class="sub">(optional, only you see it)</span></span><input class="inp" name="myIsbn" inputmode="numeric" value="${esc(me.isbn||'')}" autocomplete="off"></label>
+    ${full||!t.genre?genreField('t',t.genre,t.type):teRO('Genre',[t.genre,TYPE_L[t.type]].filter(Boolean).join(' · '))}
+    ${full||!t.series?`<div class="f2"><label class="f"><span>Series Name <span class="sub">(optional)</span></span><input class="inp" name="tSeries" list="teSeries" value="${esc(t.series||'')}" autocomplete="off"><datalist id="teSeries">${series.map(n=>`<option value="${esc(n)}">`).join('')}</datalist></label>
     <label class="f">Book Number<input class="inp" name="tSeriesNo" inputmode="decimal" value="${t.seriesNo??''}"></label></div>
-    <label class="f"><span>Books in the Series <span class="sub">(if known)</span></span><input class="inp" name="tSeriesLen" inputmode="numeric" value="${t.series?(S.seriesLen?.[t.series]??''):''}"></label>
-    <label class="f"><span>Description <span class="sub">(optional, shown in About)</span></span><textarea class="inp" name="tDesc" rows="2" maxlength="3000" placeholder="What the book is about, without spoilers">${esc(t.descText||'')}</textarea></label>
-    <div class="section-t">Cover</div>
+    <label class="f"><span>Books in the Series <span class="sub">(if known)</span></span><input class="inp" name="tSeriesLen" inputmode="numeric" value="${t.series?(S.seriesLen?.[t.series]??''):''}"></label>`:teRO('Series',`${t.series}${t.seriesNo!=null?` · Book ${t.seriesNo}`:''}${S.seriesLen?.[t.series]?` of ${S.seriesLen[t.series]}`:''}`)}
+    ${full||!t.descText?`<label class="f"><span>Description <span class="sub">(optional, shown in About)</span></span><textarea class="inp" name="tDesc" rows="2" maxlength="3000" placeholder="What the book is about, without spoilers">${esc(t.descText||'')}</textarea></label>`:teRO('Description',t.descText.length>160?t.descText.slice(0,160)+'…':t.descText)}
+    ${full?'':`<p class="small" style="margin:0">Something wrong? <button type="button" class="link-btn sm" data-act="teSuggest" style="padding:0 2px">Suggest a Correction</button></p>`}
+    <div class="section-t">${full?'Cover':'My Cover'}</div>
+    ${full?`<label class="chk small" style="margin-top:-4px"><input type="checkbox" id="teMine"> Use this cover only for me</label>`:`<p class="xs muted" style="margin:-4px 0 0">Choose a cover that matches your copy. Only you see it.</p>`}
     <div class="vseg addb-tabs te-tabs" role="group" aria-label="Cover source">${[['url','Web Address'],['upload','Upload'],['ol','Open Library'],['gb','Google Books']].map(([k,l])=>`<button type="button" aria-pressed="${te.tab===k}" data-act="teTab" data-v="${k}">${l}</button>`).join('')}</div>
-    <div class="te-cover"><div class="te-prev"><div id="tePrev"></div><span class="xs muted" id="teSrc" aria-live="polite"></span><button type="button" class="link-btn sm" data-act="teGen">Use Generated Cover</button></div>
+    <div class="te-cover"><div class="te-prev"><div id="tePrev"></div><span class="xs muted" id="teSrc" aria-live="polite"></span><button type="button" class="link-btn sm" data-act="teGen">${full?'Use Generated Cover':'Use the Book’s Cover'}</button></div>
       <div class="te-panel"><div id="tePanel"></div></div></div>
     <div class="err" id="teErr" role="alert"></div>
     ${(()=>{const rs=S.books.filter(x=>x.titleId===id).length,cs=S.copies.filter(c=>c.titleId===id&&c.owner==='me').length;if(!rs&&!cs&&!S.notes[id])return '';
@@ -3657,8 +3718,30 @@ titleForm.addEventListener('change',e=>{if(e.target.id==='teFile'){const f=e.tar
 titleForm.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='teQ'){e.preventDefault();teSearch()}});
 titleForm.addEventListener('submit',e=>{
   e.preventDefault();
-  const t=titleById(te.id);if(!canEditTitle(t))return titleDlg.close();
+  const t=titleById(te.id);if(!t)return titleDlg.close();
   const v=n=>(titleForm.querySelector(`[name=${n}]`)?.value||'').trim(),er=m=>{document.getElementById('teErr').textContent=m};
+  const myIsbn=v('myIsbn').replace(/[-\s]/g,'').toUpperCase(),year=v('tYear');
+  if(myIsbn&&!/^(\d{9}[\dX]|\d{13})$/.test(myIsbn))return er('An ISBN has 10 or 13 digits. Check it, or leave it blank.');
+  if(year&&!(/^\d{3,4}$/.test(year)&&+year<=+today().slice(0,4)))return er('Enter the year as four digits, for example 1986, or leave it blank.');
+  const setMine=(k,val)=>{const m=(S.myEd=S.myEd||{})[t.id]={...myEd(t.id)};if(val)m[k]=val;else delete m[k];if(!Object.keys(m).length)delete S.myEd[t.id];else S.myEd[t.id]=m};
+  if(!canEditTitle(t)){   // fill in only what's missing; my cover and ISBN are mine
+    const has=n=>!!titleForm.querySelector(`[name=${n}]`),pages=v('tPages'),sn=v('tSeries'),no=v('tSeriesNo'),len=v('tSeriesLen');
+    if(has('tPages')&&pages&&!(/^\d+$/.test(pages)&&+pages>0))return er('Enter the number of pages as a whole number, or leave it blank.');
+    if(has('tSeries')&&no&&(!sn||isNaN(+no)||+no<=0))return er(sn?'Enter the book number as a number, for example 2.':'Add a series name to go with the book number.');
+    if(has('tSeries')&&len&&(!sn||!/^\d+$/.test(len)||+len<=0))return er(sn?'Enter how many books are in the series as a whole number.':'Add a series name to go with the series length.');
+    if(te.bad&&te.touched)return er('The cover image didn’t load. Choose a different one, or use the book’s cover.');
+    if(has('tGenre')){const gc=genreConflict(v('tType'),v('tGenre'));if(gc)return er(gc)}
+    const fill={};
+    if(has('tPages')&&pages&&!t.pages)fill.pages=+pages;
+    if(has('tYear')&&year&&!t.year)fill.year=+year;
+    if(has('tGenre')&&v('tGenre')&&!t.genre){fill.genre=genreValue(v('tGenre'));if(v('tType'))fill.type=v('tType')}
+    if(has('tSeries')&&sn&&!t.series){fill.series=sn;if(no)fill.seriesNo=+no}
+    if(has('tDesc')&&v('tDesc')&&!t.descText){fill.descText=v('tDesc');fill.descBy='me'}
+    Object.assign(t,fill);if(fill.series&&len)(S.seriesLen=S.seriesLen||{})[sn]=+len;
+    if(fill.pages)S.books.filter(b=>b.titleId===t.id&&['print','ebook'].includes(b.format)&&!b.total&&b.unit!=='pct').forEach(b=>{b.total=fill.pages;if(b.status==='finished')b.pos=b.total});
+    setMine('isbn',myIsbn);if(te.touched)setMine('cover',te.cover&&te.cover!==t.cover?te.cover:'');
+    if(Object.keys(fill).length&&window.RR_FILL_TITLE)RR_FILL_TITLE(t,fill);
+    if(!save())return;titleDlg.close();render();if(bookDlg.open)renderBD(true);toast(Object.keys(fill).length?`Thanks for filling in ${t.title}.`:`Saved your changes to ${t.title}.`);return}
   const title=v('tTitle'),author=v('tAuthor')||'Unknown author',pages=v('tPages'),isbn=v('tIsbn').replace(/[-\s]/g,'').toUpperCase(),sn=v('tSeries'),no=v('tSeriesNo'),len=v('tSeriesLen');
   if(!title)return er('Enter a title.');
   if(bookIdentityTaken(t.id,title,author))return er('Another book in Reading Room already has this title and author.');
@@ -3677,7 +3760,9 @@ titleForm.addEventListener('submit',e=>{
   Object.assign(t,{title,author,pages:pages?+pages:undefined,isbn:isbn||undefined,genre:genreValue(v('tGenre')),type:v('tType')||undefined,series:sn||undefined,seriesNo:sn&&no?+no:undefined});
   if(sn&&len)(S.seriesLen=S.seriesLen||{})[sn]=+len;
   {const d=v('tDesc');if(d!==(t.descText||'')){if(d){t.descText=d;t.descBy='me'}else{delete t.descText;delete t.descBy}}}
-  if(te.touched){if(te.cover){t.cover=te.cover;t.coverPicked=true;delete t.noAutoCover}else{delete t.cover;t.noAutoCover=true}}
+  setMine('isbn',myIsbn);if(year)t.year=+year;else delete t.year;
+  if(te.touched&&document.getElementById('teMine')?.checked)setMine('cover',te.cover||'');   // just for me
+  else if(te.touched){if(te.cover){t.cover=te.cover;t.coverPicked=true;delete t.noAutoCover}else{delete t.cover;t.noAutoCover=true}}
   else if(!t.cover&&!t.noAutoCover&&old!==title){delete t.coverTried;setTimeout(coverFill,500)}
   updateBookIdentity(t,title,author,old);
   mine.forEach(b=>{if(['print','ebook'].includes(b.format)&&pages){b.total=+pages;if(b.status==='finished')b.pos=b.total}});
@@ -3702,12 +3787,38 @@ function adResults(){
 function adLocalRow(t){const r=myReading(t.id),own=copiesOf(t.id).some(c=>c.owner==='me'),added=ad.added?.has(t.id);
   return `<button type="button" class="pick addb-choice" data-act="adPick" data-id="${esc(t.id)}">${libCover(t)}<span class="addb-choice-info"><span class="pick-t">${esc(t.title)}</span><span class="xs muted">${esc(t.author)}${t.pages?` · ${t.pages} pages`:''}</span>${added||r||own?`<span class="xs addb-existing">${added?'Added':r?STATUS[r.status]:'You own a copy'}</span>`:''}</span>${ic('chevR')}</button>`}
 function adCaptureManual(){const v=id=>document.getElementById(id)?.value||'';ad.manual={title:v('amTitle'),author:v('amAuthor'),pages:v('amPages'),genre:v('amGenre'),type:v('amType')}}
-function adCaptureDetail(){const d=ad.detail;if(!d)return;const v=id=>document.getElementById(id);for(const[k,id]of Object.entries({status:'adStatus',format:'adReadFormat',total:'adTotal',pos:'adPosition',started:'adStarted',finished:'adFinished',stopped:'adStopped',rating:'adRating',copyFormat:'adCopyFormat',edition:'adCopyEdition'}))if(v(id))d[k]=v(id).value;for(const[k,id]of Object.entries({own:'adOwnCopy',share:'adShare',queue:'adQueue'}))if(v(id))d[k]=v(id).checked;if(v('adReasons'))d.reasons=[...v('adReasons').querySelectorAll('input:checked')].map(e=>e.value);if(addBody.querySelector('[data-edition-prefix=adReading]')){const e=readEdition(addBody,'adReading');d.readingEdition=e.edition;d.readingCopyId=e.editionCopyId}}
+function adCaptureDetail(){const d=ad.detail;if(!d)return;adMoreCapture(d);const v=id=>document.getElementById(id);for(const[k,id]of Object.entries({status:'adStatus',format:'adReadFormat',total:'adTotal',pos:'adPosition',started:'adStarted',finished:'adFinished',stopped:'adStopped',rating:'adRating',copyFormat:'adCopyFormat',edition:'adCopyEdition'}))if(v(id))d[k]=v(id).value;for(const[k,id]of Object.entries({own:'adOwnCopy',share:'adShare',queue:'adQueue'}))if(v(id))d[k]=v(id).checked;if(v('adReasons'))d.reasons=[...v('adReasons').querySelectorAll('input:checked')].map(e=>e.value);if(addBody.querySelector('[data-edition-prefix=adReading]')){const e=readEdition(addBody,'adReading');d.readingEdition=e.edition;d.readingCopyId=e.editionCopyId}}
 function adChoose(t,x,manual=false){
   ad.scroll=addDlg.scrollTop;const resumed=manual&&ad.manualDetail&&(ad.manualDetail.t?.id||null)===(t?.id||null)?ad.manualDetail:null;ad.manualDetail=null;const r=t&&myReading(t.id),look=t||{title:x.title,author:x.author,pages:x.pages,genre:x.genre||'',type:x.type||'',c:hashStr(x.title)%COVERS.length,cover:x.coverId?`https://covers.openlibrary.org/b/id/${x.coverId}-M.jpg`:''};
   ad.detail={t:t||null,x:x||null,manual,look,existing:r||null,reread:false,status:r?.status||ad.lastStatus||'want',format:r?.format||(['reading','paused'].includes(ad.lastStatus)?'print':'unknown'),total:r?.total||look.pages||'',pos:'',started:'',finished:'',stopped:'',rating:'',own:false,share:shareDefault(),copyFormat:'physical',queue:false,reasons:[],edition:'',readingEdition:'',readingCopyId:'',extraCopy:false};if(resumed)ad.detail={...resumed,t:t||null,x:x||null,look,existing:r||null};renderAdd();addDlg.scrollTop=0;setTimeout(()=>document.getElementById('adDetailHeading')?.focus(),0);
 }
 function adBack(){adCaptureDetail();if(ad.detail?.manual)ad.manualDetail=ad.detail;ad.detail=null;renderAdd();requestAnimationFrame(()=>{addDlg.scrollTop=ad.scroll||0;const el=document.getElementById(ad.tab==='manual'?'amTitle':'adQ');el?.focus({preventScroll:true})})}
+/* Add Book (Nov 10): an optional, closed Book Details section with the same rules as Edit Book. A new book is yours, so
+   everything is editable; a book already in the catalog lets you fill in what's missing and set your edition's ISBN. */
+function adMoreTarget(d){return d.t||(d.x&&olExisting(d.x))||null}
+function adMore(d){const ex=adMoreTarget(d),full=!ex||canEditTitle(ex),m=d.more||{},b=ex||{},look=d.look||{};
+  const val=(k,dflt)=>m[k]!==undefined?m[k]:(b[k]??dflt??'');
+  const inp=(edit,label,id,v,attrs='')=>edit?`<label class="f"><span>${label}</span><input class="inp" id="${id}" value="${esc(String(v??''))}" ${attrs} autocomplete="off"></label>`:teRO(label.replace(/ <span.*$/,''),v);
+  return `<details class="addb-more" ${d.moreOpen?'open':''}><summary class="small"><b>Book Details</b> <span class="muted">(optional)</span></summary>
+  <div class="form" style="margin-top:8px">${full?'':`<p class="xs muted" style="margin:0">This book is already in the shared catalog. Fill in anything that’s missing.</p>`}
+  ${full||!b.genre?genreField('ax',val('genre',look.genre),val('type',look.type)):teRO('Genre',[b.genre,TYPE_L[b.type]].filter(Boolean).join(' · '))}
+  ${full||!b.series?`<div class="f2">${inp(true,'Series Name <span class="sub">(optional)</span>','axSeries',val('series'))}${inp(true,'Book Number','axSeriesNo',val('seriesNo'),'inputmode="decimal"')}</div>`:teRO('Series',`${b.series}${b.seriesNo!=null?` · Book ${b.seriesNo}`:''}`)}
+  ${inp(full||!b.year,'Year Published <span class="sub">(first published)</span>','axYear',val('year',d.x?.year),'inputmode="numeric" maxlength="4"')}
+  ${full||!b.descText?`<label class="f"><span>Description <span class="sub">(optional, shown in About)</span></span><textarea class="inp" id="axDesc" rows="2" maxlength="3000" placeholder="What the book is about, without spoilers">${esc(m.descText??b.descText??'')}</textarea></label>`:teRO('Description',b.descText.length>120?b.descText.slice(0,120)+'…':b.descText)}
+  ${inp(true,'ISBN of My Edition <span class="sub">(optional, only you see it)</span>','axIsbn',m.isbn??(ex?myEd(ex.id).isbn:'')??'','inputmode="numeric"')}</div></details>`}
+function adMoreCapture(d){const g=id=>document.getElementById(id);if(!g('axIsbn'))return;const box=document.querySelector('.addb-more');d.moreOpen=!!box?.open;const m=d.more=d.more||{};
+  if(g('axGenre'))m.genre=g('axGenre').value.trim();if(g('axType'))m.type=g('axType').value;if(g('axSeries')){m.series=g('axSeries').value.trim();m.seriesNo=g('axSeriesNo').value.trim()}
+  if(g('axYear'))m.year=g('axYear').value.trim();if(g('axDesc'))m.descText=g('axDesc').value.trim();m.isbn=g('axIsbn').value.replace(/[-\s]/g,'').toUpperCase()}
+function adMoreCheck(d){const m=d.more||{};if(m.isbn&&!/^(\d{9}[\dX]|\d{13})$/.test(m.isbn))return 'An ISBN has 10 or 13 digits. Check it, or leave it blank.';
+  if(m.year&&!(/^\d{3,4}$/.test(m.year)&&+m.year<=+today().slice(0,4)))return 'Enter the year as four digits, for example 1986, or leave it blank.';
+  if(m.seriesNo&&(!m.series||isNaN(+m.seriesNo)||+m.seriesNo<=0))return m.series?'Enter the book number as a number, for example 2.':'Add a series name to go with the book number.';
+  if(m.genre){const gc=genreConflict(m.type,m.genre);if(gc)return gc}return ''}
+function adMoreApply(t,d,wasFull){const m=d.more||{},fill={},put=(k,v)=>{if(v!==''&&v!=null&&(wasFull||!t[k]))fill[k]=v};
+  if(m.genre){put('genre',genreValue(m.genre));if(m.type&&(wasFull||!t.genre))fill.type=m.type}
+  if(m.series){put('series',m.series);if(m.seriesNo&&(wasFull||!t.series))fill.seriesNo=+m.seriesNo}
+  if(m.year)put('year',+m.year);if(m.descText&&(wasFull||!t.descText)){fill.descText=m.descText;fill.descBy='me'}
+  Object.assign(t,fill);if(m.isbn){(S.myEd=S.myEd||{})[t.id]={...myEd(t.id),isbn:m.isbn}}
+  if(!wasFull&&Object.keys(fill).length&&window.RR_FILL_TITLE)RR_FILL_TITLE(t,fill)}
 function adDetails(){const d=ad.detail,t=d.look,locked=d.existing&&!d.reread,audio=d.format==='audio',active=['reading','paused'].includes(d.status),progress=active||d.status==='dnf';
   const input=(id,label,value='',attrs='')=>`<label class="f"><span>${label}</span><input class="inp" id="${id}" value="${esc(String(value))}" ${attrs}></label>`,opt='<span class="sub">(optional)</span>';
   const formats=[...(!active?[['unknown','Not Specified']]:[]),['print','Book or Ebook'],['audio','Audiobook']];const owned=d.t?copiesOf(d.t.id).filter(c=>c.owner==='me'):[];
@@ -3726,6 +3837,7 @@ function adDetails(){const d=ad.detail,t=d.look,locked=d.existing&&!d.reread,aud
       <p class="xs muted addb-help">This adds your reading status, not a reading session.</p></div>`:''}
     <section class="addb-ownership"><label class="chk"><input id="adOwnCopy" type="checkbox" ${d.own?'checked':''}> <b>I Own a Copy</b></label>${owned.length?`<p class="xs muted addb-help">You already own: ${[...new Set(owned.map(c=>FMT[c.format]))].map(esc).join(', ')}. You can record another copy, including the same format.</p>`:''}
       ${d.own?`<div class="addb-copy-options"><label class="f">Copy Format<select class="inp" id="adCopyFormat">${Object.entries(FMT).map(([k,l])=>`<option value="${k}" ${d.copyFormat===k?'selected':''}>${l}</option>`).join('')}</select></label>${input('adCopyEdition',`Edition ${opt}`,d.edition,'placeholder="e.g. Anniversary edition"')}${S.settings.solo?'':`<label class="chk small"><input id="adShare" type="checkbox" ${d.share?'checked':''}> Show this copy in the ${esc(GN())} Library</label>`}</div>`:'<p class="xs muted addb-help">You can track your reading without owning the book.</p>'}</section>
+    ${adMore(d)}
     <div class="err" id="adDetailError" role="alert"></div><div class="dlg-f"><button type="button" class="btn btn-ghost" data-act="adBack">Back</button><button type="button" class="btn btn-primary" data-act="adSave">${locked?'Add Copy':'Add Book'}</button></div></div>`;
 }
 /* Undo may remove only records created by this add. Keep later reading history and
@@ -3744,6 +3856,7 @@ function adUndoSafe(before,after,current){
 function adSave(){adCaptureDetail();const d=ad.detail;if(!d)return;const er=m=>{document.getElementById('adDetailError').textContent=m},locked=d.existing&&!d.reread,audio=d.format==='audio',active=['reading','paused'].includes(d.status),reading=!locked&&d.status!=='none';
   const selectedCopy=S.copies.find(c=>c.id===d.readingCopyId);if(reading&&d.format!=='unknown'&&d.status!=='want'&&selectedCopy&&(selectedCopy.format==='audio')!==audio)return er('Choose a reading format that matches the selected copy.');
   const allowed=AD_STATUSES.some(([k])=>k===d.status);if(!allowed)return er('Choose a reading status.');
+  {const mm=adMoreCheck(d);if(mm){if(d.more)d.moreOpen=true;return er(mm)}}
   if((locked||d.status==='none')&&!d.own)return er(locked?'This reading is already saved. Choose a copy to add, or open My Reading.':'Choose a reading status or mark a copy you own.');
   const parse=v=>String(v).trim()===''?null:audio?parsePos(v):/^\d+$/.test(String(v).trim())?+v:NaN;
   const unspecified=d.status==='want'||d.format==='unknown';const total=reading&&!unspecified?parse(audio?d.total:d.look.pages||d.total):null,pos=reading&&!unspecified?parse(d.pos):null;
@@ -3756,7 +3869,9 @@ function adSave(){adCaptureDetail();const d=ad.detail;if(!d)return;const er=m=>{
   let t=d.t||(d.x&&olExisting(d.x));if(d.manual&&!t)t=S.titles.find(t=>olKey(t.title)===olKey(d.look.title)&&olKey(t.author)===olKey(d.look.author));
   if(t&&d.own&&!d.extraCopy&&copiesOf(t.id).some(c=>c.owner==='me'&&c.format===d.copyFormat)){document.getElementById('adDetailError').innerHTML=`<div class="addb-notice">You already have a ${esc(FMT[d.copyFormat].toLowerCase())} copy of this book. Is this another copy?<div class="addb-existing-acts"><button type="button" class="link-btn sm" data-act="adViewCopies">View Existing Copies</button><button type="button" class="btn btn-ghost sm" data-act="adExtraCopy">Add Another Copy</button></div></div>`;return;}
   if(t&&reading){const current=myReading(t.id);if(current&&(!d.reread||!['finished','dnf'].includes(current.status)))return er('This book already has a reading. Go back and open My Reading to change it.');}
-  const snap=snapshot();if(!t){if(d.manual){t={id:'t'+uid(),title:d.look.title,author:d.look.author,pages:d.look.pages||undefined,genre:d.look.genre||'',type:d.look.type||undefined,c:d.look.c,added:Date.now()};S.titles.push(t)}else t=olTitleFrom(d.x)}
+  const preEx=t||adMoreTarget(d),wasFull=!preEx||canEditTitle(preEx);
+  const snap=snapshot();if(!t){if(d.manual){t={id:'t'+uid(),by:'me',title:d.look.title,author:d.look.author,pages:d.look.pages||undefined,genre:d.look.genre||'',type:d.look.type||undefined,c:d.look.c,added:Date.now()};S.titles.push(t)}else t=olTitleFrom(d.x)}
+  adMoreApply(t,d,wasFull||t.by==='me');
   let r=null,copy=null;if(reading){r={id:'r'+uid(),titleId:t.id,title:t.title,author:t.author,format:d.status==='want'?'unknown':d.format,total:total||0,pos:pos??0,status:d.status,c:t.c};
     if(d.status==='want')r.wantSince=today();
     if(active&&d.started)r.started=d.started;
@@ -3896,7 +4011,7 @@ async function coverFill(){
 function olTitle(i){return olTitleFrom(ad.ol.items[i])}
 function olTitleFrom(x){
   const ex=olExisting(x);if(ex){if(!ex.olAt&&(!ex.olKey||ex.olKey===x.key))olSave(ex,x);return ex}
-  const t={id:'t'+uid(),title:x.title,author:x.author,pages:x.pages||undefined,genre:'',c:hashStr(x.title)%COVERS.length,added:Date.now(),olKey:x.key};
+  const t={id:'t'+uid(),by:'me',title:x.title,author:x.author,pages:x.pages||undefined,genre:'',c:hashStr(x.title)%COVERS.length,added:Date.now(),olKey:x.key};
   if(x.coverId)t.cover=`https://covers.openlibrary.org/b/id/${x.coverId}-M.jpg`;
   if(x.isbn)t.isbn=x.isbn;if(x.year)t.year=x.year;
   olSave(t,x);
@@ -3967,7 +4082,7 @@ function grPick(){const inp=document.createElement('input');inp.type='file';inp.
 function grApply(){if(!gi||!gi.items)return;const snap=snapshot(),group=!S.settings.solo;let added=0,updated=0,copies=0;
   gi.items.forEach((x,i)=>{let t=x.match;const isNew=!t;
     if(!isNew&&gi.old!=='update'){if(!t.grId&&x.grId)t.grId=x.grId;return}            // left as it is (only remembered for next time)
-    if(!t){t={id:'t'+uid(),title:x.title,author:x.author,c:hashStr(x.title)%COVERS.length,added:x.added?Date.parse(x.added):Date.now()};S.titles.push(t)}
+    if(!t){t={id:'t'+uid(),by:'me',title:x.title,author:x.author,c:hashStr(x.title)%COVERS.length,added:x.added?Date.parse(x.added):Date.now()};S.titles.push(t)}
     if(!t.grId&&x.grId)t.grId=x.grId;if(!t.isbn&&x.isbn)t.isbn=x.isbn;if(!t.pages&&x.pages)t.pages=x.pages;if(!t.series&&x.series){t.series=x.series;t.seriesNo=x.seriesNo}if(!t.year&&x.year)t.year=x.year;
     let r=S.books.find(b=>b.titleId===t.id&&b.status!=='finished')||S.books.find(b=>b.titleId===t.id);
     const fmt=x.format==='audio'?'audio':'print',done=x.status==='finished';
@@ -3988,6 +4103,7 @@ function addManual(){adCaptureManual();const m=ad.manual,er=text=>document.getEl
   adChoose(t,{title,author,pages:+m.pages||undefined,genre:genreValue(m.genre),type:m.type||undefined},true);
 }
 document.addEventListener('input',e=>{
+  if(e.target.id==='rwbQ'&&rwb){rwb.q=e.target.value;rwb.pick=null;rwbSearch()}
   if(e.target.id==='notesQ'){hist.nq=e.target.value;document.getElementById('notesRes').innerHTML=notesResults()}
   if(e.target.id==='libQ'){lib.q=e.target.value;document.getElementById('libResults').innerHTML=libResults()}
   else if(e.target.id==='adQ'){ad.q=e.target.value;olQueue();document.getElementById('adRes').innerHTML=adResults()}
@@ -4972,7 +5088,7 @@ logForm.addEventListener('submit',e=>{
   const before=goalState(f.date),skBefore=streak();
   const isNew=!S.books.includes(b),wasWant=isNew||b.status==='want';
   if(isNew){S.books.push(b);pendingNew=null}
-  if(!b.titleId){const nt={id:'t'+uid(),title:b.title,author:b.author,pages:b.format==='audio'?0:b.total,genre:'',c:b.c,added:Date.now()};S.titles.push(nt);b.titleId=nt.id}
+  if(!b.titleId){const nt={id:'t'+uid(),by:'me',title:b.title,author:b.author,pages:b.format==='audio'?0:b.total,genre:'',c:b.c,added:Date.now()};S.titles.push(nt);b.titleId=nt.id}
   saveReadingEdition(b,readEdition(logForm,'logReading'));
   commitStartCopy(b);
   if(wasWant&&!b.started)b.started=fromD||f.date;
@@ -5407,6 +5523,14 @@ document.addEventListener('click',e=>{
     case 'histOpenM':hist.m=a.dataset.v;hist.mode='month';hist.sel=null;render();break;
     case 'rmReading':{const b=book(editForm.dataset.id);if(!b)break;const m=removeReadings([b.id]);if(m){document.getElementById('editErr').textContent=m;break}editDlg.close();if(bookDlg?.open)bookDlg.close();break}
     case 'rmTitle':{const tid=te?.id;if(!tid)break;const m=removeReadings(S.books.filter(b=>b.titleId===tid).map(b=>b.id),tid);if(m){document.getElementById('teErr').textContent=m;break}titleDlg.close();if(bookDlg?.open)bookDlg.close();break}
+    case 'teSuggest':sgOpen(te.id);break;
+    case 'sgClose':document.getElementById('sgDlg')?.close();break;
+    case 'rwbOpen':rwbOpen(a.dataset.id);break;
+    case 'rwbClose':document.getElementById('rwbDlg')?.close();rwb=null;break;
+    case 'rwbPick':rwb.pick={t:titleById(a.dataset.id)};rwbRender();break;
+    case 'rwbPickOL':{const x=rwb.ol?.items[+a.dataset.i];if(!x)break;const ex=olExisting(x);rwb.pick=ex?{t:ex}:{x};if(ex&&ex.id===rwb.from){rwb.pick=null;toast('That’s the same book.');break}rwbRender();break}
+    case 'rwbBack':rwb.pick=null;rwbRender();setTimeout(()=>document.getElementById('rwbQ')?.focus(),20);break;
+    case 'rwbGo':rwbReplace();break;
     case 'rmUndo':{clearTimeout(ghostT);const u=rmUndo;rmUndo=null;if(u)u();render();break}
     case 'favTog':{const id=a.dataset.id;S.favs=isFav(id)?S.favs.filter(x=>x!==id):[...(S.favs||[]),id];save();refreshLib();document.querySelector(`#libResults [data-act=favTog][data-id="${CSS.escape(id)}"]`)?.focus({preventScroll:true});break}
     case 'crOpen':crOpen(a);break;
@@ -5540,7 +5664,7 @@ document.addEventListener('click',e=>{
     case 'teSearch':teSearch();break;
     case 'tePickGB':{const u=te.gb?.urls?.[+a.dataset.v];if(te.gb?.state!=='done'||te.gb.q!==te.q.trim()||!u)break;te.cover=u;te.src='gb';te.bad=false;te.touched=true;tePanel();tePreview();break}
     case 'tePick':if(te.ol?.state!=='done'||te.ol.q!==te.q.trim()||!te.ol.ids.includes(+a.dataset.v))break;te.cover=`https://covers.openlibrary.org/b/id/${a.dataset.v}-M.jpg`;te.src='ol';te.bad=false;te.touched=true;tePanel();tePreview();break;
-    case 'teGen':te.cover='';te.url='';te.src='gen';te.bad=false;te.touched=true;tePanel();tePreview();break;
+    case 'teGen':te.cover=te.full?'':(titleById(te.id)?.cover||'');te.url='';te.src='gen';te.bad=false;te.touched=true;tePanel();tePreview();break;
     case 'startNew':drawNew();if(!logDlg.open)logDlg.showModal();setTimeout(()=>document.getElementById('newQ')?.focus(),30);break;
     case 'backLog':{const c=currentSel()||S.books.find(x=>x.status==='paused');if(c)drawLog(c);break}
     case 'startFormatGo':{const f=document.getElementById('startFormat').value,pcU=f!=='audio'&&document.getElementById('startUnit')?.value==='pct',v=pcU?'':document.getElementById('startLength').value.trim(),total=pcU?100:v===''?0:f==='audio'?parsePos(v):/^\d+$/.test(v)?+v:NaN;if(v!==''&&(!Number.isFinite(total)||total<=0)){document.getElementById('formatError').textContent=f==='audio'?'Enter the length as h:mm, or leave it blank.':'Enter the number of pages as a whole number, or leave it blank.';break}const {b,focus,preMin,moveTo}=formatPick;const selectedCopy=S.copies.find(c=>c.id===document.getElementById('startReadingCopy')?.value);if(!document.getElementById('startOwn')?.checked&&selectedCopy&&(selectedCopy.format==='audio')!==(f==='audio')){document.getElementById('formatError').textContent='Choose a reading format that matches the selected copy.';break;}const own=document.getElementById('startOwn')?.checked,copyRow=document.querySelector('#startCopyFields .inline-copy');if(own){const cf=copyRow.querySelector('[data-copy-format]').value,edition=copyRow.querySelector('[data-copy-edition]').value.trim();const same=(cf==='audio')===(f==='audio');startCopyDrafts.set(b.id,{id:'c'+uid(),titleId:b.titleId,owner:'me',format:cf,edition,loanTo:null,private:S.settings.solo||!copyRow.querySelector('[data-copy-shared]')?.checked||undefined});saveReadingEdition(b,same?{edition}:readEdition(logForm,'startReading'));}else{startCopyDrafts.delete(b.id);saveReadingEdition(b,readEdition(logForm,'startReading'));}startSetupDone.add(b);b.format=f;b.total=total;if(pcU)b.unit='pct';else delete b.unit;b.pos=b.status==='finished'?total:0;if(moveTo){commitStartCopy(b);b.status=moveTo;b.pos=0;delete b.finished;delete b.dnfOn;if(moveTo==='reading'&&!b.started)b.started=today();if(moveTo==='paused')b.pausedOn=today();S.upNext=(S.upNext||[]).filter(id=>id!==b.id);save();logDlg.close();render();toast(`Moved ${b.title} to ${STATUS[moveTo]}.`)}else{save();drawLog(b,focus,preMin)}break}
