@@ -3525,7 +3525,7 @@ const titleDlg=document.getElementById('titleDlg'),titleForm=document.getElement
    who owns a copy, or the site administrator. Everyone with the book in My Books still gets Edit Book, to fill in what's
    missing, choose their own cover and ISBN, suggest a correction, replace it with the right book, or remove it. */
 const isSiteAdmin=()=>window.RR_GROUPS?!!RR_GROUPS.isSiteAdmin:!!S.me.admin&&!S.settings.asMember;   // the test site's account menu can switch this off for testing
-const canEditTitle=t=>!!t&&(isSiteAdmin()||t.by==='me'||copiesOf(t.id).some(c=>c.owner==='me'));
+const canEditTitle=t=>!!t&&(isSiteAdmin()||t.by==='me'||copiesOf(t.id).some(c=>c.owner==='me')||(!!window.RR_LIVE&&!t.cid&&!t.fromGroup));   // live: a book only in my own reading (never shared to the catalog) is mine
 const inMyBooks=id=>S.books.some(b=>b.titleId===id)||S.copies.some(c=>c.titleId===id&&c.owner==='me')||!!S.notes[id]||isFav(id);
 const myEd=id=>(S.myEd||{})[id]||{};   // my own edition of a book: {cover, isbn}; private, never shared
 let te={id:null,cover:'',src:'',tab:'url',url:'',q:'',ol:null,bad:false,touched:false};
@@ -3785,7 +3785,7 @@ titleForm.addEventListener('submit',e=>{
   copyEdits.forEach(x=>{let c=S.copies.find(c=>c.id===x.id);if(!c){c={id:'c'+uid(),titleId:t.id,owner:'me',loanTo:null};S.copies.push(c);x.id=c.id;}c.format=x.format;c.edition=x.edition;if(!S.settings.solo)c.private=!x.shared||undefined;else if(!('private' in c))c.private=true;});
   // Retain newly assigned IDs if storage fails, so retrying cannot add duplicates.
   titleForm.querySelectorAll('.inline-copy').forEach((row,i)=>row.dataset.copyId=copyEdits[i].id);
-  if(!save())return;titleDlg.close();render();if(bookDlg.open)renderBD(true);toast(`Saved changes to ${title}.`);
+  if(!save())return;if(window.RR_TITLE_SAVED)RR_TITLE_SAVED(t);titleDlg.close();render();if(bookDlg.open)renderBD(true);toast(`Saved changes to ${title}.`);
 });
 
 /* ---------- add a book ---------- */
