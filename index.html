@@ -2612,6 +2612,38 @@ async function wdSeries(title,author){const k=srKey(title)+'|'+srKey(author);if(
   const all=[...by.values()].filter(v=>v.books.size>1).map(v=>({name:v.name,mine:v.mine,books:[...v.books.entries()].sort((a,b)=>a[0]-b[0]).map(([n,t])=>({n,title:t}))}));
   all.sort((a,b)=>(!!b.mine-!!a.mine)||a.books.length-b.books.length);
   srCache.set(k,all);return all}
+// Second and third sources when Wikidata has no numbered series: the title itself ("Hannah Saves the World: Book 1",
+// "Judy Moody #1") and the series notes on Open Library's editions ("The Moonshae Trilogy, Book One", "Finder's Stone trilogy -- 2").
+const SR_NUMW={one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,eleven:11,twelve:12,first:1,second:2,third:3,fourth:4,fifth:5,sixth:6,seventh:7,eighth:8,ninth:9,tenth:10};
+const SR_NUM='(\\d{1,3}(?:\\.\\d)?|'+Object.keys(SR_NUMW).join('|')+')',SR_KW='(?:book|bk\\.?|vol\\.?|volume|no\\.?|number|part|#)';
+const SR_RE_TITLE=new RegExp(`^(.+?)[\\s,:;(—–-]*${SR_KW}\\s*#?\\s*${SR_NUM}\\)?$`,'i');
+const SR_RE_LOOSE=new RegExp(`^(.+?)(?:\\s*(?:,|:|--|—|–|\\()\\s*|\\s+)${SR_NUM}\\)?$`,'i');
+function srParse(str,loose){const x=String(str||'').replace(/[\s;.,]+$/,'').trim();const pm=x.match(/\(([^()]+)\)$/);if(pm){const h=srParse(pm[1],false);if(h)return h}const m=x.match(SR_RE_TITLE)||(loose&&x.match(SR_RE_LOOSE));if(!m)return null;
+  const n=/^\d/.test(m[2])?+m[2]:SR_NUMW[m[2].toLowerCase()],name=m[1].replace(/[\s,:;(—–-]+$/,'').trim();
+  return n>0&&name.length>1&&name.length<80&&!/^\d+$/.test(name)?{series:name,n}:null}
+const srSerKey=x=>srKey(String(x).replace(/^the\s+/i,''));
+function srTitleHint(t){const h=srParse(t.title,false);return h?{...h,src:'title'}:null}
+async function olSeries(t){const title=srBare(t.title),last=(t.author||'').split(/\s+/).pop()||'';
+  const r=await fetch(`https://openlibrary.org/search.json?title=${encodeURIComponent(title)}&author=${encodeURIComponent(last)}&fields=key,title&limit=5`,{headers:{Accept:'application/json'}});
+  if(!r.ok)throw new Error('ol '+r.status);const docs=(await r.json()).docs||[];const w=docs.find(d=>srKey(d.title)===srKey(title))||docs[0];if(!w)return null;
+  const e=await fetch(`https://openlibrary.org${w.key}/editions.json?limit=100`,{headers:{Accept:'application/json'}});if(!e.ok)throw new Error('ol '+e.status);
+  const tally=new Map();
+  for(const ed of (await e.json()).entries||[]){const langs=(ed.languages||[]).map(l=>l.key);if(langs.length&&!langs.includes('/languages/eng'))continue;
+    for(const raw of ed.series||[])for(const part of String(raw).split(';')){const h=srParse(part,true);if(!h)continue;const k=srSerKey(h.series);
+      const v=tally.get(k)||{votes:0,names:new Map(),nums:new Map()};v.votes++;v.names.set(h.series,(v.names.get(h.series)||0)+1);v.nums.set(h.n,(v.nums.get(h.n)||0)+1);tally.set(k,v)}}
+  const best=[...tally.values()].sort((a,b)=>b.votes-a.votes)[0];if(!best)return null;
+  const top=m=>[...m.entries()].sort((a,b)=>b[1]-a[1]||(b[0].match?.(/[A-Z]/g)||[]).length-(a[0].match?.(/[A-Z]/g)||[]).length)[0][0];
+  const small=new Set(['a','an','and','at','by','for','in','of','on','or','the','to']);
+  const name=top(best.names).split(' ').map((w,i)=>i&&small.has(w.toLowerCase())?w.toLowerCase():w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
+  return {series:name,n:top(best.nums),src:'ol'}}
+// the books of mine this suggestion covers: this one, plus (from titles) my other books whose titles name the same series
+function srHintBooks(t,h){const out=[{m:t,n:h.n}];if(h.src!=='title')return out;const k=srSerKey(h.series),mine=new Set(baseList().map(x=>x.id)),seen=new Set([srKey(t.title)]);
+  S.titles.forEach(x=>{if(x===t||!mine.has(x.id)||x.series||seen.has(srKey(x.title)))return;seen.add(srKey(x.title));const y=srParse(x.title,false);if(y&&srSerKey(y.series)===k)out.push({m:x,n:y.n})});
+  return out.sort((a,b)=>a.n-b.n)}
+function srHintSet(){const t=titleById(sr.tid),h=sr.hint;if(!t||!h)return;const snap=snapshot(),list=srHintBooks(t,h).filter(({m})=>canEditTitle(m)||!m.series);
+  list.forEach(({m,n})=>{if(canEditTitle(m)){m.series=h.series;m.seriesNo=n;if(window.RR_TITLE_SAVED)RR_TITLE_SAVED(m)}else{m.series=h.series;m.seriesNo=n;if(window.RR_FILL_TITLE)RR_FILL_TITLE(m,{series:h.series,seriesNo:n})}});
+  if(/trilogy/i.test(h.series))(S.seriesLen=S.seriesLen||{})[h.series]=Math.max(S.seriesLen?.[h.series]||0,3);
+  sr.hint=null;save();render();srRender();toast(list.length===1?`Set ${h.series}, Book ${list[0].n} on ${t.title}.`:`Set ${h.series} on ${list.length} of your books.`,restoreTo(snap))}
 const srBare=x=>String(x||'').replace(/\s*\([^()]*#\s*\d+(\.\d+)?\)\s*$/,'');   // drop a series tag like (Book of Ember #2)
 function srMatch(title){const k=srKey(srBare(title));return S.titles.find(t=>{const tk=srKey(srBare(t.title));return tk===k||srKey(srBare(t.title).replace(/:.*$/,''))===k})}
 async function srOpen(tid){const t=titleById(tid);if(!t)return;sr={tid,state:'loading',sets:[],pick:0,err:''};let d=document.getElementById('srDlg');
@@ -2619,7 +2651,9 @@ async function srOpen(tid){const t=titleById(tid);if(!t)return;sr={tid,state:'lo
   srRender();if(!d.open)d.showModal();
   const mine=sr;try{const sets=await wdSeries(t.title,t.author);if(sr!==mine)return;sr.sets=sets;
     if(t.series){const i=sets.findIndex(x=>srKey(x.name)===srKey(t.series));if(i>0)sr.pick=i}sr.state='done'}
-  catch(e){if(sr!==mine)return;sr.state='error'}srRender()}
+  catch(e){if(sr!==mine)return;sr.state='error'}
+  if(!sr.sets.length&&!t.series){sr.hint=srTitleHint(t);if(!sr.hint){try{const h=await olSeries(t);if(sr!==mine)return;sr.hint=h}catch(e){if(sr!==mine)return}}}
+  srRender()}
 function srRender(){const d=document.getElementById('srDlg');if(!d||!sr)return;const t=titleById(sr.tid);const set=sr.sets[sr.pick];
   const head=`<div class="dlg-h"><div style="flex:1;min-width:0"><h2 id="srTitle">${set?esc(set.name):t.series?esc(t.series):'Find the Series'}</h2><div class="small muted">Starting from ${ti(t.title)}</div></div><button type="button" class="icon-btn x" data-act="srClose" aria-label="Close">${ic('x')}</button></div>`;
   let body='';
@@ -2632,10 +2666,17 @@ function srRender(){const d=document.getElementById('srDlg');if(!d||!sr)return;c
       <ol class="sr-list">${rows}</ol>
       ${fix.length?`<div class="sr-fix small">${fix.length===1?'1 of your books':`${fix.length} of your books`} ${fix.length===1?'doesn’t':'don’t'} have this series and number yet. <button type="button" class="link-btn sm" data-act="srFix" style="padding:0 2px">Set Series on My Books</button></div>`:''}
       <p class="xs muted" style="margin:0">From Wikidata. Only numbered books are shown; check the list before adding.</p>`}
-  else{const gaps=srGaps(t);body=`<p class="small" style="margin:0">${sr.state==='error'?'The series lookup didn’t answer. You can still search for each book.':'Wikidata doesn’t list this book as part of a series.'}</p>
+  else if(sr.hint&&!t.series){const h=sr.hint,list=srHintBooks(t,h);
+    const nums=list.map(x=>x.n);
+    body=`<p class="small" style="margin:0">${h.src==='title'?(list.length>1?`The titles show these are <b>${esc(h.series)}</b>, Books ${nums.slice(0,-1).join(', ')}${nums.length>2?',':''} and ${nums[nums.length-1]}.`:`The title shows this is <b>${esc(h.series)}</b>, Book ${h.n}.`):`Open Library lists this as <b>${esc(h.series)}</b>, Book ${h.n}.`}</p>
+      ${list.length>1?`<ol class="sr-list">${list.map(({m,n})=>`<li class="sr-row"><span class="sr-n">${n}</span><span class="sr-t small"><b>${esc(m.title)}</b></span></li>`).join('')}</ol>`:''}
+      <div><button type="button" class="btn btn-primary sm" data-act="srHint">${list.length>1?`Set Series on These ${list.length} Books`:'Set Series on This Book'}</button></div>
+      <p class="xs muted" style="margin:0">${h.src==='title'?'Read from the book’s title.':'From Open Library’s edition records.'} Once the series is set, you can search for the other books in it.</p>`}
+  else{const gaps=srGaps(t);body=`<p class="small" style="margin:0">${sr.state==='error'?'The series lookup didn’t answer. You can still search for each book.':t.series?`Wikidata doesn’t have the list of books in ${esc(t.series)}, so search for each one.`:'Wikidata and Open Library don’t list this book as part of a series.'}</p>
       ${t.series?(gaps.length?`<ol class="sr-list">${gaps.map(n=>`<li class="sr-row"><span class="sr-n">${n}</span><span class="sr-t small">${esc(t.series)}, Book ${n}</span><button type="button" class="btn btn-ghost sm" data-act="srSearch" data-n="${n}">Search</button></li>`).join('')}</ol>`:`<p class="xs muted">Every numbered book of ${esc(t.series)} up to Book ${Math.max(...S.titles.filter(x=>x.series===t.series&&x.seriesNo).map(x=>Math.floor(x.seriesNo)))} is in your library. Search for the next one:</p><button type="button" class="btn btn-ghost sm" data-act="srSearch" data-n="${Math.max(0,...S.titles.filter(x=>x.series===t.series&&x.seriesNo).map(x=>Math.floor(x.seriesNo)))+1}">Find Book ${Math.max(0,...S.titles.filter(x=>x.series===t.series&&x.seriesNo).map(x=>Math.floor(x.seriesNo)))+1}</button>`)
         :`<p class="xs muted" style="margin:0">If you know the series, add its name and number in <button type="button" class="link-btn sm" data-act="srEdit" style="padding:0 2px">Edit Book</button>.</p>`}`}
-  d.innerHTML=`<div class="dlg">${head}<div class="form">${body}<div class="err" id="srErr" role="alert"></div></div></div>`}
+  const tt=document.getElementById('toast');if(tt&&d.contains(tt))document.body.appendChild(tt);   // keep the Undo message box when this window redraws
+  d.innerHTML=`<div class="dlg">${head}<div class="form">${body}<div class="err" id="srErr" role="alert"></div></div></div>`;if(tt&&tt.parentNode===document.body&&!tt.hidden&&d.open)d.appendChild(tt)}
 function srGaps(t){const nums=new Set(S.titles.filter(x=>x.series===t.series&&x.seriesNo!=null&&(myReading(x.id)||copiesOf(x.id).some(c=>c.owner==='me'))).map(x=>Math.floor(x.seriesNo)));const len=Math.max(S.seriesLen?.[t.series]||0,...nums);const g=[];for(let n=1;n<=len;n++)if(!nums.has(n))g.push(n);return g}
 function srFixable(set){return set.books.map(b=>({b,m:srMatch(b.title)})).filter(({b,m})=>m&&(m.series!==set.name||m.seriesNo!==b.n)&&(canEditTitle(m)||!m.series))}
 async function srAdd(n){const set=sr.sets[sr.pick],b=set.books.find(x=>x.n===n),btn=document.querySelector(`#srDlg [data-act=srAdd][data-n="${n}"]`);if(!b)return;if(btn){btn.disabled=true;btn.textContent='Adding…'}
@@ -5618,6 +5659,7 @@ document.addEventListener('click',e=>{
     case 'srPick':sr.pick=+a.dataset.v;srRender();break;
     case 'srAdd':srAdd(+a.dataset.n);break;
     case 'srFix':srFix();break;
+    case 'srHint':srHintSet();break;
     case 'srEdit':{const id=sr.tid;document.getElementById('srDlg').close();sr=null;openTitleEdit(id);break}
     case 'srSearch':{const t=titleById(sr.tid),n=+a.dataset.n;document.getElementById('srDlg').close();sr=null;openAdd();ad.q=`${t.series} ${n}`;ad.seriesHint={series:t.series,no:n};renderAdd();olQueue();break}
     case 'rmUndo':{clearTimeout(ghostT);const u=rmUndo;rmUndo=null;rmGhost=null;if(u)u();render();break}
