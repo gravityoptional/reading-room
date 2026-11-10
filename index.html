@@ -1154,6 +1154,11 @@ body:has(.menu:not([hidden])) .tour-offer{display:none}
 .yir-ud-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:6px 8px;border:1px solid var(--border);border-radius:10px;background:var(--surface)}
 .yir-ud-t{display:grid;min-width:0}.yir-ud-t b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .yir-ud-btn{padding:0 2px}
+.sr-list{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.sr-row{display:grid;grid-template-columns:2.2em minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--surface)}
+.sr-n{font-variant-numeric:tabular-nums;font-weight:600;color:var(--text-2);text-align:right}
+.sr-t{display:grid;gap:1px;min-width:0;overflow-wrap:anywhere}
+.sr-fix{padding:8px 10px;border-radius:10px;background:color-mix(in srgb,var(--primary) 10%,var(--surface))}
 .rm-box{border-top:1px solid var(--border);padding-top:12px;margin-top:4px}.rm-box summary{cursor:pointer}.rm-go{color:var(--red,#B42318)}
 .lastnote{margin-top:12px}
 .lastnote summary{cursor:pointer;color:var(--primary);font-weight:600;font-size:14px;list-style:none;display:inline-flex;align-items:center;gap:6px}
@@ -2588,6 +2593,63 @@ function mbChips(){const base=baseList();return `<div class="chips mb-chips" rol
 /* Series (My Books → Series): every series with at least one of my books, in order, with how many I've finished,
    each book's status, and the next one to read. Books the group owns in the series are included; numbers no one
    has added show as a gap up to the known length (Books in the Series). */
+/* Find the rest of a series (Nov 10). Wikidata (free, no key) knows many well-known series: the book's series and every
+   numbered book in it, in order. Only numbered books are shown, so companions and guides drop out. When Wikidata
+   doesn't know the series, each missing number gets a Search that opens Add Book with the series filled in. */
+const srCache=new Map();let sr=null;
+const srKey=x=>String(x||'').toLowerCase().replace(/[’']/g,"'").replace(/^(the|a|an) /,'').replace(/[^a-z0-9' ]+/g,' ').replace(/\s+/g,' ').trim();
+async function wdSeries(title,author){const k=srKey(title)+'|'+srKey(author);if(srCache.has(k))return srCache.get(k);
+  const esq=x=>x.replace(/\\/g,'').replace(/"/g,'\\"'),last=(author||'').split(/\s+/).pop().toLowerCase().replace(/[^a-z\u00c0-\u024f-]/g,'');
+  const lbls=[...new Set([title,title.replace(/'/g,'’'),title.replace(/’/g,"'"),title.replace(/:.*$/,'').trim()])].filter(Boolean).map(x=>`"${esq(x)}"@en`).join(' ');
+  const q=`SELECT ?series ?seriesLabel ?member ?memberLabel ?ord ?myOrd WHERE { VALUES ?lbl { ${lbls} } ?book rdfs:label ?lbl; p:P179 ?bs. ?bs ps:P179 ?series. OPTIONAL{?bs pq:P1545 ?myOrd}
+ ${last?`?book wdt:P50 ?a. ?a rdfs:label ?al. FILTER(LANG(?al)="en" && CONTAINS(LCASE(?al),"${esq(last)}"))`:''}
+ ?member p:P179 ?st. ?st ps:P179 ?series. ?st pq:P1545 ?ord. SERVICE wikibase:label { bd:serviceParam wikibase:language "en". } } LIMIT 500`;
+  const r=await fetch('https://query.wikidata.org/sparql?query='+encodeURIComponent(q),{headers:{Accept:'application/sparql-results+json'}});
+  if(!r.ok)throw new Error('wikidata '+r.status);const rows=(await r.json()).results.bindings;
+  const by=new Map();for(const x of rows){const id=x.series.value;if(!by.has(id))by.set(id,{name:x.seriesLabel.value,mine:x.myOrd?.value||null,books:new Map()});const o=+x.ord.value;
+    if(!Number.isFinite(o)||o<=0)continue;const b=by.get(id).books;if(!b.has(o))b.set(o,x.memberLabel.value)}
+  // prefer the series that numbers this book, then the smallest complete one (a trilogy before the whole saga)
+  const all=[...by.values()].filter(v=>v.books.size>1).map(v=>({name:v.name,mine:v.mine,books:[...v.books.entries()].sort((a,b)=>a[0]-b[0]).map(([n,t])=>({n,title:t}))}));
+  all.sort((a,b)=>(!!b.mine-!!a.mine)||a.books.length-b.books.length);
+  srCache.set(k,all);return all}
+const srBare=x=>String(x||'').replace(/\s*\([^()]*#\s*\d+(\.\d+)?\)\s*$/,'');   // drop a series tag like (Book of Ember #2)
+function srMatch(title){const k=srKey(srBare(title));return S.titles.find(t=>{const tk=srKey(srBare(t.title));return tk===k||srKey(srBare(t.title).replace(/:.*$/,''))===k})}
+async function srOpen(tid){const t=titleById(tid);if(!t)return;sr={tid,state:'loading',sets:[],pick:0,err:''};let d=document.getElementById('srDlg');
+  if(!d){d=document.createElement('dialog');d.id='srDlg';d.setAttribute('aria-labelledby','srTitle');document.body.appendChild(d)}
+  srRender();if(!d.open)d.showModal();
+  const mine=sr;try{const sets=await wdSeries(t.title,t.author);if(sr!==mine)return;sr.sets=sets;
+    if(t.series){const i=sets.findIndex(x=>srKey(x.name)===srKey(t.series));if(i>0)sr.pick=i}sr.state='done'}
+  catch(e){if(sr!==mine)return;sr.state='error'}srRender()}
+function srRender(){const d=document.getElementById('srDlg');if(!d||!sr)return;const t=titleById(sr.tid);const set=sr.sets[sr.pick];
+  const head=`<div class="dlg-h"><div style="flex:1;min-width:0"><h2 id="srTitle">${set?esc(set.name):t.series?esc(t.series):'Find the Series'}</h2><div class="small muted">Starting from ${ti(t.title)}</div></div><button type="button" class="icon-btn x" data-act="srClose" aria-label="Close">${ic('x')}</button></div>`;
+  let body='';
+  if(sr.state==='loading')body=`<p class="small muted" role="status">Looking up the series…</p>`;
+  else if(set){const rows=set.books.map(b=>{const m=srMatch(b.title),r=m&&myReading(m.id),own=m&&copiesOf(m.id).some(c=>c.owner==='me'),st=r?SER_ST[r.status]:own?'Own, Not Started':'';
+      return `<li class="sr-row"><span class="sr-n">${b.n}</span><span class="sr-t"><span class="small"><b>${esc(b.title)}</b></span>${st?`<span class="xs ser-s ${r?.status||''}">${st}</span>`:`<span class="xs muted">Not in your library</span>`}</span>
+      ${m?`<button type="button" class="link-btn sm" data-act="openTitle" data-id="${m.id}">Open</button>`:`<button type="button" class="btn btn-ghost sm" data-act="srAdd" data-n="${b.n}">Add to To Read</button>`}</li>`}).join('');
+    const fix=srFixable(set);
+    body=`${sr.sets.length>1?`<div class="chips" role="group" aria-label="Series">${sr.sets.map((x,i)=>`<button class="tab sm" aria-pressed="${i===sr.pick}" data-act="srPick" data-v="${i}">${esc(x.name)} <span class="cnt">${x.books.length}</span></button>`).join('')}</div>`:''}
+      <ol class="sr-list">${rows}</ol>
+      ${fix.length?`<div class="sr-fix small">${fix.length===1?'1 of your books':`${fix.length} of your books`} ${fix.length===1?'doesn’t':'don’t'} have this series and number yet. <button type="button" class="link-btn sm" data-act="srFix" style="padding:0 2px">Set Series on My Books</button></div>`:''}
+      <p class="xs muted" style="margin:0">From Wikidata. Only numbered books are shown; check the list before adding.</p>`}
+  else{const gaps=srGaps(t);body=`<p class="small" style="margin:0">${sr.state==='error'?'The series lookup didn’t answer. You can still search for each book.':'Wikidata doesn’t list this book as part of a series.'}</p>
+      ${t.series?(gaps.length?`<ol class="sr-list">${gaps.map(n=>`<li class="sr-row"><span class="sr-n">${n}</span><span class="sr-t small">${esc(t.series)}, Book ${n}</span><button type="button" class="btn btn-ghost sm" data-act="srSearch" data-n="${n}">Search</button></li>`).join('')}</ol>`:`<p class="xs muted">Every numbered book of ${esc(t.series)} up to Book ${Math.max(...S.titles.filter(x=>x.series===t.series&&x.seriesNo).map(x=>Math.floor(x.seriesNo)))} is in your library. Search for the next one:</p><button type="button" class="btn btn-ghost sm" data-act="srSearch" data-n="${Math.max(0,...S.titles.filter(x=>x.series===t.series&&x.seriesNo).map(x=>Math.floor(x.seriesNo)))+1}">Find Book ${Math.max(0,...S.titles.filter(x=>x.series===t.series&&x.seriesNo).map(x=>Math.floor(x.seriesNo)))+1}</button>`)
+        :`<p class="xs muted" style="margin:0">If you know the series, add its name and number in <button type="button" class="link-btn sm" data-act="srEdit" style="padding:0 2px">Edit Book</button>.</p>`}`}
+  d.innerHTML=`<div class="dlg">${head}<div class="form">${body}<div class="err" id="srErr" role="alert"></div></div></div>`}
+function srGaps(t){const nums=new Set(S.titles.filter(x=>x.series===t.series&&x.seriesNo!=null&&(myReading(x.id)||copiesOf(x.id).some(c=>c.owner==='me'))).map(x=>Math.floor(x.seriesNo)));const len=Math.max(S.seriesLen?.[t.series]||0,...nums);const g=[];for(let n=1;n<=len;n++)if(!nums.has(n))g.push(n);return g}
+function srFixable(set){return set.books.map(b=>({b,m:srMatch(b.title)})).filter(({b,m})=>m&&(m.series!==set.name||m.seriesNo!==b.n)&&(canEditTitle(m)||!m.series))}
+async function srAdd(n){const set=sr.sets[sr.pick],b=set.books.find(x=>x.n===n),btn=document.querySelector(`#srDlg [data-act=srAdd][data-n="${n}"]`);if(!b)return;if(btn){btn.disabled=true;btn.textContent='Adding…'}
+  const author=titleById(sr.tid)?.author||'';let x=null;try{const res=await olSearch(`${b.title} ${author}`.trim());x=res.find(r=>srKey(r.title)===srKey(b.title)||srKey(r.title).startsWith(srKey(b.title)))||null}catch(e){}
+  const snap=snapshot(),had=new Set(S.titles);let t=x?olTitleFrom(x):(srMatch(b.title)||null);
+  if(t&&!had.has(t)&&t.by==='me'){const bare=srBare(t.title);if(bare!==t.title){t.title=bare}}
+  if(!t){t={id:'t'+uid(),by:'me',title:b.title,author,c:hashStr(b.title)%COVERS.length,added:Date.now()};S.titles.push(t)}
+  if(canEditTitle(t)||!t.series){t.series=set.name;t.seriesNo=b.n}
+  if(!myReading(t.id))S.books.push({id:'r'+uid(),titleId:t.id,title:t.title,author:t.author,format:'unknown',total:0,pos:0,status:'want',c:t.c,wantSince:today()});
+  save();render();srRender();toast(`Added ${t.title} to your To Read list.`,restoreTo(snap))}
+function srFix(){const set=sr.sets[sr.pick],fix=srFixable(set);const snap=snapshot();
+  fix.forEach(({b,m})=>{const full=canEditTitle(m);if(full){m.series=set.name;m.seriesNo=b.n;if(window.RR_TITLE_SAVED)RR_TITLE_SAVED(m)}else if(!m.series){m.series=set.name;m.seriesNo=b.n;if(window.RR_FILL_TITLE)RR_FILL_TITLE(m,{series:set.name,seriesNo:b.n})}});
+  if(set.books.length)(S.seriesLen=S.seriesLen||{})[set.name]=Math.max(S.seriesLen?.[set.name]||0,set.books[set.books.length-1].n|0);
+  save();render();srRender();toast(`Set ${set.name} on ${fix.length} of your books.`,restoreTo(snap))}
 function mySeries(){
   const mine=new Set(baseList().map(t=>t.id)),by={};
   S.titles.forEach(t=>{if(t.series&&t.seriesNo!=null)(by[t.series]=by[t.series]||[]).push(t)});
@@ -2611,7 +2673,7 @@ function seriesView(){
       <div class="ser-bar" role="img" aria-label="${x.done} of ${x.len} read"><span style="width:${Math.min(100,Math.round(x.done/x.len*100))}%"></span></div>
       ${nextLine?`<p class="small" style="margin:0">${nextLine}</p>`:''}
       <ol class="ser-books">${x.ts.map(t=>{const k=x.st(t);return `<li><button class="ser-b" data-act="openTitle" data-id="${t.id}" aria-label="Book ${t.seriesNo}: ${esc(dispT(t.title))}, ${SER_ST[k]}">${libCover(t,44)}<span class="ser-t"><span class="xs muted">Book ${t.seriesNo}</span><span class="small ser-n">${esc(dispT(t.title))}</span><span class="xs ser-s ${k}">${SER_ST[k]}</span></span></button></li>`}).join('')}
-      ${gaps.length?`<li class="ser-gap xs muted">${gaps.length===1?`Book ${gaps[0]} isn’t in your library.`:`Books ${gaps.slice(0,-1).join(', ')} and ${gaps[gaps.length-1]} aren’t in your library.`}</li>`:''}</ol></section>`}).join('')}</div>`;
+      ${gaps.length?`<li class="ser-gap xs muted">${gaps.length===1?`Book ${gaps[0]} isn’t in your library.`:`Books ${gaps.slice(0,-1).join(', ')} and ${gaps[gaps.length-1]} aren’t in your library.`} <button class="link-btn sm" data-act="srOpen" data-id="${x.ts[0].id}" style="padding:0 2px">Find ${gaps.length===1?'It':'Them'}</button></li>`:''}</ol></section>`}).join('')}</div>`;
 }
 const MB_SHORT={reading:'Reading',paused:'Paused',want:'To Read',finished:'Finished',dnf:'DNF',owned:'Owned'},MB_FULL={dnf:'Did Not Finish',owned:'Own but Not Started'};
 /* Favorites (Nov 10): a per-member list of title ids, private reading data. Shared like ratings: the same Share with
@@ -3482,7 +3544,8 @@ function renderBD0(){
     body=(dsc?`<div class="bd-desc ${bd.descOpen?'open':''}" id="bdDesc">${dsc.html??dsc.text.split(/\n{2,}/).map(p=>`<p>${esc(p).replace(/\n/g,'<br>')}</p>`).join('')}</div><button class="link-btn sm bd-more" data-act="bdDescMore" aria-expanded="${!!bd.descOpen}" aria-controls="bdDesc">${bd.descOpen?'Show Less':'Show More'}</button><div class="xs muted bd-src">${src}</div>`
       :descWaiting(t)?`<p class="xs muted" role="status">Looking for a description…</p>`:'')
       +`<div class="small bd-facts">${facts}</div>`
-      +(!dsc&&canEditTitle(t)?`<button class="link-btn sm" data-act="teOpen" data-id="${t.id}" data-focus="tDesc">${ic('pencil')}Add a Description</button>`:'');
+      +(!dsc&&canEditTitle(t)?`<button class="link-btn sm" data-act="teOpen" data-id="${t.id}" data-focus="tDesc">${ic('pencil')}Add a Description</button>`:'')
+      +`<div class="small" style="margin-top:8px">${t.series?`${esc(t.series)}${t.seriesNo!=null?`, Book ${t.seriesNo}`:''} · `:''}<button class="link-btn sm" data-act="srOpen" data-id="${t.id}" style="padding:0 2px">${t.series?'See the Whole Series':'Is This Part of a Series?'}</button></div>`;
   }else if(bd.tab==='copies'){
     body=(cs.length?cs.map(copyRow).join(''):`<p class="small muted">${S.settings.solo?'You haven’t added a copy of this book.':'Nobody in your group owns a copy yet.'}</p>`)+
       (bd.addCopy?`<div class="addcopy"><select class="inp sm" id="acFmt" aria-label="Format"><option value="physical">Physical</option><option value="ebook">Ebook</option><option value="audio">Audiobook</option></select><input class="inp sm" id="acEdition" placeholder="Edition (optional)" aria-label="Edition (optional)">${S.settings.solo?'':`<label class="chk xs"><input type="checkbox" id="acShare" ${shareDefault()?'checked':''}> Show in ${esc(GN())} Library</label>`}<button class="btn btn-primary sm" data-act="bdAddCopyGo">Add My Copy</button><button class="link-btn sm" data-act="bdAddCopy">Cancel</button></div>`
@@ -3672,7 +3735,7 @@ function tePanel(){
     :o.state==='loading'?`<span class="xs muted" role="status">Searching Google Books…</span>`
     :o.state==='error'?`<span class="xs muted" role="status">Google Books didn’t answer. Check your connection and try again.</span>`
     :!o.urls.length?`<span class="xs muted" role="status">No covers found. Try the ISBN, or a shorter title.</span>`
-    :`<span class="xs muted" role="status">${o.urls.length} cover${o.urls.length===1?'':'s'} found. Pick one.</span><div class="te-grid">${o.urls.map((u,i)=>`<button type="button" data-act="tePickGB" data-v="${i}" aria-pressed="${te.cover===u}" aria-label="Cover ${i+1}"><img src="${esc(u)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.remove()"></button>`).join('')}</div>`}</div>
+    :`<span class="xs muted" role="status">${o.urls.length} cover${o.urls.length===1?'':'s'} found. Pick one.</span><div class="te-grid">${o.urls.map((u,i)=>`<button type="button" data-act="tePickGB" data-v="${i}" aria-pressed="${te.cover===u}" aria-label="Cover ${i+1}"><img src="${esc(u)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode&&this.parentNode.remove()"></button>`).join('')}</div>`}</div>
     <img src="https://books.google.com/googlebooks/images/poweredby.png" alt="Powered by Google" width="62" height="30" style="display:block;justify-self:start;margin-top:10px" referrerpolicy="no-referrer" onerror="this.outerHTML='<span class=&quot;xs muted&quot; style=&quot;display:block;margin-top:10px&quot;>Powered by Google</span>'">`;
   }
   else{
@@ -3682,7 +3745,7 @@ function tePanel(){
     :o.state==='loading'?`<span class="xs muted" role="status">Searching Open Library…</span>`
     :o.state==='error'?`<span class="xs muted" role="status">Open Library didn’t answer. Check your connection and try again.</span>`
     :!o.ids.length?`<span class="xs muted" role="status">No covers found. Try the ISBN, or a shorter title.</span>`
-    :`<span class="xs muted" role="status">${o.ids.length} cover${o.ids.length===1?'':'s'} found. Pick one.</span><div class="te-grid">${o.ids.map(i=>{const u=`https://covers.openlibrary.org/b/id/${i}-M.jpg`;return `<button type="button" data-act="tePick" data-v="${i}" aria-pressed="${te.cover===u}" aria-label="Cover ${o.ids.indexOf(i)+1}"><img src="${u}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.remove()"></button>`}).join('')}</div>`}</div>`;
+    :`<span class="xs muted" role="status">${o.ids.length} cover${o.ids.length===1?'':'s'} found. Pick one.</span><div class="te-grid">${o.ids.map(i=>{const u=`https://covers.openlibrary.org/b/id/${i}-M.jpg`;return `<button type="button" data-act="tePick" data-v="${i}" aria-pressed="${te.cover===u}" aria-label="Cover ${o.ids.indexOf(i)+1}"><img src="${u}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode&&this.parentNode.remove()"></button>`}).join('')}</div>`}</div>`;
   }
 }
 /* Covers from Google Books: the same Books API as the descriptions; the cover is Google's own image link. */
@@ -3811,7 +3874,7 @@ function adChoose(t,x,manual=false){
 function adBack(){adCaptureDetail();if(ad.detail?.manual)ad.manualDetail=ad.detail;ad.detail=null;renderAdd();requestAnimationFrame(()=>{addDlg.scrollTop=ad.scroll||0;const el=document.getElementById(ad.tab==='manual'?'amTitle':'adQ');el?.focus({preventScroll:true})})}
 /* Add Book (Nov 10): an optional, closed Book Details section with the same rules as Edit Book. A new book is yours, so
    everything is editable; a book already in the catalog lets you fill in what's missing and set your edition's ISBN. */
-function adMoreTarget(d){return d.t||(d.x&&olExisting(d.x))||null}
+function adMoreTarget(d){if(ad.seriesHint&&!d.more){d.more={series:ad.seriesHint.series,seriesNo:String(ad.seriesHint.no)};d.moreOpen=true}return d.t||(d.x&&olExisting(d.x))||null}
 function adMore(d){const ex=adMoreTarget(d),full=!ex||canEditTitle(ex),m=d.more||{},b=ex||{},look=d.look||{};
   const val=(k,dflt)=>m[k]!==undefined?m[k]:(b[k]??dflt??'');
   const inp=(edit,label,id,v,attrs='')=>edit?`<label class="f"><span>${label}</span><input class="inp" id="${id}" value="${esc(String(v??''))}" ${attrs} autocomplete="off"></label>`:teRO(label.replace(/ <span.*$/,''),v);
@@ -3898,7 +3961,7 @@ function adSave(){adCaptureDetail();const d=ad.detail;if(!d)return;const er=m=>{
   }else if(!locked)ad.lastStatus='none';
   if(d.own){copy={id:'c'+uid(),titleId:t.id,owner:'me',format:d.copyFormat,edition:d.edition.trim(),loanTo:null};if(S.settings.solo||!d.share)copy.private=true;S.copies.push(copy);if(!copy.private)postBook('library','added a book to the group library:',t)}
   if(r)saveReadingEdition(r,d.readingCopyId==='__new'&&copy&&(d.format==='unknown'||(copy.format==='audio')===audio)?{edition:copy.edition,editionCopyId:copy.id}:{edition:d.readingEdition,editionCopyId:d.readingCopyId});
-  ad.added.add(t.id);ad.detail=null;ad.manualDetail=null;ad.tab='search';if(!ad.q)ad.q=t.title;save();render();renderAdd();addDlg.scrollTop=ad.scroll||0;
+  ad.added.add(t.id);ad.seriesHint=null;ad.detail=null;ad.manualDetail=null;ad.tab='search';if(!ad.q)ad.q=t.title;save();render();renderAdd();addDlg.scrollTop=ad.scroll||0;
   const undo=restoreTo(snap,adUndoSafe);
   toast(reading?`Added ${t.title} as ${AD_STATUSES.find(([k])=>k===d.status)[1]}.`:`Added your ${FMT[d.copyFormat].toLowerCase()} copy of ${t.title}.`,()=>{if(!undo())return;ad.added.delete(t.id);renderAdd(true)});
   if(copy)setTimeout(()=>shareAsk(copy.id),0);document.getElementById('adQ')?.focus({preventScroll:true});
@@ -5550,6 +5613,13 @@ document.addEventListener('click',e=>{
     case 'rwbBack':rwb.pick=null;rwbRender();setTimeout(()=>document.getElementById('rwbQ')?.focus(),20);break;
     case 'rwbGo':rwbReplace();break;
     case 'asMember':S.settings.asMember=!S.settings.asMember||undefined;save();render();document.getElementById('meMenu').hidden=false;toast(S.settings.asMember?'Testing as a regular member. Edit Book now shows what members see.':'Back to site administrator.');break;
+    case 'srOpen':{if(bookDlg.open)bookDlg.close();srOpen(a.dataset.id);break}
+    case 'srClose':document.getElementById('srDlg')?.close();sr=null;break;
+    case 'srPick':sr.pick=+a.dataset.v;srRender();break;
+    case 'srAdd':srAdd(+a.dataset.n);break;
+    case 'srFix':srFix();break;
+    case 'srEdit':{const id=sr.tid;document.getElementById('srDlg').close();sr=null;openTitleEdit(id);break}
+    case 'srSearch':{const t=titleById(sr.tid),n=+a.dataset.n;document.getElementById('srDlg').close();sr=null;openAdd();ad.q=`${t.series} ${n}`;ad.seriesHint={series:t.series,no:n};renderAdd();olQueue();break}
     case 'rmUndo':{clearTimeout(ghostT);const u=rmUndo;rmUndo=null;rmGhost=null;if(u)u();render();break}
     case 'favTog':{const id=a.dataset.id;S.favs=isFav(id)?S.favs.filter(x=>x!==id):[...(S.favs||[]),id];save();refreshLib();document.querySelector(`#libResults [data-act=favTog][data-id="${CSS.escape(id)}"]`)?.focus({preventScroll:true});break}
     case 'crOpen':crOpen(a);break;
