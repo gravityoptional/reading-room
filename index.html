@@ -1139,9 +1139,10 @@ body:has(.menu:not([hidden])) .tour-offer{display:none}
 .mb-rate.none{color:var(--text-2);font-weight:500}
 .mb-rate:hover,.mb-rate:focus-visible{text-decoration:underline;text-underline-offset:3px}
 .mbc-fav{position:absolute;top:-4px;right:-4px;border:0;background:none;font-size:24px;line-height:1;padding:4px;color:var(--text-2);cursor:pointer;border-radius:8px}
-.mbc-fav.on{color:#C2185B}
-:root[data-theme="dark"] .mbc-fav.on{color:#F48FB1}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .mbc-fav.on{color:#F48FB1}}
+.mbc-fav.on,.yir-fav{color:#C2185B}
+.yir-fav{font-size:14px;line-height:1}
+:root[data-theme="dark"] :is(.mbc-fav.on,.yir-fav){color:#F48FB1}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) :is(.mbc-fav.on,.yir-fav){color:#F48FB1}}
 .cr-bar{position:absolute;left:6px;right:6px;top:40%;transform:translateY(-50%);display:flex;align-items:center;justify-content:center;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:6px;box-shadow:0 6px 18px rgba(15,23,42,.14);z-index:2}
 .cr-bar .hstars{flex:none}.cr-bar.cr-wide .hstar{font-size:34px}.cr-bar .hstar{font-size:min(28px,calc((100cqw - 34px)/5.3))}
 @media (max-width:360px){.mbc-top{grid-template-columns:1fr;gap:6px}.mbc-side{flex-direction:row;flex-wrap:wrap;align-items:center;padding-top:0;position:static}.mbc-fav{top:6px;right:6px;font-size:22px}.mb-al{padding-left:0}}
@@ -2040,6 +2041,7 @@ function yirData(Y){const ys=String(Y),fin=S.books.filter(b=>b.status==='finishe
   const days=[...new Set(sess.map(x=>x.date))].sort();
   return {Y,done,undated,rereads:done.filter(reread).length,pages:done.reduce((n,b)=>n+pagesOf(b),0),months,top,
     best:months.map((n,i)=>n===top&&top>0?MONTHS[i]:null).filter(Boolean),
+    favs:[...new Map(done.filter(b=>b.titleId&&isFav(b.titleId)).map(b=>[b.titleId,b])).values()],   // each favorite finished this year, once, in the order finished
     rated:done.filter(b=>b.rating).sort((a,b)=>b.rating-a.rating||b.finished.localeCompare(a.finished)).slice(0,5),
     minutes:sess.reduce((n,x)=>n+(x.minutes||0),0),streak:days.length?longestStreakRange(days):{n:0},goalDays:days.filter(d=>goalState(d).met).length,
     hasSessions:sess.length>0,imported:done.some(b=>titleById(b.titleId)?.grId)}}
@@ -2062,6 +2064,7 @@ function yirOpen(){const Y=yirOpenYear();if(Y==null)return;const d=yirData(Y);
   dl.innerHTML=`<div class="dlg yir"><div class="dlg-h"><div><h2 id="yirTitle">Your ${Y} in Books</h2><p class="small muted" style="margin:2px 0 0">${esc(S.me.name)}${yirYear()==null?' · Preview':''}</p></div><button type="button" class="icon-btn x" data-act="yirClose" aria-label="Close">${ic('x')}</button></div>
   <div class="yir-tiles">${tiles}</div>
   ${d.top?`<section class="yir-sec"><h3>Your Favorite Month${d.best.length>1?'s':''}</h3><p class="small" style="margin:0 0 6px">${d.best.join(' and ')}, with ${d.top} book${d.top===1?'':'s'} finished${d.best.length>1?' each':''}.</p>${yirChart(d)}</section>`:''}
+  ${d.favs.length?`<section class="yir-sec"><h3>Your Favorites of ${d.Y}</h3><div class="yir-rated">${d.favs.map(b=>{const t=titleById(b.titleId)||b;return `<button type="button" class="yir-book" data-act="yirBook" data-id="${t.id}">${libCover(t,72)}<span class="small"><b>${esc(t.title)}</b></span><span class="xs yir-fav" aria-label="Favorite">♥</span></button>`}).join('')}</div></section>`:''}
   ${d.rated.length?`<section class="yir-sec"><h3>Your Highest Rated</h3><div class="yir-rated">${d.rated.map(b=>{const t=titleById(b.titleId)||b;return `<button type="button" class="yir-book" data-act="yirBook" data-id="${t.id}">${libCover(t,72)}<span class="small"><b>${esc(t.title)}</b></span><span class="xs" style="color:var(--orange);font-weight:600">${b.rating}★</span></button>`}).join('')}</div></section>`:''}
   ${time?`<section class="yir-sec"><h3>Your Reading Habit</h3><div class="yir-tiles">${time}</div></section>`:''}
   <p class="xs muted" style="margin:16px 0 0">${[d.imported?'Includes books imported from Goodreads.':'',d.undated?`${d.undated} finished book${d.undated===1?' has':'s have'} no finish date, so ${d.undated===1?'it isn’t':'they aren’t'} counted.`:''].filter(Boolean).join(' ')}</p></div>`;
