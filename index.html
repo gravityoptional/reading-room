@@ -1128,6 +1128,7 @@ body:has(.menu:not([hidden])) .tour-offer{display:none}
 .ns-i mark{background:color-mix(in srgb,var(--primary) 22%,transparent);color:inherit;border-radius:3px;padding:0 1px}
 .f[hidden],#startLenHint[hidden]{display:none}
 .ch-pace{color:var(--primary);font-weight:600;margin-top:2px}
+.lcard.dc-ghost{position:relative;border-style:dashed}
 .rm-box{border-top:1px solid var(--border);padding-top:12px;margin-top:4px}.rm-box summary{cursor:pointer}.rm-go{color:var(--red,#B42318)}
 .lastnote{margin-top:12px}
 .lastnote summary{cursor:pointer;color:var(--primary);font-weight:600;font-size:14px;list-style:none;display:inline-flex;align-items:center;gap:6px}
@@ -3109,12 +3110,12 @@ function pruneDisc(){
 
 /* Ghost card after Not for Me: the card stays in place, faded, with Hidden · Undo (and, for a recommendation, who
    won't be told) for a few seconds; then the row closes up and focus moves to the card that took its place. */
-function ghostCard(card,k,sub,kb){
+function ghostCard(card,k,sub,kb,opt={}){
   const rowId=card.closest('.dc-row')?.querySelector('.dc-h')?.id,idx=[...card.parentNode.children].indexOf(card);
   [...card.children].forEach(c=>c.inert=true);card.classList.add('dc-ghost');
-  card.insertAdjacentHTML('beforeend',`<div class="dc-ghost-bar" role="status"><span class="dg-main"><span>Hidden</span><span aria-hidden="true">·</span><button class="link-btn sm" data-act="ghostUndo" data-k="${esc(k)}">Undo</button></span>${sub?`<span class="dg-sub">${esc(sub)}</span>`:''}</div>`);
-  card.querySelector('[data-act=ghostUndo]').focus({preventScroll:true});
-  const done=()=>{const had=document.activeElement?.closest('.dc-ghost');refreshLib();
+  card.insertAdjacentHTML('beforeend',`<div class="dc-ghost-bar" role="status"><span class="dg-main"><span>${opt.label||'Hidden'}</span><span aria-hidden="true">·</span><button class="link-btn sm" data-act="${opt.act||'ghostUndo'}" data-k="${esc(k)}">Undo</button></span>${sub?`<span class="dg-sub">${esc(sub)}</span>`:''}</div>`);
+  card.querySelector('.dc-ghost-bar .link-btn').focus({preventScroll:true});
+  const done=()=>{const had=document.activeElement?.closest('.dc-ghost');if(opt.done)opt.done();else refreshLib();
     if(had&&rowId){const cs=document.getElementById(rowId)?.closest('.dc-row')?.querySelectorAll('.dc-card');const c=cs?.[Math.min(idx,cs.length-1)];(c?.querySelector('.dc-nfm')||c?.querySelector('.lc-open'))?.focus({preventScroll:true})}};
   // The countdown waits while a mouse pointer rests on the ghost, or while a keyboard user is on its Undo.
   const canHover=matchMedia('(hover: hover)').matches;let hover=canHover&&card.matches(':hover'),onKey=!!kb;
@@ -3483,10 +3484,15 @@ function removeReadings(ids,titleId){
   const cs=titleId?S.copies.filter(c=>c.titleId===titleId&&c.owner==='me'):[];
   if(cs.some(copyHasCommitment))return 'Resolve this book’s loan, hold, or requests first.';
   const snap=snapshot(),t=titleById(titleId||book(ids[0])?.titleId);
+  // the book's card in the Library, if it's showing: it stays in place as a ghost with Removed · Undo, like Not for Me
+  const card=view==='library'&&t?document.querySelector(`#libResults .lc-open[data-id="${CSS.escape(t.id)}"]`)?.closest('.lcard,.dc-card'):null;
   S.books=S.books.filter(b=>!ids.includes(b.id));S.sessions=S.sessions.filter(x=>!ids.includes(x.bookId));S.upNext=(S.upNext||[]).filter(id=>!ids.includes(id));
   if(ids.includes(selBook))selBook=null;
   if(titleId){S.copies=S.copies.filter(c=>!cs.includes(c));delete S.notes[titleId]}
-  save();render();toast(`Removed ${t?t.title:'the book'} from My Books.`,restoreTo(snap));return ''}
+  save();
+  if(card){rmUndo=restoreTo(snap);requestAnimationFrame(()=>ghostCard(card,t.id,'',false,{label:'Removed',act:'rmUndo',done:()=>{rmUndo=null;render()}}))}
+  else{render();toast(`Removed ${t?t.title:'the book'} from My Books.`,restoreTo(snap))}return ''}
+let rmUndo=null;
 function openTitleEdit(id){
   teInvalidateSearch();
   const t=titleById(id);if(!canEditTitle(t))return;
@@ -5347,6 +5353,7 @@ document.addEventListener('click',e=>{
     case 'histOpenM':hist.m=a.dataset.v;hist.mode='month';hist.sel=null;render();break;
     case 'rmReading':{const b=book(editForm.dataset.id);if(!b)break;const m=removeReadings([b.id]);if(m){document.getElementById('editErr').textContent=m;break}editDlg.close();if(bookDlg?.open)bookDlg.close();break}
     case 'rmTitle':{const tid=te?.id;if(!tid)break;const m=removeReadings(S.books.filter(b=>b.titleId===tid).map(b=>b.id),tid);if(m){document.getElementById('teErr').textContent=m;break}titleDlg.close();if(bookDlg?.open)bookDlg.close();break}
+    case 'rmUndo':{clearTimeout(ghostT);const u=rmUndo;rmUndo=null;if(u)u();render();break}
     case 'notesGo':{const d=a.dataset.v;hist.mode='month';hist.m=d.slice(0,7);hist.sel=d;render();setTimeout(()=>{const c=document.querySelector('.sess-day');(c||document.querySelector('.hgrid'))?.scrollIntoView({block:'start',behavior:'smooth'})},30);break}
     case 'histDay':{hist.sel=a.dataset.v&&hist.sel!==a.dataset.v?a.dataset.v:null;const y=window.scrollY;render();window.scrollTo(0,y);break}
     case 'histPanel':{hist.panel=hist.panel===a.dataset.v?null:a.dataset.v;const y=window.scrollY;render();window.scrollTo(0,y);break}
