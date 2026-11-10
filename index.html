@@ -1129,6 +1129,22 @@ body:has(.menu:not([hidden])) .tour-offer{display:none}
 .f[hidden],#startLenHint[hidden]{display:none}
 .ch-pace{color:var(--primary);font-weight:600;margin-top:2px}
 .lcard.dc-ghost{position:relative;border-style:dashed}
+.mbc{position:relative;container-type:inline-size}
+.mbc-top{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:start}
+.mbc-cov{border:0;background:none;padding:0;border-radius:8px}
+.mbc-side{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:0;position:relative;padding-top:30px}
+.mbc-side .st{max-width:100%;white-space:nowrap}
+.mb-al{padding-left:9px}                       /* lines up with the word inside the status chip (its 9px padding) */
+.mb-rate{border:0;background:none;padding-top:0;padding-bottom:0;padding-right:0;font-size:12px;font-weight:600;color:var(--orange);cursor:pointer;text-align:left}
+.mb-rate.none{color:var(--text-2);font-weight:500}
+.mb-rate:hover,.mb-rate:focus-visible{text-decoration:underline;text-underline-offset:3px}
+.mbc-fav{position:absolute;top:-4px;right:-4px;border:0;background:none;font-size:24px;line-height:1;padding:4px;color:var(--text-2);cursor:pointer;border-radius:8px}
+.mbc-fav.on{color:#C2185B}
+:root[data-theme="dark"] .mbc-fav.on{color:#F48FB1}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .mbc-fav.on{color:#F48FB1}}
+.cr-bar{position:absolute;left:6px;right:6px;top:40%;transform:translateY(-50%);display:flex;align-items:center;justify-content:center;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:6px;box-shadow:0 6px 18px rgba(15,23,42,.14);z-index:2}
+.cr-bar .hstars{flex:none}.cr-bar.cr-wide .hstar{font-size:34px}.cr-bar .hstar{font-size:min(28px,calc((100cqw - 34px)/5.3))}
+@media (max-width:360px){.mbc-top{grid-template-columns:1fr;gap:6px}.mbc-side{flex-direction:row;flex-wrap:wrap;align-items:center;padding-top:0;position:static}.mbc-fav{top:6px;right:6px;font-size:22px}.mb-al{padding-left:0}}
 .rm-box{border-top:1px solid var(--border);padding-top:12px;margin-top:4px}.rm-box summary{cursor:pointer}.rm-go{color:var(--red,#B42318)}
 .lastnote{margin-top:12px}
 .lastnote summary{cursor:pointer;color:var(--primary);font-weight:600;font-size:14px;list-style:none;display:inline-flex;align-items:center;gap:6px}
@@ -2525,7 +2541,7 @@ function baseList(){
 }
 function libTitles(){
   let list=baseList();
-  if(lib.tab==='mybooks'&&lib.mb!=='all')list=list.filter(t=>mbStatus(t)===lib.mb);
+  if(lib.tab==='mybooks'&&lib.mb!=='all')list=list.filter(t=>lib.mb==='fav'?isFav(t.id):mbStatus(t)===lib.mb);
   const q=lib.q.trim().toLowerCase(),f=lib.f;
   list=list.filter(t=>{
     const cs=lib.tab==='family'?sharedCopiesOf(t.id):copiesOf(t.id);
@@ -2545,7 +2561,7 @@ function libTitles(){
 }
 const MB=[['all','All'],['reading','Currently Reading'],['paused','Paused'],['want','To Read'],['finished','Finished'],['dnf','Did Not Finish'],['owned','Own but Not Started']];
 const MB_ORDER=['reading','paused','want','owned','finished','dnf'],MB_LABEL={reading:'Currently Reading',paused:'Paused',want:'To Read',owned:'Own but Not Started',finished:'Finished',dnf:'Did Not Finish'};
-function mbChips(){const base=baseList();return `<div class="chips mb-chips" role="group" aria-label="Filter by status">${MB.map(([k,l])=>{const n=k==='all'?base.length:base.filter(t=>mbStatus(t)===k).length;return `<button class="tab sm" aria-pressed="${lib.mb===k}" data-act="mbChip" data-v="${k}">${l} <span class="cnt">${n}</span></button>`}).join('')}${(()=>{const n=mySeries().length;return n?`<button class="tab sm" aria-pressed="${lib.mb==='series'}" data-act="mbChip" data-v="series">Series <span class="cnt">${n}</span></button>`:''})()}</div>`}
+function mbChips(){const base=baseList();return `<div class="chips mb-chips" role="group" aria-label="Filter by status">${MB.map(([k,l])=>{const n=k==='all'?base.length:base.filter(t=>mbStatus(t)===k).length;return `<button class="tab sm" aria-pressed="${lib.mb===k}" data-act="mbChip" data-v="${k}">${l} <span class="cnt">${n}</span></button>`}).join('')}${(()=>{const n=base.filter(t=>isFav(t.id)).length;return n||lib.mb==='fav'?`<button class="tab sm" aria-pressed="${lib.mb==='fav'}" data-act="mbChip" data-v="fav"><span aria-hidden="true">♥ </span>Favorites <span class="cnt">${n}</span></button>`:''})()}${(()=>{const n=mySeries().length;return n?`<button class="tab sm" aria-pressed="${lib.mb==='series'}" data-act="mbChip" data-v="series">Series <span class="cnt">${n}</span></button>`:''})()}</div>`}
 /* Series (My Books → Series): every series with at least one of my books, in order, with how many I've finished,
    each book's status, and the next one to read. Books the group owns in the series are included; numbers no one
    has added show as a gap up to the known length (Books in the Series). */
@@ -2574,6 +2590,10 @@ function seriesView(){
       <ol class="ser-books">${x.ts.map(t=>{const k=x.st(t);return `<li><button class="ser-b" data-act="openTitle" data-id="${t.id}" aria-label="Book ${t.seriesNo}: ${esc(dispT(t.title))}, ${SER_ST[k]}">${libCover(t,44)}<span class="ser-t"><span class="xs muted">Book ${t.seriesNo}</span><span class="small ser-n">${esc(dispT(t.title))}</span><span class="xs ser-s ${k}">${SER_ST[k]}</span></span></button></li>`}).join('')}
       ${gaps.length?`<li class="ser-gap xs muted">${gaps.length===1?`Book ${gaps[0]} isn’t in your library.`:`Books ${gaps.slice(0,-1).join(', ')} and ${gaps[gaps.length-1]} aren’t in your library.`}</li>`:''}</ol></section>`}).join('')}</div>`;
 }
+const MB_SHORT={reading:'Reading',paused:'Paused',want:'To Read',finished:'Finished',dnf:'DNF',owned:'Owned'},MB_FULL={dnf:'Did Not Finish',owned:'Own but Not Started'};
+/* Favorites (Nov 10): a per-member list of title ids, private reading data. Shared like ratings: the same Share with
+   My Groups setting decides who sees them. */
+const isFav=id=>(S.favs||[]).includes(id);
 function mbCard(t){
   const st=mbStatus(t),r=myReading(t.id),cs=copiesOf(t.id),mine=cs.some(c=>c.owner==='me');
   const own=mine?'You own it':cs.length?`Owned by ${ownerNames(t.id)}`:'Not owned';
@@ -2586,8 +2606,16 @@ function mbCard(t){
   else if(st==='finished')act=`<button class="btn btn-ghost sm" data-act="startTitle" data-id="${t.id}">Read Again</button>`;
   else if(st==='dnf')act=`<div class="two"><button class="btn btn-ghost sm" data-act="pickup" data-book="${r.id}">Pick Up Again</button><button class="btn btn-ghost sm" data-act="startTitle" data-id="${t.id}">Start Over</button></div>`;
   const when=st==='finished'&&r.finished?`Finished ${fmtDateY(r.finished)}`:st==='finished'?finUnknown(r):st==='dnf'?`Stopped at ${r.format==='audio'?fmtPos(r.pos):'page '+r.pos}${r.dnfOn?` · ${fmtDateY(r.dnfOn)}`:''}${r.dnfWhy?` · ${dnfWhyL(r.dnfWhy)}`:''}`:'';
-  return `<div class="lcard"><button class="lc-open" data-act="openTitle" data-id="${t.id}">${libCover(t)}<span class="lc-t">${esc(dispT(t.title))}</span><span class="bk-a">${esc(t.author)}</span></button>
-  <div>${chip}${r&&r.status==='finished'&&r.rating?` <span class="xs" style="color:var(--orange);font-weight:600">${r.rating}★</span>`:''}</div>${when?`<div class="xs muted">${when}</div>`:''}${fin>1?`<div class="xs muted">Read ${fin}×</div>`:fin===1&&st!=='finished'?`<div class="xs muted">Read once before</div>`:''}<div class="xs ${mine?'own-me':'muted'}">${own}</div>
+  /* Nov 10 (James): status, percent, and rating sit beside the cover with short labels; the heart marks a favorite;
+     a finished book's rating can be set right on the card (the star bar). "Not owned" is left unsaid. */
+  const sh=st==='want'&&(S.upNext||[]).includes(r?.id)?'Queued':MB_SHORT[st],full=MB_FULL[st];
+  const fav=isFav(t.id),pc=(st==='reading'||st==='paused')&&hasLen(r)?`<span class="xs muted mb-al">${pct(r)}%</span>`:'';
+  const rt=r&&r.status==='finished'?`<button class="mb-rate mb-al ${r.rating?'':'none'}" data-act="crOpen" data-id="${r.id}" aria-label="${r.rating?`Your rating: ${r.rating} stars. Change it`:'Rate this book'}">${r.rating?`${r.rating}★`:'☆ Rate'}</button>`:'';
+  return `<div class="lcard mbc"><div class="mbc-top"><button class="mbc-cov" data-act="openTitle" data-id="${t.id}" tabindex="-1" aria-hidden="true">${libCover(t)}</button>
+  <div class="mbc-side"><button class="mbc-fav ${fav?'on':''}" data-act="favTog" data-id="${t.id}" aria-pressed="${fav}" aria-label="${fav?'Remove from':'Add to'} Favorites" title="${fav?'Favorite':'Add to Favorites'} (${rateWho()})">${fav?'♥':'♡'}</button>
+  <span class="st st-${st==='owned'?'':st}"${full?` title="${full}"`:''}>${full?`<span aria-hidden="true">${sh}</span><span class="sr-only">${full}</span>`:sh}</span>${pc}${rt}</div></div>
+  <button class="lc-open" data-act="openTitle" data-id="${t.id}"><span class="lc-t">${esc(dispT(t.title))}</span><span class="bk-a">${esc(t.author)}</span></button>
+  ${when?`<div class="xs muted">${when}</div>`:''}${fin>1?`<div class="xs muted">Read ${fin}×</div>`:fin===1&&st!=='finished'?`<div class="xs muted">Read once before</div>`:''}${mine||cs.length?`<div class="xs ${mine?'own-me':'muted'}">${own}</div>`:''}
   <div class="lc-act">${act}</div></div>`;
 }
 let recEdit=null;
@@ -3493,6 +3521,21 @@ function removeReadings(ids,titleId){
   if(card){rmUndo=restoreTo(snap);requestAnimationFrame(()=>ghostCard(card,t.id,'',false,{label:'Removed',act:'rmUndo',done:()=>{rmUndo=null;render()}}))}
   else{render();toast(`Removed ${t?t.title:'the book'} from My Books.`,restoreTo(snap))}return ''}
 let rmUndo=null;
+/* Rating on a My Books card: the star bar opens over the card (pointing at the rating on a computer, tapping it on a
+   phone), with the same half-star stars as Book Details. Tapping the current rating again clears it. */
+function crOpen(btn){const card=btn.closest('.lcard');if(!card||card.querySelector('.cr-bar'))return;crClose();const r=book(btn.dataset.id);if(!r)return;
+  card.insertAdjacentHTML('beforeend',`<div class="cr-bar" role="group" aria-label="Rate ${esc(r.title)}">${starsFor(r)}</div>`);
+  card.classList.add('cr-on');
+  // on a touch screen the bar may be wider than the card so each star is a full-size target; it stays on screen
+  if(!matchMedia('(hover: hover)').matches){const bar=card.querySelector('.cr-bar'),cr=card.getBoundingClientRect(),br=btn.getBoundingClientRect(),w=Math.min(innerWidth-16,232);
+    Object.assign(bar.style,{position:'fixed',width:w+'px',right:'auto',transform:'none',left:Math.max(8,Math.min(innerWidth-w-8,cr.left+cr.width/2-w/2))+'px',top:Math.max(8,br.top-60)+'px'});bar.classList.add('cr-wide')}
+  if(!btn.matches(':hover'))card.querySelector('.cr-bar [data-act=rate]')?.focus({preventScroll:true})}
+addEventListener('scroll',()=>{if(document.querySelector('.cr-bar.cr-wide'))crClose()},{passive:true});
+function crClose(changed){document.querySelectorAll('.lcard.cr-on').forEach(c=>{c.classList.remove('cr-on');c.querySelector('.cr-bar')?.remove()});if(changed)refreshLib()}
+document.addEventListener('mouseover',e=>{const b=e.target.closest?.('.mb-rate');if(b&&matchMedia('(hover: hover)').matches)crOpen(b)});
+document.addEventListener('mouseout',e=>{if(!matchMedia('(hover: hover)').matches)return;const c=e.target.closest?.('.lcard.cr-on');if(c&&!c.contains(e.relatedTarget))crClose()});   // computers only: a phone tap also sends mouseout
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.querySelector('.cr-bar'))crClose()});
+document.addEventListener('pointerdown',e=>{const open=document.querySelector('.cr-bar');if(open&&!e.target.closest?.('.cr-bar,.mb-rate'))crClose()},true);   // a tap outside closes it
 function openTitleEdit(id){
   teInvalidateSearch();
   const t=titleById(id);if(!canEditTitle(t))return;
@@ -5354,6 +5397,9 @@ document.addEventListener('click',e=>{
     case 'rmReading':{const b=book(editForm.dataset.id);if(!b)break;const m=removeReadings([b.id]);if(m){document.getElementById('editErr').textContent=m;break}editDlg.close();if(bookDlg?.open)bookDlg.close();break}
     case 'rmTitle':{const tid=te?.id;if(!tid)break;const m=removeReadings(S.books.filter(b=>b.titleId===tid).map(b=>b.id),tid);if(m){document.getElementById('teErr').textContent=m;break}titleDlg.close();if(bookDlg?.open)bookDlg.close();break}
     case 'rmUndo':{clearTimeout(ghostT);const u=rmUndo;rmUndo=null;if(u)u();render();break}
+    case 'favTog':{const id=a.dataset.id;S.favs=isFav(id)?S.favs.filter(x=>x!==id):[...(S.favs||[]),id];save();refreshLib();document.querySelector(`#libResults [data-act=favTog][data-id="${CSS.escape(id)}"]`)?.focus({preventScroll:true});break}
+    case 'crOpen':crOpen(a);break;
+    case 'crClose':crClose();break;
     case 'notesGo':{const d=a.dataset.v;hist.mode='month';hist.m=d.slice(0,7);hist.sel=d;render();setTimeout(()=>{const c=document.querySelector('.sess-day');(c||document.querySelector('.hgrid'))?.scrollIntoView({block:'start',behavior:'smooth'})},30);break}
     case 'histDay':{hist.sel=a.dataset.v&&hist.sel!==a.dataset.v?a.dataset.v:null;const y=window.scrollY;render();window.scrollTo(0,y);break}
     case 'histPanel':{hist.panel=hist.panel===a.dataset.v?null:a.dataset.v;const y=window.scrollY;render();window.scrollTo(0,y);break}
@@ -5463,6 +5509,7 @@ document.addEventListener('click',e=>{
     case 'cpEditClose':copyEditDlg.close();break;
     case 'cpRemove':{const c=S.copies.find(c=>c.id===a.dataset.id&&c.owner==='me');if(!c)break;if(copyHasCommitment(c)){toast('Resolve this copy’s loan, hold, or requests before removing it.');break}const snap=snapshot();S.copies=S.copies.filter(x=>x.id!==a.dataset.id);save();renderBD();toast('Removed your copy.',restoreTo(snap));break}
     case 'rate':{const r=book(a.dataset.id),v=+a.dataset.v;r.rating=r.rating===v?0:v;save();
+      if(a.closest('.cr-bar')){crClose(true);break}
       const rb=a.closest('[data-rbox]');if(rb){const id=rb.dataset.rbox;rb.outerHTML=recRateOpt(titleById(r.titleId),id);document.getElementById(id)?.focus();break}renderBD();if(nextDlg.open){renderNextDlg();nextBody.querySelector(`[data-act=rate][data-v="${v}"]`)?.focus()}break}
     case 'bdLog':{if(bookDlg.open)bookDlg.close();if(chDlg.open)chDlg.close();if(nextDlg.open)nextDlg.close();openLog(a.dataset.id);break}
     case 'startTimer':startTimer(id);break;
