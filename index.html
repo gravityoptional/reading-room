@@ -3515,7 +3515,7 @@ const titleDlg=document.getElementById('titleDlg'),titleForm=document.getElement
 /* Who may change a book's shared details (Nov 10): the same rule as the live database: the person who added it, anyone
    who owns a copy, or the site administrator. Everyone with the book in My Books still gets Edit Book, to fill in what's
    missing, choose their own cover and ISBN, suggest a correction, replace it with the right book, or remove it. */
-const isSiteAdmin=()=>window.RR_GROUPS?!!RR_GROUPS.isSiteAdmin:!!S.me.admin;
+const isSiteAdmin=()=>window.RR_GROUPS?!!RR_GROUPS.isSiteAdmin:!!S.me.admin&&!S.settings.asMember;   // the test site's account menu can switch this off for testing
 const canEditTitle=t=>!!t&&(isSiteAdmin()||t.by==='me'||copiesOf(t.id).some(c=>c.owner==='me'));
 const inMyBooks=id=>S.books.some(b=>b.titleId===id)||S.copies.some(c=>c.titleId===id&&c.owner==='me')||!!S.notes[id]||isFav(id);
 const myEd=id=>(S.myEd||{})[id]||{};   // my own edition of a book: {cover, isbn}; private, never shared
@@ -4809,7 +4809,8 @@ function renderHeader(){
     <button class="link" data-act="tourStart">Take the Tour</button>${S.settings.solo?'':'<button class="link" data-act="tourGroup">Take the Group Tour</button>'}
     ${S.settings.gsHidden?'<button class="link" data-act="gsShow">Show Get Started</button>':''}
     <hr><button class="link" data-act="dataDownload">Download My Data</button><button class="link" data-act="dataRestore">Restore from File</button>
-    <hr><div class="xs muted" style="padding:2px 10px">Prototype Tools</div><div class="small proto-view" style="padding:2px 10px 6px">Viewing: <b>${S.settings.protoView==='new'?'New member':`Sample family, as ${esc(S.me.name)}`}${S.settings.solo?' · Just Me':''}</b></div>
+    <hr><div class="xs muted" style="padding:2px 10px">Prototype Tools</div><div class="small proto-view" style="padding:2px 10px 6px">Viewing: <b>${S.settings.protoView==='new'?'New member':`Sample family, as ${esc(S.me.name)}`}${S.settings.solo?' · Just Me':''}${S.settings.asMember?' · Regular member':''}</b></div>
+    <div class="row"><span class="small">Test as a Regular Member</span><button class="switch" role="switch" aria-checked="${!!S.settings.asMember}" data-act="asMember" aria-label="Test as a Regular Member"></button></div><div class="xs muted" style="padding:0 10px 6px;margin-top:-4px">Turns off site administrator rights, so Edit Book works the way it does for members who don’t own a copy.</div>
     <button class="link" data-act="emptyDemo">Show New-Member (Empty) View</button>
     <button class="link" data-act="simActivity">Add Sample Group Activity</button>
     <button class="link" data-act="simBorrowIn">Add a Sample Borrow Request</button>
@@ -5538,6 +5539,7 @@ document.addEventListener('click',e=>{
     case 'rwbPickOL':{const x=rwb.ol?.items[+a.dataset.i];if(!x)break;const ex=olExisting(x);rwb.pick=ex?{t:ex}:{x};if(ex&&ex.id===rwb.from){rwb.pick=null;toast('That’s the same book.');break}rwbRender();break}
     case 'rwbBack':rwb.pick=null;rwbRender();setTimeout(()=>document.getElementById('rwbQ')?.focus(),20);break;
     case 'rwbGo':rwbReplace();break;
+    case 'asMember':S.settings.asMember=!S.settings.asMember||undefined;save();render();document.getElementById('meMenu').hidden=false;toast(S.settings.asMember?'Testing as a regular member. Edit Book now shows what members see.':'Back to site administrator.');break;
     case 'rmUndo':{clearTimeout(ghostT);const u=rmUndo;rmUndo=null;rmGhost=null;if(u)u();render();break}
     case 'favTog':{const id=a.dataset.id;S.favs=isFav(id)?S.favs.filter(x=>x!==id):[...(S.favs||[]),id];save();refreshLib();document.querySelector(`#libResults [data-act=favTog][data-id="${CSS.escape(id)}"]`)?.focus({preventScroll:true});break}
     case 'crOpen':crOpen(a);break;
