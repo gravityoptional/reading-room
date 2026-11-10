@@ -1149,7 +1149,7 @@ body:has(.menu:not([hidden])) .tour-offer{display:none}
 .te-ro{gap:2px}.te-ro .small{color:var(--text-2);overflow-wrap:anywhere}
 .rwb-swap{display:flex;align-items:center;gap:12px;justify-content:center;flex-wrap:wrap}
 .rwb-b{display:grid;justify-items:center;gap:4px;max-width:140px;text-align:center}.rwb-arrow{font-size:22px;color:var(--text-2)}
-.addb-more{border-top:1px solid var(--border);padding-top:10px}.addb-more summary{cursor:pointer}
+.addb-more{border-top:1px solid var(--border);padding-top:10px;min-width:0}.addb-more .inp{width:100%;max-width:100%;min-width:0;box-sizing:border-box}.addb-more summary{cursor:pointer}
 .rm-box{border-top:1px solid var(--border);padding-top:12px;margin-top:4px}.rm-box summary{cursor:pointer}.rm-go{color:var(--red,#B42318)}
 .lastnote{margin-top:12px}
 .lastnote summary{cursor:pointer;color:var(--primary);font-weight:600;font-size:14px;list-style:none;display:inline-flex;align-items:center;gap:6px}
@@ -3608,7 +3608,7 @@ function openTitleEdit(id){
   if(te.src==='url'){te.tab='url';te.url=t.cover}
   if(te.src==='gb')te.tab='gb';
   const genres=[...new Set(S.titles.map(x=>x.genre).filter(Boolean))].sort(),series=[...new Set(S.titles.map(x=>x.series).filter(Boolean))].sort();
-  titleForm.innerHTML=`<div class="dlg-h"><div style="flex:1;min-width:0"><h2 id="teTitle">Edit Book</h2><div class="muted small">Book details apply to everyone${S.settings.solo?'':` in the ${esc(GN())} Library`} and to every reading. Copy details apply only to your copies.</div></div><button type="button" class="icon-btn x" data-act="teClose" aria-label="Close">${ic('x')}</button></div>
+  titleForm.innerHTML=`<div class="dlg-h"><div style="flex:1;min-width:0"><h2 id="teTitle">Edit Book</h2>${full?'':'<div class="muted small">Your own cover and ISBN apply only to you.</div>'}<div class="muted small" ${full?'':'hidden'}>Book details apply to everyone${S.settings.solo?'':` in the ${esc(GN())} Library`} and to every reading. Copy details apply only to your copies.</div></div><button type="button" class="icon-btn x" data-act="teClose" aria-label="Close">${ic('x')}</button></div>
   <div class="form">
     <section id="teCopies">${copyAccess(t.id)}</section>
     <div class="section-t">Book Details</div>
