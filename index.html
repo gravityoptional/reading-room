@@ -1150,6 +1150,10 @@ body:has(.menu:not([hidden])) .tour-offer{display:none}
 .rwb-swap{display:flex;align-items:center;gap:12px;justify-content:center;flex-wrap:wrap}
 .rwb-b{display:grid;justify-items:center;gap:4px;max-width:140px;text-align:center}.rwb-arrow{font-size:22px;color:var(--text-2)}
 .addb-more{border-top:1px solid var(--border);padding-top:10px;min-width:0}.addb-more .inp{width:100%;max-width:100%;min-width:0;box-sizing:border-box}.addb-more summary{cursor:pointer}
+.yir-ud{display:grid;gap:6px;margin-top:8px;max-height:280px;overflow-y:auto;padding:2px}
+.yir-ud-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:6px 8px;border:1px solid var(--border);border-radius:10px;background:var(--surface)}
+.yir-ud-t{display:grid;min-width:0}.yir-ud-t b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.yir-ud-btn{padding:0 2px}
 .rm-box{border-top:1px solid var(--border);padding-top:12px;margin-top:4px}.rm-box summary{cursor:pointer}.rm-go{color:var(--red,#B42318)}
 .lastnote{margin-top:12px}
 .lastnote summary{cursor:pointer;color:var(--primary);font-weight:600;font-size:14px;list-style:none;display:inline-flex;align-items:center;gap:6px}
@@ -2043,7 +2047,7 @@ function yirData(Y){const ys=String(Y),fin=S.books.filter(b=>b.status==='finishe
   const months=MONTHS.map((_,i)=>done.filter(b=>+b.finished.slice(5,7)===i+1).length),top=Math.max(0,...months);
   const sess=S.sessions.filter(x=>!isCU(x)&&(x.date||'').startsWith(ys)&&x.date<=today());
   const days=[...new Set(sess.map(x=>x.date))].sort();
-  return {Y,done,undated,rereads:done.filter(reread).length,pages:done.reduce((n,b)=>n+pagesOf(b),0),months,top,
+  return {Y,done,undated,undatedList:fin.filter(b=>!b.finished),rereads:done.filter(reread).length,pages:done.reduce((n,b)=>n+pagesOf(b),0),months,top,
     best:months.map((n,i)=>n===top&&top>0?MONTHS[i]:null).filter(Boolean),
     favs:[...new Map(done.filter(b=>b.titleId&&isFav(b.titleId)).map(b=>[b.titleId,b])).values()],   // each favorite finished this year, once, in the order finished
     rated:done.filter(b=>b.rating).sort((a,b)=>b.rating-a.rating||b.finished.localeCompare(a.finished)).slice(0,5),
@@ -2060,6 +2064,8 @@ function yirChart(d){const W=360,H=120,pad=18,bw=(W-8)/12,max=Math.max(1,d.top);
     <text x="${x+w/2}" y="${H-4}" text-anchor="middle" font-size="10" fill="var(--text-2)">${MONTHS[i][0]}</text></g>`}).join('');
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Books finished each month in ${d.Y}"><line x1="4" x2="${W-4}" y1="${H-pad}" y2="${H-pad}" stroke="var(--border)"/>${bars}</svg>
   <table class="sr-only"><caption>Books finished each month</caption>${d.months.map((n,i)=>`<tr><th>${MONTHS[i]}</th><td>${n}</td></tr>`).join('')}</table>`}
+/* Finished books with no finish date (Nov 10, James): the footnote opens a list, each with Add the Date (Edit Reading). */
+let yirShowUndated=false;
 function yirOpen(){const Y=yirOpenYear();if(Y==null)return;const d=yirData(Y);
   let dl=document.getElementById('yirDlg');if(!dl){dl=document.createElement('dialog');dl.id='yirDlg';dl.setAttribute('aria-labelledby','yirTitle');document.body.appendChild(dl)}
   const tile=(n,l,sub)=>`<div class="yir-tile"><b>${n}</b><span>${l}</span>${sub?`<span class="xs muted">${sub}</span>`:''}</div>`;
@@ -2071,7 +2077,8 @@ function yirOpen(){const Y=yirOpenYear();if(Y==null)return;const d=yirData(Y);
   ${d.favs.length?`<section class="yir-sec"><h3>Your Favorites of ${d.Y}</h3><div class="yir-rated">${d.favs.map(b=>{const t=titleById(b.titleId)||b;return `<button type="button" class="yir-book" data-act="yirBook" data-id="${t.id}">${libCover(t,72)}<span class="small"><b>${esc(t.title)}</b></span><span class="xs yir-fav" aria-label="Favorite">♥</span></button>`}).join('')}</div></section>`:''}
   ${d.rated.length?`<section class="yir-sec"><h3>Your Highest Rated</h3><div class="yir-rated">${d.rated.map(b=>{const t=titleById(b.titleId)||b;return `<button type="button" class="yir-book" data-act="yirBook" data-id="${t.id}">${libCover(t,72)}<span class="small"><b>${esc(t.title)}</b></span><span class="xs" style="color:var(--orange);font-weight:600">${b.rating}★</span></button>`}).join('')}</div></section>`:''}
   ${time?`<section class="yir-sec"><h3>Your Reading Habit</h3><div class="yir-tiles">${time}</div></section>`:''}
-  <p class="xs muted" style="margin:16px 0 0">${[d.imported?'Includes books imported from Goodreads.':'',d.undated?`${d.undated} finished book${d.undated===1?' has':'s have'} no finish date, so ${d.undated===1?'it isn’t':'they aren’t'} counted.`:''].filter(Boolean).join(' ')}</p></div>`;
+  <p class="xs muted" style="margin:16px 0 0">${[d.imported?'Includes books imported from Goodreads.':'',d.undated?`<button type="button" class="link-btn sm yir-ud-btn" data-act="yirUndated" aria-expanded="${yirShowUndated}" aria-controls="yirUndated">${d.undated} finished book${d.undated===1?' has':'s have'} no finish date</button>, so ${d.undated===1?'it isn’t':'they aren’t'} counted.`:''].filter(Boolean).join(' ')}</p>
+  ${d.undated&&yirShowUndated?`<div class="yir-ud" id="yirUndated">${d.undatedList.map(b=>{const t=titleById(b.titleId)||b;return `<div class="yir-ud-row">${libCover(t,34)}<span class="small yir-ud-t"><b>${esc(t.title)}</b><span class="xs muted">${esc(t.author)}</span></span><button type="button" class="btn btn-ghost sm" data-act="yirDate" data-id="${b.id}">Add the Date</button></div>`}).join('')}</div>`:''}</div>`;
   if(!dl.open)dl.showModal();setTimeout(()=>dl.querySelector('[data-act=yirClose]')?.focus(),40)}
 function activityCard(){
   const hide=S.settings.hideAct||[];
@@ -2555,7 +2562,7 @@ function baseList(){
 }
 function libTitles(){
   let list=baseList();
-  if(lib.tab==='mybooks'&&lib.mb!=='all')list=list.filter(t=>lib.mb==='fav'?isFav(t.id):mbStatus(t)===lib.mb);
+  if(lib.tab==='mybooks'&&lib.mb!=='all')list=list.filter(t=>lib.mb==='fav'?isFav(t.id):lib.mb==='own'?copiesOf(t.id).some(c=>c.owner==='me'):mbStatus(t)===lib.mb);   // Owned: every book I own a copy of, whatever its status
   const q=lib.q.trim().toLowerCase(),f=lib.f;
   list=list.filter(t=>{
     const cs=lib.tab==='family'?sharedCopiesOf(t.id):copiesOf(t.id);
@@ -2575,7 +2582,7 @@ function libTitles(){
 }
 const MB=[['all','All'],['reading','Currently Reading'],['paused','Paused'],['want','To Read'],['finished','Finished'],['dnf','Did Not Finish'],['owned','Own but Not Started']];
 const MB_ORDER=['reading','paused','want','owned','finished','dnf'],MB_LABEL={reading:'Currently Reading',paused:'Paused',want:'To Read',owned:'Own but Not Started',finished:'Finished',dnf:'Did Not Finish'};
-function mbChips(){const base=baseList();return `<div class="chips mb-chips" role="group" aria-label="Filter by status">${MB.map(([k,l])=>{const n=k==='all'?base.length:base.filter(t=>mbStatus(t)===k).length;return `<button class="tab sm" aria-pressed="${lib.mb===k}" data-act="mbChip" data-v="${k}">${l} <span class="cnt">${n}</span></button>`}).join('')}${(()=>{const n=base.filter(t=>isFav(t.id)).length;return n||lib.mb==='fav'?`<button class="tab sm" aria-pressed="${lib.mb==='fav'}" data-act="mbChip" data-v="fav"><span aria-hidden="true">♥ </span>Favorites <span class="cnt">${n}</span></button>`:''})()}${(()=>{const n=mySeries().length;return n?`<button class="tab sm" aria-pressed="${lib.mb==='series'}" data-act="mbChip" data-v="series">Series <span class="cnt">${n}</span></button>`:''})()}</div>`}
+function mbChips(){const base=baseList();return `<div class="chips mb-chips" role="group" aria-label="Filter by status">${MB.map(([k,l])=>{const n=k==='all'?base.length:base.filter(t=>mbStatus(t)===k).length;return `<button class="tab sm" aria-pressed="${lib.mb===k}" data-act="mbChip" data-v="${k}">${l} <span class="cnt">${n}</span></button>`}).join('')}${(()=>{const n=base.filter(t=>copiesOf(t.id).some(c=>c.owner==='me')).length;return n||lib.mb==='own'?`<button class="tab sm" aria-pressed="${lib.mb==='own'}" data-act="mbChip" data-v="own">Owned <span class="cnt">${n}</span></button>`:''})()}${(()=>{const n=base.filter(t=>isFav(t.id)).length;return n||lib.mb==='fav'?`<button class="tab sm" aria-pressed="${lib.mb==='fav'}" data-act="mbChip" data-v="fav"><span aria-hidden="true">♥ </span>Favorites <span class="cnt">${n}</span></button>`:''})()}${(()=>{const n=mySeries().length;return n?`<button class="tab sm" aria-pressed="${lib.mb==='series'}" data-act="mbChip" data-v="series">Series <span class="cnt">${n}</span></button>`:''})()}</div>`}
 /* Series (My Books → Series): every series with at least one of my books, in order, with how many I've finished,
    each book's status, and the next one to read. Books the group owns in the series are included; numbers no one
    has added show as a gap up to the known length (Books in the Series). */
@@ -5166,6 +5173,7 @@ goalDlg.addEventListener('close',()=>{if(logDlg.open&&logForm.dataset.mode==='lo
 
 /* ---------- edit book ---------- */
 const editDlg=document.getElementById('editDlg'),editForm=document.getElementById('editForm');
+editDlg.addEventListener('close',()=>{if(document.getElementById('yirDlg')?.open)yirOpen()});   // Year in Review counts the new date right away
 function seriesFields(b){
   const tt=titleById(b.titleId);if(!tt)return '';
   const names=[...new Set(S.titles.map(t=>t.series).filter(Boolean))].sort();
@@ -5595,6 +5603,8 @@ document.addEventListener('click',e=>{
     case 'closeAdd':addDlg.close();refreshLib();break;
     case 'yirOpen':yirOpen();break;
     case 'yirClose':document.getElementById('yirDlg')?.close();break;
+    case 'yirUndated':yirShowUndated=!yirShowUndated;yirOpen();if(yirShowUndated)setTimeout(()=>document.getElementById('yirUndated')?.scrollIntoView({block:'nearest',behavior:'smooth'}),30);break;
+    case 'yirDate':{const id=a.dataset.id;openEdit(id);setTimeout(()=>editForm.querySelector('[name=finished]')?.focus(),60);break}
     case 'yirBook':document.getElementById('yirDlg')?.close();openTitle(a.dataset.id);break;
     case 'acctOpen':closeMenus();acctOpen();break;
     case 'acctClose':document.getElementById('acctDlg')?.close();break;
