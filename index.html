@@ -1341,6 +1341,13 @@ a.btn{text-decoration:none}
 #amPages,[name="tPages"]{max-width:112px}
 /* Add It Yourself: Author and Pages share a row; Pages stays narrow. */
 .f2.am-ap:has(#amPages){grid-template-columns:minmax(0,1fr) 112px}
+/* One cover size for every Library card (My Books, Group Library, Discover; Nov 10, James): the largest that still
+   leaves room for the status chip beside the cover on a My Books card. Series rows and Shelf spines keep theirs. */
+:root{--libcov:88px}
+@media (max-width:1199px){:root{--libcov:84px}}
+@media (max-width:819px){:root{--libcov:76px}}
+@media (max-width:719px){:root{--libcov:80px}}   /* the largest that fits a My Books card in each range (measured Nov 10) */
+.lcard .lc-open .cover,.dc-card .lc-open .cover,.lcard .mbc-cov .cover{width:var(--libcov)}
 </style>
 </head>
 <body>
@@ -5383,7 +5390,8 @@ document.addEventListener('click',e=>{
       if(to==='me'){S.trophies.push({id:'aw'+uid(),name:n,desc:note||'Special award',date:today(),tier:'trophy',icon:'trophy',hue:'purple'});post('award','added an award to their Trophy Wall:',n)}else{S.awardsGiven.push({id:uid(),to,name:n,note,date:today()});if(S.settings.share)S.activity.push({id:uid(),who:'me',kind:'award',text:`gave ${nameOf(to)} an award:`,book:n,ts:Date.now(),r:{}})}
       save();chDlg.close();toast(to==='me'?`Added ${n} to your Trophy Wall.`:`Gave ${nameOf(to)} the award ${n}.`);break}
     case 'libTab':lib.tab=a.dataset.v;if(lib.tab==='discover')lib.rv='disc';if(lib.tab!=='mybooks'){if(lib.sort==='finished')lib.sort='title';if(['year','month','week'].includes(lib.group))lib.group='alpha'}if(lib.tab==='mybooks'&&lib.group==='alpha')lib.group='status';if(lib.tab!=='mybooks'&&lib.group==='status')lib.group='alpha';render();break;
-    case 'mbChip':lib.mb=a.dataset.v;if(lib.mb==='finished'){if(lib.sort==='title')lib.sort='finished';if(lib.group==='status')lib.group='year'}else{if(lib.sort==='finished')lib.sort='title';if(['year','month','week'].includes(lib.group))lib.group='status'}refreshLib();break;
+    case 'mbChip':lib.mb=lib.mb===a.dataset.v&&a.dataset.v!=='all'?'all':a.dataset.v;   // clicking the chip that's on turns it off (back to All)
+      if(lib.mb==='finished'){if(lib.sort==='title')lib.sort='finished';if(lib.group==='status')lib.group='year'}else{if(lib.sort==='finished')lib.sort='title';if(['year','month','week'].includes(lib.group))lib.group='status'}refreshLib();break;
     case 'recView':lib.rv=a.dataset.v;render();window.scrollTo(0,0);break;
     case 'noteMore':{const k=a.dataset.v;openNotes.has(k)?openNotes.delete(k):openNotes.add(k);clampNotes();break}
     case 'noteNew':openNote(null,a.dataset.v||null);break;
