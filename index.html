@@ -1315,6 +1315,7 @@ a.btn{text-decoration:none}
 @media(max-width:400px){.addb-selected h3{font-size:19px}.addb-reading-options{padding:12px}}
 
 /* Compact search introduction; wrap naturally on narrower phones. */
+#pgvDlg .pgv-sec{display:grid;gap:8px}#pgvDlg .pgv-h{font-size:1rem;margin:0}#pgvDlg .pgv-l{list-style:none;margin:0;padding:0;display:grid;gap:6px}#pgvDlg .pgv-r{padding:8px 10px;border:1px solid var(--border);border-radius:10px;font-size:.92rem}#pgvDlg .pgv-never{font-size:.88rem;padding:10px 12px;border-radius:10px;background:var(--primary-light)}
 #logForm .lg-prog-h{display:flex;align-items:center;justify-content:space-between;gap:10px}#logForm .sw-row{display:grid;gap:8px;margin-top:8px}#logForm .sw-copy[open]{padding:10px 12px;border:1px solid var(--border);border-radius:12px}
 #logForm .new-heading{margin-bottom:0}
 #logForm .new-heading>div{position:relative;padding-top:29px}
@@ -3192,6 +3193,7 @@ function getOpts(t,x){
   else if(eb?.access==='public')opts.push({url:en?.ia?`https://archive.org/details/${encodeURIComponent(en.ia)}`:eb.ia?`https://archive.org/details/${encodeURIComponent(eb.ia)}`:`https://openlibrary.org${key}`,l:'Read Free Online',i:'book'});
   if(lvx)opts.push({url:`https://archive.org/search?query=${encodeURIComponent(`${look.title.split(':')[0]} ${au}`.trim())}&and[]=collection%3A%22librivoxaudio%22`,l:'Listen Free',i:'head'});
   if(!gut&&eb?.access==='borrowable')opts.push({url:en?.ed?`https://openlibrary.org/books/${encodeURIComponent(en.ed)}`:`https://openlibrary.org${key}`,l:'Borrow Free on Open Library',i:'book'});
+  if(S.settings.libby)opts.push({url:`https://libbyapp.com/search/${encodeURIComponent(S.settings.libby)}/search/query-${encodeURIComponent(look.title)}/page-1`,l:'Find at Your Library',i:'pin'});else
   opts.push({url:t?.isbn?`https://search.worldcat.org/search?q=bn:${encodeURIComponent(t.isbn)}`:`https://search.worldcat.org/search?q=${encodeURIComponent(`ti:${look.title}${au?` au:${au}`:''}`)}`,l:'Find at Your Library',i:'pin'});
   opts.buy={url:`https://bookshop.org/search?keywords=${encodeURIComponent(t?.isbn||`${look.title} ${au}`.trim())}`,l:'Buy'};
   return opts;
@@ -4984,7 +4986,7 @@ function renderHeader(){
       return `<div class="notif-req">${replyBtns(r,free,`<span class="xs muted" style="align-self:center">Waiting in line until your copy is back.</span>`)}</div>`})()}</div>`).join(''):'<p class="muted small" style="padding:4px 10px 10px;margin:0">You’re all caught up.</p>'}`;
   const th=S.settings.theme;
   document.getElementById('meMenu').innerHTML=`<h3>${esc(S.me.name)}</h3><button class="link" data-act="acctOpen">Account Settings</button>
-    ${S.settings.solo?'':`<div class="row"><span class="small">Share My Activity with My Groups</span><button class="switch" role="switch" aria-checked="${S.settings.share}" data-act="share" aria-label="Share My Activity with My Groups"></button></div><div class="xs muted" style="padding:0 10px 6px;margin-top:-4px">Sharing shows what you’re currently reading, finished books, ratings, reading progress, and achievements.</div>`}
+    ${S.settings.solo?'':`<div class="row"><span class="small">Share My Activity with My Groups</span><button class="switch" role="switch" aria-checked="${S.settings.share}" data-act="share" aria-label="Share My Activity with My Groups"></button></div><div class="xs muted" style="padding:0 10px 6px;margin-top:-4px">Sharing shows what you’re currently reading, finished books, ratings, reading progress, and achievements. <button class="link-btn sm" data-act="pgvOpen" style="padding:0 2px">Preview What My Group Sees</button></div>`}
     <div class="row"><span class="small">Appearance</span><span class="seg">${['system','light','dark'].map(x=>`<button aria-pressed="${th===x}" data-act="theme" data-v="${x}">${x[0].toUpperCase()+x.slice(1)}</button>`).join('')}</span></div>
     <div class="row"><label class="small" for="palSel">Color Palette</label><select class="inp sm" id="palSel" data-pref="palette">${(o=>`<optgroup label="Colors">${PALETTES.filter(([k])=>!PAL_HC.has(k)).map(o).join('')}</optgroup><optgroup label="High Contrast">${PALETTES.filter(([k])=>PAL_HC.has(k)).map(o).join('')}</optgroup>`)(([k,l])=>`<option value="${k}" ${(S.settings.palette||'sage')===k?'selected':''}>${l}</option>`)}</select></div>
     <div class="row"><label class="small" for="hfSel">Heading Font</label><select class="inp sm" id="hfSel" data-pref="hfont">${HFONTS.map(([k,l])=>`<option value="${k}" ${(S.settings.hfont||'source')===k?'selected':''}>${l}</option>`).join('')}</select></div>
@@ -5550,6 +5552,30 @@ function toast(m,undo,sub,cele){if(saveFailed){showSaveFailure();return;}if(extr
   // that window, where its Undo still works.
   const host=[...document.querySelectorAll('dialog[open]')].pop()||document.body;if(t.parentNode!==host){hideT(t);host.appendChild(t)}
   t.classList.toggle('cele',!!cele);t.innerHTML=`<span><span class="t-main">${esc(m)}</span>${sub?`<span class="t-sub">${esc(sub)}</span>`:''}</span>${undo?'<button class="toast-undo" data-act="undo">Undo</button>':''}`;undoFn=undo||null;showT(t);clearTimeout(toastT);toastT=setTimeout(()=>{hideT(t);undoFn=null},undo?6000:sub?4500:2800)}
+/* ---------- 3m. Preview What My Group Sees ----------
+   On the live site the database answers as another member of the group would see you (its real access rules); here,
+   on the test site, the same view is built from this device's data. Read-only. */
+function pgvLocal(){const sh=!!S.settings.share;
+  return {copies:S.copies.filter(c=>c.owner==='me'&&!c.private).map(c=>({title:titleById(c.titleId)?.title||'',author:titleById(c.titleId)?.author||'',format:c.format,edition:c.edition,onLoan:!!c.loanTo})).sort((a,b)=>a.title.localeCompare(b.title)),
+    activity:sh?S.activity.filter(a=>a.who==='me'&&!a.fromGroup).sort((a,b)=>b.ts-a.ts).slice(0,8).map(a=>({kind:a.kind,text:a.text,book:a.book,extra:a.extra,at:new Date(a.ts).toISOString()})):[],
+    readings:sh?S.books.filter(b=>['reading','paused','finished'].includes(b.status)).slice(0,30).map(b=>({title:b.title,status:b.status})):[]}}
+async function pgvOpen(){let d=document.getElementById('pgvDlg');if(!d){d=document.createElement('dialog');d.id='pgvDlg';d.setAttribute('aria-labelledby','pgvTitle');document.body.appendChild(d)}
+  const gn=esc(S.group?.name||GN()),head=`<div class="dlg-h"><div style="flex:1;min-width:0"><h2 id="pgvTitle">What Your Group Sees</h2><div class="small muted">You in ${gn}, as other members see you</div></div><button type="button" class="icon-btn x" data-act="pgvClose" aria-label="Close">${ic('x')}</button></div>`;
+  d.innerHTML=`<div class="dlg">${head}<div class="form"><p class="small muted" role="status">Checking…</p></div></div>`;if(!d.open)d.showModal();
+  let v;try{v=window.RR_PREVIEW_GROUP?await RR_PREVIEW_GROUP():pgvLocal()}catch(e){d.querySelector('.form').innerHTML=`<p class="small">The preview didn’t load. Check your connection and try again.</p>`;return}
+  if(v.alone){d.querySelector('.form').innerHTML=`<p class="small">You’re the only member of ${gn} so far, so nobody else sees anything yet.</p><div class="dlg-f"><button type="button" class="btn btn-primary" data-act="pgvClose">Done</button></div>`;return}
+  const FM={physical:'Physical',print:'Print',ebook:'Ebook',audio:'Audiobook'},ST={reading:'Reading',paused:'Paused',finished:'Finished'};
+  const cpRow=c=>`<li class="pgv-r"><span><b>${esc(c.title)}</b><br><span class="xs muted">${[esc(c.author),FM[c.format]||'',c.edition?esc(c.edition):'',c.onLoan?'On loan':''].filter(Boolean).join(' · ')}</span></span></li>`,CL=v.copies||[];
+  const cps=CL.length?CL.slice(0,6).map(cpRow).join('')+(CL.length>6?`</ul><details class="pgv-more"><summary class="link-btn sm">Show all ${CL.length}</summary><ul class="pgv-l" style="margin-top:6px">${CL.slice(6).map(cpRow).join('')}`+'</ul></details><ul class="pgv-l">':''):'';
+  const acts=(v.activity||[]).map(a=>`<li class="pgv-r"><span>${esc(a.text)}${a.book?` <b>${esc(a.book)}</b>`:''}${a.extra?` · ${esc(a.extra)}`:''}<br><span class="xs muted">${fmtDate(String(a.at).slice(0,10))}</span></span></li>`).join('');
+  const rds=(v.readings||[]).filter(r=>r.status!=='finished').map(r=>`${esc(r.title)} (${ST[r.status]||r.status})`).join(', ');
+  d.querySelector('.form').innerHTML=`
+    <div class="pgv-sec"><h3 class="pgv-h">Your Shared Copies <span class="cnt">${(v.copies||[]).length}</span></h3>${cps?`<ul class="pgv-l">${cps}</ul>`:'<p class="small muted" style="margin:0">None. Your group doesn’t see any of your copies.</p>'}</div>
+    <div class="pgv-sec"><h3 class="pgv-h">Your Activity</h3>${acts?`<ul class="pgv-l">${acts}</ul>`:`<p class="small muted" style="margin:0">${S.settings.share?'Nothing posted yet.':'Hidden: Share My Activity is off.'}</p>`}
+      ${rds?`<p class="xs muted" style="margin:0">Also shown as currently reading: ${rds}.</p>`:''}</div>
+    <div class="pgv-never"><b>Never shown to your group:</b> your reading sessions and minutes, your notes, Did Not Finish, private copies, and books you keep in My Books only.</div>
+    <p class="xs muted" style="margin:0">${window.RR_PREVIEW_GROUP?'Checked with the same rules the database uses for other members, so this is what they see.':'Test site: built from this device’s data.'}</p>
+    <div class="dlg-f"><button type="button" class="btn btn-ghost" data-act="pgvShare">Change What I Share</button><button type="button" class="btn btn-primary" data-act="pgvClose">Done</button></div>`}
 /* ---------- Account Settings ----------
    Profile picture (a photo, or the initial on a chosen color), the name your groups see, and an optional private full
    name. The live beta adds email and password (window.RR_ACCT_EXTRA) and saves the profile to Supabase
@@ -5561,15 +5587,20 @@ function acctOpen(){acct={name:S.me.name,full:S.me.fullName||'',color:S.me.color
   <div class="form"><div class="section-t">Profile Picture</div><div id="acctPic"></div>
   <label class="f"><span>Display Name <span class="sub">(what your groups see)</span></span><input class="inp" id="acctName" maxlength="60" autocomplete="nickname" value="${esc(acct.name)}"></label>
   <label class="f"><span>Full Name <span class="sub">(optional, private)</span></span><input class="inp" id="acctFull" maxlength="120" autocomplete="name" value="${esc(acct.full)}" placeholder="For example, Riley Emberton"></label>
+  <label class="f"><span>My Library on Libby <span class="sub">(optional, only you see it)</span></span><input class="inp" id="acctLibby" maxlength="200" autocomplete="off" value="${esc(S.settings.libby||'')}" placeholder="For example, idl"></label>
+  <span class="xs muted" style="margin-top:-6px">Find at Your Library then opens a Libby search at your library. On <a href="https://libbyapp.com/" target="_blank" rel="noopener">libbyapp.com</a>, choose your library and copy the short name after /library/ in the address (libbyapp.com/library/<b>idl</b>), or paste the whole address.</span>
   ${window.RR_ACCT_EXTRA?RR_ACCT_EXTRA():''}
   <div class="err" id="acctErr" role="alert"></div></div>
   <div class="dlg-f"><button type="button" class="btn btn-ghost" data-act="acctClose">Cancel</button><button type="submit" class="btn btn-primary" id="acctSave">Save Changes</button></div></form>`;
   acctPic();d.showModal();setTimeout(()=>document.getElementById('acctName')?.focus(),40);
   document.getElementById('acctForm').onsubmit=async e=>{e.preventDefault();const name=document.getElementById('acctName').value.trim(),full=document.getElementById('acctFull').value.trim(),er=t=>{document.getElementById('acctErr').textContent=t};
     if(!name)return er('Enter the name your groups will see.');
+    const lr=document.getElementById('acctLibby').value.trim(),lk=(lr.match(/libbyapp\.com\/(?:library|search)\/([a-z0-9-]+)/i)?.[1]||lr).toLowerCase();
+    if(lk&&!/^[a-z0-9-]{2,40}$/.test(lk))return er('Enter your library’s short Libby name, like idl, or paste its libbyapp.com address.');
     const btn=document.getElementById('acctSave');btn.disabled=true;
     try{if(window.RR_SAVE_PROFILE){const m=await RR_SAVE_PROFILE({name,full,color:acct.color,photo:acct.photo});if(m){er(m);return}}}finally{btn.disabled=false}
     Object.assign(S.me,{name,color:acct.color});if(acct.photo)S.me.photo=acct.photo;else delete S.me.photo;if(full)S.me.fullName=full;else delete S.me.fullName;
+    if(lk)S.settings.libby=lk;else delete S.settings.libby;
     save();d.close();render();toast('Account settings saved.')}}
 function acctPic(){const el=document.getElementById('acctPic');if(!el)return;const ph=acct.photo,init=esc((document.getElementById('acctName')?.value||acct.name||'?')[0]||'?');
   el.innerHTML=`<div class="acct-pic"><span class="avatar acct-av" style="background:${ph?`url('${ph}') center/cover no-repeat, ${acct.color}`:acct.color}">${ph?'':init}</span>
@@ -5760,6 +5791,9 @@ document.addEventListener('click',e=>{
     case 'teSuggest':sgOpen(te.id);break;
     case 'sgClose':document.getElementById('sgDlg')?.close();break;
     case 'rwbOpen':rwbOpen(a.dataset.id);break;
+    case 'pgvOpen':closeMenus();pgvOpen();break;
+    case 'pgvClose':document.getElementById('pgvDlg')?.close();break;
+    case 'pgvShare':document.getElementById('pgvDlg')?.close();document.getElementById('meMenu').hidden=false;scrollTo(0,0);break;
     case 'logUnit':{const b=book(logForm.dataset.book);if(b&&(a.dataset.v==='pct')!==isPct(b))logUnit(b,a.dataset.v);break}
     case 'swApply':swApply();break;
     case 'rwbUse':{const to=titleById(a.dataset.to);if(!to)break;rwbOpen(a.dataset.id);rwb.pick={t:to};rwbRender();break}
