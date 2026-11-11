@@ -3867,7 +3867,9 @@ titleForm.addEventListener('submit',e=>{
     if(!save())return;titleDlg.close();render();if(bookDlg.open)renderBD(true);toast(Object.keys(fill).length?`Thanks for filling in ${t.title}.`:`Saved your changes to ${t.title}.`);return}
   const title=v('tTitle'),author=v('tAuthor')||'Unknown author',pages=v('tPages'),isbn=v('tIsbn').replace(/[-\s]/g,'').toUpperCase(),sn=v('tSeries'),no=v('tSeriesNo'),len=v('tSeriesLen');
   if(!title)return er('Enter a title.');
-  if(bookIdentityTaken(t.id,title,author))return er('Another book in Reading Room already has this title and author.');
+  if(bookIdentityTaken(t.id,title,author)){const o=S.titles.find(x=>x.id!==t.id&&olKey(x.title)===olKey(title)&&olKey(x.author)===olKey(author));
+    er('Another book in Reading Room already has this title and author.');
+    if(o&&inMyBooks(t.id))document.getElementById('teErr').insertAdjacentHTML('beforeend',` <button type="button" class="link-btn sm" data-act="rwbUse" data-id="${t.id}" data-to="${esc(o.id)}" style="padding:0 2px">Move My Reading to That Book</button>`);return}
   if(pages&&!(/^\d+$/.test(pages)&&+pages>0))return er('Enter the number of pages as a whole number, or leave it blank.');
   const mine=S.books.filter(b=>b.titleId===t.id);
   const past=pages&&mine.find(b=>b.format!=='audio'&&b.status!=='finished'&&b.pos>+pages);
@@ -5651,6 +5653,7 @@ document.addEventListener('click',e=>{
     case 'teSuggest':sgOpen(te.id);break;
     case 'sgClose':document.getElementById('sgDlg')?.close();break;
     case 'rwbOpen':rwbOpen(a.dataset.id);break;
+    case 'rwbUse':{const to=titleById(a.dataset.to);if(!to)break;rwbOpen(a.dataset.id);rwb.pick={t:to};rwbRender();break}
     case 'rwbClose':document.getElementById('rwbDlg')?.close();rwb=null;break;
     case 'rwbPick':rwb.pick={t:titleById(a.dataset.id)};rwbRender();break;
     case 'rwbPickOL':{const x=rwb.ol?.items[+a.dataset.i];if(!x)break;const ex=olExisting(x);rwb.pick=ex?{t:ex}:{x};if(ex&&ex.id===rwb.from){rwb.pick=null;toast('That’s the same book.');break}rwbRender();break}
