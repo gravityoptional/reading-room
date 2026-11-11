@@ -3059,7 +3059,7 @@ async function discAuthor(k){
 async function discLoad(){
   if(discBusy||navigator.onLine===false)return;
   discCache.a=discCache.a||{};discCache.b=discCache.b||{};
-  const todo=lovedAuthors().filter(a=>!(discCache.a[a.key]?.ts>Date.now()-DISC_TTL)),todoB=byrSources().filter(x=>!(discCache.b[x.id]?.ts>Date.now()-DISC_TTL));
+  const todo=lovedAuthors().filter(a=>!(discCache.a[a.key]?.ts>Date.now()-DISC_TTL)),todoB=byrSources().filter(x=>!byrFresh(x));
   if(!todo.length&&!todoB.length)return;
   discBusy=true;const keep=()=>{try{localStorage.setItem(DISC_KEY,JSON.stringify(discCache))}catch(e){}if(view==='discover'||view==='dashboard')coverRedraw()};
   try{for(const a of todo){
@@ -3067,7 +3067,8 @@ async function discLoad(){
     discCache.a[a.key]={ts:Date.now(),items};keep();
     await new Promise(r=>setTimeout(r,1000));
   }
-  for(const x of todoB){let items;try{items=await discBecause(titleById(x.id))}catch(e){break}discCache.b[x.id]={ts:Date.now(),items};keep()}
+  for(let n=0;n<6;n++){const x=byrSources().find(y=>!byrFresh(y));if(!x)break;let items;try{items=await discBecause(titleById(x.id))}catch(e){break}discCache.b[x.id]={ts:Date.now(),items};keep()}   // an empty book hands its slot to the next candidate
+  if(view==='discover'&&!document.querySelector('dialog[open]'))render()
   }finally{discBusy=false}
 }
 /* English edition to read or borrow. Open Library's own pick of edition can be in any language (a Dutch Judy
@@ -3131,11 +3132,14 @@ function ruleAuthor(){
    Open Library readers first. Tested Nov 11 on 10 family favorites: sensible for about 7. Subjects too broad to mean
    anything (Fiction, Juvenile fiction, Accessible book…) are skipped, as are little-read and non-English books. */
 const BYR_GENERIC=/^(fiction|juvenile fiction|juvenile literature|nonfiction|accessible book|protected daisy|in library|large type books|lending library|open library staff picks|reading level.*|english (fiction|literature|language)|american (fiction|literature)|literature|novels?|fiction, general|children's (fiction|stories)|young adult fiction|new york times bestseller|nyt:.*|long now manual for civilization|internet archive wishlist|history|general|translations into .*|spanish language materials|.*\(fictitious character\).*|readers|series:.*|award:.*|fiction in english|criticism and interpretation|study guides|adult|comic books, strips.*)$/i;
-function byrSources(){
+function byrCands(){
   const sc=b=>(isFav(b.titleId)?2:0)+(b.rating>=4?1:0),seen=new Set(),out=[];
   S.books.filter(b=>b.status==='finished'&&titleById(b.titleId)&&sc(b)>0).sort((a,b)=>sc(b)-sc(a)||(b.finished||'').localeCompare(a.finished||''))
-    .forEach(b=>{if(seen.has(b.titleId)||out.length>=3)return;seen.add(b.titleId);const t=titleById(b.titleId);out.push({id:t.id,why:isFav(t.id)?`Because you loved ${ti(t.title)}`:`Because you read ${ti(t.title)}`})});
+    .forEach(b=>{if(seen.has(b.titleId)||out.length>=6)return;seen.add(b.titleId);const t=titleById(b.titleId);out.push({id:t.id,why:isFav(t.id)?`Because you loved ${ti(t.title)}`:`Because you read ${ti(t.title)}`})});
   return out}
+// Up to six candidates in order (favorites first, then 4+); the first three that gave picks, or haven't been looked up yet
+const byrFresh=x=>{const c=discCache.b?.[x.id];return c&&c.ts>Date.now()-(c.items?.length?DISC_TTL:864e5)};   // no picks: try again after a day
+function byrSources(){return byrCands().filter(x=>!byrFresh(x)||discCache.b[x.id].items.length).slice(0,3)}
 async function discBecause(t){if(!t)return [];
   const j=async u=>{const r=await fetch(u,{headers:{Accept:'application/json'}});if(!r.ok)throw new Error('Open Library '+r.status);return r.json()};
   const s=await j(`https://openlibrary.org/search.json?${t.olKey?'q='+encodeURIComponent('key:'+t.olKey):'title='+encodeURIComponent(srBare(t.title))+'&author='+encodeURIComponent(lastName(t.author))}&fields=key,subject,author_key&limit=1`);
@@ -3156,8 +3160,10 @@ function ruleBecause(){
   const names=[...mine].map(id=>normT(titleById(id)?.title)).filter(Boolean),known=n=>names.some(m=>m===n||n.length>=8&&m.length>=8&&(m.startsWith(n)||n.startsWith(m)));
   const byAuthor=new Set(ruleAuthor().map(discKey));
   const lists=byrSources().map(x=>(discCache.b?.[x.id]?.items||[]).map(it=>({rule:'because',reason:x.why,x:it,t:discMatch(it)})).filter(it=>!(it.t&&mine.has(it.t.id))&&!known(normT(it.x.title))&&!hiddenIt(it)&&!byAuthor.has(discKey(it))));
-  const out=[],seen=new Set();
-  for(let i=0;out.length<6&&lists.some(l=>l[i]);i++)lists.forEach(l=>{const it=l[i];if(it&&out.length<6&&!seen.has(discKey(it))){seen.add(discKey(it));out.push(it)}});
+  const out=[],seen=new Set(),au=new Set(),per=new Map(),cap=lists.filter(l=>l.length).length>1?3:6;
+  const auK=it=>(it.x.authorKeys?.[0])||lastName((it.x.author||'').split(',')[0]).toLowerCase();
+  for(let i=0;out.length<6&&lists.some(l=>l[i]);i++)lists.forEach((l,j)=>{const it=l[i];if(!it||out.length>=6||seen.has(discKey(it))||au.has(auK(it))||(per.get(j)||0)>=cap)return;
+    seen.add(discKey(it));au.add(auK(it));per.set(j,(per.get(j)||0)+1);out.push(it)});
   return out}
 /* Already on Your Shelf: books I own a copy of and haven't started, longest on the shelf first. */
 function ruleShelf(){
@@ -5605,7 +5611,7 @@ function acctOpen(){acct={name:S.me.name,full:S.me.fullName||'',color:S.me.color
     try{if(window.RR_SAVE_PROFILE){const m=await RR_SAVE_PROFILE({name,full,color:acct.color,photo:acct.photo});if(m){er(m);return}}}finally{btn.disabled=false}
     Object.assign(S.me,{name,color:acct.color});if(acct.photo)S.me.photo=acct.photo;else delete S.me.photo;if(full)S.me.fullName=full;else delete S.me.fullName;
     if(lk)S.settings.libby=lk;else delete S.settings.libby;
-    save();d.close();render();toast('Account settings saved.')}}
+    save();d.close();render();if(bookDlg.open)renderBD(true);toast('Account settings saved.')}}
 function acctPic(){const el=document.getElementById('acctPic');if(!el)return;const ph=acct.photo,init=esc((document.getElementById('acctName')?.value||acct.name||'?')[0]||'?');
   el.innerHTML=`<div class="acct-pic"><span class="avatar acct-av" style="background:${ph?`url('${ph}') center/cover no-repeat, ${acct.color}`:acct.color}">${ph?'':init}</span>
   <div style="display:grid;gap:8px;min-width:0"><div style="display:flex;gap:8px;flex-wrap:wrap"><label class="btn btn-ghost sm">${ic('plus')}${ph?'Change Photo':'Upload a Photo'}<input type="file" id="acctFile" accept="image/jpeg,image/png,image/webp" hidden></label>${ph?'<button type="button" class="link-btn sm" data-act="acctPhotoOff">Remove Photo</button>':''}</div>
