@@ -717,6 +717,7 @@ main section.card .card-h .ico{display:none}
 .hero2{margin:-20px calc(50% - 50vw) 0;background:linear-gradient(180deg,color-mix(in srgb,var(--ph-a) 55%,var(--bg)),var(--bg));border-bottom:1px solid var(--border)}
 .hero2-in{max-width:1240px;margin:0 auto;padding:40px 20px 34px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:40px;align-items:stretch}
 .hero2 h1{font-size:clamp(32px,3.6vw,48px);font-weight:700;line-height:1.08}
+.hero2-keep{display:flex;gap:6px;align-items:flex-start;margin:6px 0 14px;opacity:.92}.hero2-keep svg{flex:none;margin-top:2px;width:16px;height:16px}
 .hero2-sub{margin:10px 0 0;font-size:16px;color:var(--text-2);max-width:44ch}
 .hero2-sub.ok{color:var(--primary);font-weight:500}
 .hero2-goal{display:flex;flex-wrap:wrap;gap:28px;align-items:center;margin-top:24px}
@@ -1750,15 +1751,28 @@ function postBook(kind,text,b,extra){const titleId=b.titleId||b.id;post(kind,tex
 function evSnap(){
   const ach=achievements().filter(a=>a.earned).map(a=>a.name);
   const chs=S.challenges.filter(c=>(c.participants||[]).includes('me')&&chDoneDate(c)).map(c=>c.id);
-  const bt={};S.battles.forEach(b=>{bt[b.id]={r:!!b.readers.me,m:b.moderator==='me',w:b.winner||null,f:!!b.readers.me&&bList(b).length>0&&readerDone(b,'me')>=bList(b).length}});
-  return {ach,chs,bt};
+  const bt={};S.battles.forEach(b=>{bt[b.id]={r:!!b.readers.me,m:b.moderator==='me',w:b.winner||null,f:!!b.readers.me&&bList(b).length>0&&readerDone(b,'me')>=bList(b).length,s:b.readStart&&b.event?bStatus(b):null}});
+  // halfway through a challenge (not competitions), the last full Monday–Sunday week with the goal met every day,
+  // and personal records (bigger is better, except Fastest Finish)
+  const half=S.challenges.filter(c=>(c.participants||[]).includes('me')&&c.mode!=='comp').filter(c=>{const p=chProg(c);return p.t>1&&p.v*2>=p.t&&p.v<p.t}).map(c=>c.id);
+  const t=today(),dow=(new Date(t+'T00:00:00Z').getUTCDay()+6)%7,mon=addDays(t,-dow-7);let pw=null;
+  if([0,1,2,3,4,5,6].every(i=>goalState(addDays(mon,i)).met))pw=mon;
+  const fin=S.books.filter(b=>b.status==='finished'&&b.finished),dp={};S.sessions.forEach(x=>{if(!isCU(x))dp[x.date]=(dp[x.date]||0)+(x.pages||0)});const yr={};fin.forEach(b=>{const y=b.finished.slice(0,4);yr[y]=(yr[y]||0)+1});
+  const rec={'Longest Book':Math.max(0,...fin.filter(b=>b.format!=='audio'&&!isPct(b)).map(b=>b.total||0)),'Longest Session':Math.max(0,...S.sessions.filter(x=>!isCU(x)).map(x=>x.minutes||0)),
+    'Most Pages in a Day':Math.max(0,...Object.values(dp)),'Most Books in a Year':Math.max(0,...Object.values(yr)),
+    'Fastest Finish':-Math.min(Infinity,...fin.filter(b=>b.started&&b.finished>=b.started).map(b=>daysBetween(b.started,b.finished)+1))};
+  return {ach,chs,bt,half,pw,rec};
 }
 function diffEvents(){
   const now=evSnap(),old=S.seen;S.seen=now;if(!old)return;
   now.ach.filter(n=>!old.ach.includes(n)).forEach(n=>{const a=achievements().find(x=>x.name===n);post('earned',`earned the ${a?TIER[a.tier].toLowerCase():'achievement'}`,n)});
   now.chs.filter(id=>!old.chs.includes(id)).forEach(id=>{const c=S.challenges.find(x=>x.id===id);post('completed','completed the challenge',c.name,null,c.id)});
+  if(old.half)now.half.filter(id=>!old.half.includes(id)).forEach(id=>{const c=S.challenges.find(x=>x.id===id);post('challenge','is halfway through the challenge',c.name,null,c.id)});
+  if(old.pw!==undefined&&now.pw&&now.pw!==old.pw)post('goal','had a perfect week: met the reading goal all 7 days');
+  if(old.rec)Object.entries(now.rec).forEach(([k,v])=>{const o=old.rec[k];if(isFinite(v)&&isFinite(o)&&o!==0&&v>o)post('record','set a new personal record:',k)});
   Object.entries(now.bt).forEach(([id,v])=>{const o=old.bt[id],b=S.battles.find(x=>x.id===id);
     if(!o){post('battle','started a Battle of the Books:',b.name);return}
+    if(v.m&&o.s&&v.s!==o.s){if(v.s==='active')post('battle','opened the reading for',b.name);else if(v.s==='completed')post('battle','wrapped up',b.name)}   // date-based; the moderator posts
     if(v.r&&!o.r)post('battle','joined as a reader in',b.name);
     if(v.m&&!o.m)post('battle','is moderating',b.name);
     if(v.f&&!o.f)post('battle','finished the whole reading list for',b.name);
@@ -1850,6 +1864,9 @@ const hasLen=b=>b.total>0;
    total 100, pos is the percent). Its sessions store unit 'pct' and never count pages: they count as reading days and
    minutes. Reaching 100% offers Finished but doesn't force it. Each read-through keeps its own unit. */
 const isPct=b=>!!b&&b.unit==='pct'&&b.format!=='audio';
+// Percent sessions count as pages when the book's page count is known (10% of a 300-page book = 30 pages)
+const pctPages=(b,span)=>{const n=+(titleById(b?.titleId)?.pages||0);return n>0&&span>0?Math.round(span*n/100):0};
+function pctRecount(titleId){S.books.filter(b=>b.titleId===titleId).forEach(b=>S.sessions.forEach(x=>{if(x.bookId===b.id&&x.unit==='pct'&&x.start!=null&&x.end!=null)x.pages=pctPages(b,x.end-x.start)}))}
 const pctNum=v=>{const t=String(v??'').trim().replace(/\s*%$/,'');return t===''?null:/^\d+(\.\d)?$/.test(t)?+t:NaN};
 const minsLogged=b=>S.sessions.filter(s=>s.bookId===b.id).reduce((a,s)=>a+(s.minutes||0),0);
 function progText(b){if(b.format==='unknown')return 'Reading format not specified';if(isPct(b))return `${b.pos}% read`;const audio=b.format==='audio';
@@ -1992,12 +2009,12 @@ function miniCard(b,sel){
 function readingCard(){
   const list=readingList(),b=currentSel(),n=list.length;
   const un0=upList()[0],ut=un0&&un0.titleId&&titleById(un0.titleId);
-  const upPick=un0?`<div class="up-pick"><div class="small"><span class="muted">Next in your queue:</span> <b>${esc(un0.title)}</b></div><button class="cover-btn" ${ut?`data-act="openTitle" data-id="${ut.id}"`:`data-act="editBook" data-book="${un0.id}"`} aria-label="${esc(un0.title)} details">${libCover(ut||un0,64)}</button><button class="btn btn-ghost sm" data-act="bdLog" data-id="${un0.id}">${ic('play')}Start Reading</button></div>`:'';
+  const upPick=un0?`<div class="up-pick"><div class="small"><span class="muted">Up Next:</span> <b>${esc(un0.title)}</b></div><button class="cover-btn" ${ut?`data-act="openTitle" data-id="${ut.id}"`:`data-act="editBook" data-book="${un0.id}"`} aria-label="${esc(un0.title)} details">${libCover(ut||un0,64)}</button><button class="btn btn-ghost sm" data-act="bdLog" data-id="${un0.id}">${ic('play')}Start Reading</button></div>`:'';
   const minis=n>1?`<div class="minis" role="group" aria-label="Your current books">${list.map(x=>miniCard(x,x.id===b.id)).join('')}</div>`:'';
   const body=n?detailPanel(b,list)+((minis||upPick)?`<div class="cr-foot">${minis}${upPick}</div>`:'')
     :`<div class="empty">${ic('book')}<h3>Your Reading Journey Starts Here</h3><p>Add a book to your collection or search for a title to get started.</p><button class="btn btn-primary" data-act="startNew">Start a Book</button></div>`;
   const un=upList()[0];
-  const upLine=''&&un?`<div class="up-line"><span class="small"><span class="muted">Next in your queue:</span> <b>${esc(un.title)}</b></span><button class="btn btn-ghost sm" data-act="bdLog" data-id="${un.id}">${ic('play')}Start Reading</button></div>`:'';
+  const upLine=''&&un?`<div class="up-line"><span class="small"><span class="muted">Up Next:</span> <b>${esc(un.title)}</b></span><button class="btn btn-ghost sm" data-act="bdLog" data-id="${un.id}">${ic('play')}Start Reading</button></div>`:'';
   return `<section class="card" id="crCard" data-tour="current" aria-labelledby="crH"><div class="card-h"><span class="ico">${ic('book')}</span><h2 id="crH">Currently Reading <span class="count">(${n})</span></h2>${n>1?`<span class="pos">${list.indexOf(b)+1} of ${n}</span>`:''}</div>${body}${upLine}</section>`;
 }
 function stepBook(d,refocus){
@@ -2094,7 +2111,7 @@ function activityCard(){
   const body=items.length?items.map(a=>{
     const p=person(a.who);const mine=a.who==='me';
     const txt=a.n>1?`logged ${a.n} reading sessions${new Date(a.ts).toDateString()===new Date().toDateString()?' today':''}`:a.text;
-    const counts=REACTS.map(([k,e,l])=>{const n=Object.values(a.r).filter(v=>v===k).length;const on=a.r.me===k;
+    const counts=a.noReact?'':REACTS.map(([k,e,l])=>{const n=Object.values(a.r).filter(v=>v===k).length;const on=a.r.me===k;
       return `<button class="react" ${mine?'disabled':''} aria-pressed="${on}" data-act="react" data-id="${a.id}" data-r="${k}" title="${l}" aria-label="${l}${n?`, ${n}`:''}"><span class="em" aria-hidden="true">${e}</span>${n?n:''}</button>`}).join('');
     return `<div class="act"><div class="act-top"><span class="avatar" style="background:${p.photo?`url('${p.photo}') center/cover no-repeat, ${p.color}`:p.color}">${p.photo?'':p.init}</span><div class="act-txt"><b>${esc(p.name)}</b> ${esc(txt)}${a.book?` <em>${esc(a.book)}</em>`:''}${a.extra&&a.n!==2&&!(a.n>1)?` <span class="muted">(${esc(a.extra)})</span>`:''}</div><span class="act-when">${ago(a.ts)}</span></div><div class="reacts">${counts}</div></div>`;
   }).join(''):`<div class="empty">${ic('users')}<h3>${hide.length?'Nothing to Show':'No Group Activity Yet'}</h3><p>${hide.length?'You’ve hidden some kinds of activity. Choose What Shows to bring them back.':'Group members who share their reading will show up here.'}</p></div>`;
@@ -2251,6 +2268,15 @@ function hero(){
 
 
 /* ---------- editorial dashboard ---------- */
+/* Keep going: up to two milestones across books, only when they're close (a streak a few days from its next mark, an
+   active challenge nearly done, the next books-finished badge one or two away). Never a deficit. */
+function keepGoing(){const out=[],sk=streak();
+  const sm=[3,7,14,30,60,100,365].find(n=>n>sk);if(sk>0&&sm&&sm-sk<=3)out.push({d:sm-sk,t:`${sm-sk===1?'1 day':`${sm-sk} days`} to a ${sm}-day streak`});
+  S.challenges.filter(isMine).forEach(c=>{if(c.mode==='comp')return;const p=chProg(c);if(chStatus(c,p).k!=='active'||!p.t||p.v>=p.t)return;const rem=p.t-p.v;
+    const near={books:2,list:2,days:3,goaldays:3,pages:100,minutes:60}[c.type];if(near&&rem<=near)out.push({d:c.type==='pages'?rem/50:c.type==='minutes'?rem/30:rem,t:`${fmtV(c,rem)}${unitOf(c,rem)} from finishing ${esc(c.name)}`})});
+  const fin=S.books.filter(b=>b.status==='finished').length,bm=[1,5,10,25,50,100,250,500,1000].find(n=>n>fin);
+  if(bm&&bm-fin<=2&&fin>0)out.push({d:bm-fin,t:`${bm-fin===1?'1 book':`${bm-fin} books`} from your ${bm}-book badge`});
+  return out.sort((a,b)=>a.d-b.d).slice(0,2).map(x=>x.t)}
 function heroDash(){
   const g=S.settings,t=today(),st=goalState(t),sk=streak();
   const h=new Date().getHours(),greet=h<12?'Good morning':h<18?'Good afternoon':'Good evening';
@@ -2270,7 +2296,7 @@ function heroDash(){
   return `<section class="hero2 ${photo?'has-photo':''}" ${photo?`style="--user-hero:url('${photo}')"`:''} aria-labelledby="heroH"><div class="hero2-in">
   <div class="hero2-main">
     <h1 id="heroH">${greet}, ${esc(S.me.name)}.</h1>
-    <p class="hero2-sub ${st.met?'ok':''}">${note}</p>
+    <p class="hero2-sub ${st.met?'ok':''}">${note}</p>${(()=>{const k=keepGoing();return k.length?`<p class="hero2-keep small">${ic('target')}<span>${k.join(' · ')}</span></p>`:''})()}
     <div class="hero2-goal" data-tour="goal"><div class="rings">${rings}</div>
       <div class="streak2"><div class="streak-n">${ic('flame')}${sk}<span>day streak</span></div>
         <div><div class="dots">${dots}</div><div class="dlabels"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div></div>
@@ -2439,7 +2465,7 @@ function historyView(){
   const upTo=today().slice(5),ly=String(+y-1),cur=yearTotals(y,upTo),prev=yearTotals(ly,upTo),LS=longestStreakRange();
   const cmp=(a,b,f)=>prev.any?`<div class="cmp xs ${a>b?'up':a<b?'down':''}">${a===b?'Same as':a>b?`${f(a-b)} more than`:`${f(b-a)} fewer than`} this time last year</div>`:'';
   const stats=[['book',`<button class="stat-link" data-act="histPanel" data-v="fin" aria-expanded="${hist.panel==='fin'}" aria-label="${yearFinished()} books finished. Show them">${yearFinished()}</button>`,'books finished',cmp(cur.fin,prev.fin,n=>n)],
-    ['library',`<button class="stat-link" data-act="histPanel" data-v="read" aria-expanded="${hist.panel==='read'}" aria-label="${uniq} different books read. Show them">${uniq}</button>`,'different books read',cmp(cur.uniq,prev.uniq,n=>n)],
+    ['library',`<button class="stat-link" data-act="histPanel" data-v="read" aria-expanded="${hist.panel==='read'}" aria-label="${uniq} ${uniq===1?'book':'books'} with reading logged this year. Show them">${uniq}</button>`,uniq===1?'book with reading logged':'books with reading logged',cmp(cur.uniq,prev.uniq,n=>n)],
     ['clock',fmtMin(rec),est?`reading time (+~${fmtMin(est)} estimated)`:'reading time',cmp(cur.min,prev.min,fmtMin)],
     ['chart',pages.toLocaleString(),'pages read',cmp(cur.pages,prev.pages,n=>n.toLocaleString())],
     ['flame',streak(),'day streak now',''],
@@ -3904,7 +3930,7 @@ titleForm.addEventListener('submit',e=>{
     if(fill.pages)S.books.filter(b=>b.titleId===t.id&&['print','ebook'].includes(b.format)&&!b.total&&b.unit!=='pct').forEach(b=>{b.total=fill.pages;if(b.status==='finished')b.pos=b.total});
     setMine('isbn',myIsbn);if(te.touched)setMine('cover',te.cover&&te.cover!==t.cover?te.cover:'');
     if(Object.keys(fill).length&&window.RR_FILL_TITLE)RR_FILL_TITLE(t,fill);
-    if(!save())return;titleDlg.close();render();if(bookDlg.open)renderBD(true);toast(Object.keys(fill).length?`Thanks for filling in ${t.title}.`:`Saved your changes to ${t.title}.`);return}
+    pctRecount(t.id);if(!save())return;titleDlg.close();render();if(bookDlg.open)renderBD(true);toast(Object.keys(fill).length?`Thanks for filling in ${t.title}.`:`Saved your changes to ${t.title}.`);return}
   const title=v('tTitle'),author=v('tAuthor')||'Unknown author',pages=v('tPages'),isbn=v('tIsbn').replace(/[-\s]/g,'').toUpperCase(),sn=v('tSeries'),no=v('tSeriesNo'),len=v('tSeriesLen');
   if(!title)return er('Enter a title.');
   if(bookIdentityTaken(t.id,title,author)){const o=S.titles.find(x=>x.id!==t.id&&olKey(x.title)===olKey(title)&&olKey(x.author)===olKey(author));
@@ -3934,7 +3960,7 @@ titleForm.addEventListener('submit',e=>{
   copyEdits.forEach(x=>{let c=S.copies.find(c=>c.id===x.id);if(!c){c={id:'c'+uid(),titleId:t.id,owner:'me',loanTo:null};S.copies.push(c);x.id=c.id;}c.format=x.format;c.edition=x.edition;if(!S.settings.solo)c.private=!x.shared||undefined;else if(!('private' in c))c.private=true;});
   // Retain newly assigned IDs if storage fails, so retrying cannot add duplicates.
   titleForm.querySelectorAll('.inline-copy').forEach((row,i)=>row.dataset.copyId=copyEdits[i].id);
-  if(!save())return;if(window.RR_TITLE_SAVED)RR_TITLE_SAVED(t);titleDlg.close();render();if(bookDlg.open)renderBD(true);toast(`Saved changes to ${title}.`);
+  pctRecount(t.id);if(!save())return;if(window.RR_TITLE_SAVED)RR_TITLE_SAVED(t);titleDlg.close();render();if(bookDlg.open)renderBD(true);toast(`Saved changes to ${title}.`);
 });
 
 /* ---------- add a book ---------- */
@@ -4372,7 +4398,7 @@ sessForm.addEventListener('submit',e=>{
   if(pc&&en!=null&&en>100)return er('The percent can’t be over 100.');
   if(!pc&&b&&hasLen(b)&&!isPct(b)&&en!=null&&en>b.total)return er(audio?`This audiobook is ${fmtPos(b.total)} long.`:`This book has ${b.total} pages.`);
   if(mn!=null&&mn<=0)return er('Minutes must be above zero.');
-  const pages=audio||pc?0:(en!=null?en-st:(po||0));
+  const pages=audio?0:pc?(en!=null&&st!=null?pctPages(b,en-st):0):(en!=null?en-st:(po||0));
   if(!pages&&mn==null&&!((audio||pc)&&en>st))return er('A session needs pages, minutes, or listening progress.');
   if(!f.date||f.date>today())return er('Choose a date that isn’t in the future.');
   if(isCU(x)&&(!f.from||f.from>=f.date))return er('The first day must be before the last day.');
@@ -5242,7 +5268,7 @@ logForm.addEventListener('submit',e=>{
   const statusChanged=finished||f.status!==b.status;
   if(!range&&minutes==null&&!statusChanged)return err('Enter pages, minutes, or both.');
   const span=range?end-start:0;
-  {const nD=fromD?daysIn(fromD,f.date):1,pr=fromD?{rec:0,pages:0}:day(f.date),totM=pr.rec+(minutes||0),totP=pr.pages+(audio||isPct(b)?0:span),on=fromD?`${fmtRange(fromD,f.date)}`:f.date===today()?'today':`on ${fmtDate(f.date)}`;
+  {const nD=fromD?daysIn(fromD,f.date):1,pr=fromD?{rec:0,pages:0}:day(f.date),totM=pr.rec+(minutes||0),totP=pr.pages+(audio?0:isPct(b)?pctPages(b,span):span),on=fromD?`${fmtRange(fromD,f.date)}`:f.date===today()?'today':`on ${fmtDate(f.date)}`;
    if(totM>DAY_MAX*nD)return logAsk(fromD?`<p class="small"><b>${nD} days can’t hold more than ${nD*24} hours.</b> Check the minutes or the dates.</p>`
      :`<p class="small"><b>${f.date===today()?'Today':fmtDate(f.date)} can’t hold more than 24 hours.</b> ${pr.rec?`You’ve already logged ${fmtMin(pr.rec)} that day.`:'Log longer reading on the days it happened.'}</p><div class="log-ask-b">${spreadBtn}</div>`);
    if(logForm.dataset.ok!=='1'&&(totM/nD>DAY_ASK_MIN||totP/nD>DAY_ASK_PAGES)){
@@ -5260,7 +5286,7 @@ logForm.addEventListener('submit',e=>{
   if(wasWant&&!b.started)b.started=fromD||f.date;
   if(range||minutes!=null){
     let est=null;
-    const pages=audio||isPct(b)?0:span;
+    const pages=audio?0:isPct(b)?pctPages(b,span):span;
     if(minutes==null&&S.settings.estimate){if(audio&&span>0)est=span;else if(pages>0){const p=pace(b.id);if(p)est=Math.round(pages/p)}}
     const withIds=[...logForm.querySelectorAll('[name=with]:checked')].map(x=>x.value);
     S.sessions.push({id:uid(),bookId:b.id,date:f.date,from:fromD||undefined,start:range?start:null,end:range?end:null,unit:isPct(b)?'pct':undefined,pages,minutes,est,note:f.note||'',with:withIds.length?withIds:undefined});
@@ -5403,7 +5429,7 @@ editForm.addEventListener('submit',e=>{
   }
   if(b.status==='finished'){if(hasLen(b))b.pos=b.total;if(f.finished){b.finished=f.finished;delete b.readIt;delete b.markedOn}else{delete b.finished;b.readIt=true;b.markedOn=b.markedOn||today()}}
   saveReadingEdition(b,readEdition(editForm,'editReading'));
-  const tt=titleById(b.titleId);if(tt){updateBookIdentity(tt,b.title,b.author);if(['print','ebook'].includes(b.format)&&hasLen(b))tt.pages=b.total;const sn=(f.series||'').trim();tt.series=sn||undefined;tt.seriesNo=sn&&String(f.seriesNo||'').trim()!==''&&!isNaN(+f.seriesNo)?+f.seriesNo:undefined;if(sn&&/^\d+$/.test(String(f.seriesLen||'').trim()))(S.seriesLen=S.seriesLen||{})[sn]=+f.seriesLen}
+  const tt=titleById(b.titleId);if(tt){updateBookIdentity(tt,b.title,b.author);if(['print','ebook'].includes(b.format)&&hasLen(b)&&!isPct(b))tt.pages=b.total;const sn=(f.series||'').trim();tt.series=sn||undefined;tt.seriesNo=sn&&String(f.seriesNo||'').trim()!==''&&!isNaN(+f.seriesNo)?+f.seriesNo:undefined;if(sn&&/^\d+$/.test(String(f.seriesLen||'').trim()))(S.seriesLen=S.seriesLen||{})[sn]=+f.seriesLen}
   {const w=[...editForm.querySelectorAll('[name=readWith]:checked')].map(x=>x.value),added=w.filter(x=>!(b.with||[]).includes(x));
    if(editForm.querySelector('[name=readWith]')){if(w.length)b.with=w;else delete b.with}
    if(added.length&&S.settings.share&&!S.settings.solo)S.activity.push({id:uid(),who:'me',kind:'together',text:`read together with ${added.map(nameOf).join(' and ')}`,book:b.title,titleId:b.titleId,ts:Date.now(),r:{}})}
