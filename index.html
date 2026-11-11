@@ -1315,6 +1315,7 @@ a.btn{text-decoration:none}
 @media(max-width:400px){.addb-selected h3{font-size:19px}.addb-reading-options{padding:12px}}
 
 /* Compact search introduction; wrap naturally on narrower phones. */
+#logForm .lg-prog-h{display:flex;align-items:center;justify-content:space-between;gap:10px}#logForm .sw-row{display:grid;gap:8px;margin-top:8px}#logForm .sw-copy[open]{padding:10px 12px;border:1px solid var(--border);border-radius:12px}
 #logForm .new-heading{margin-bottom:0}
 #logForm .new-heading>div{position:relative;padding-top:29px}
 #logForm .new-heading h2{position:absolute;top:0;left:0;white-space:nowrap}
@@ -5080,6 +5081,38 @@ document.addEventListener('change',e=>{
 /* Start Reading: Track Progress By shows for print and ebooks; Percent needs no page count. */
 function startUnitSync(){const fm=document.getElementById('startFormat'),u=document.getElementById('startUnit');if(!fm||!u)return;const audio=fm.value==='audio',pc=!audio&&u.value==='pct';
   document.getElementById('startUnitRow').hidden=audio;document.getElementById('startLengthLabel').hidden=pc;const h=document.getElementById('startLenHint');if(h)h.hidden=pc}
+/* Switching mid-book, from Log Reading: a Pages | % switch for print and ebook readings, and "Switched to a different
+   copy?" for a new format (a library hardcover returned, the ebook bought). The place carries over as a share of the
+   book when both lengths are known. Earlier sessions keep the unit they were logged in. */
+const swFrac=b=>hasLen(b)&&b.pos>=0?Math.min(1,b.pos/b.total):null;
+const swPages=b=>!isPct(b)&&b.format!=='audio'&&hasLen(b)?b.total:+(titleById(b.titleId)?.pages||0);
+function switchReading(b,{format,unit,total,pos}){const snap=snapshot(),was=`${b.format==='audio'?'audiobook':b.format}${isPct(b)?' (percent)':''}`;
+  b.format=format;if(format!=='audio'&&unit==='pct'){b.unit='pct';b.total=100}else{delete b.unit;b.total=total>0?total:0}
+  b.pos=Math.max(0,Math.min(pos||0,b.total||Infinity));
+  const t=titleById(b.titleId);if(format!=='audio'&&unit!=='pct'&&total>0&&t&&!t.pages)t.pages=total;
+  b.progressBase={pos:b.pos,date:today(),excluded:S.sessions.filter(x=>x.bookId===b.id).map(x=>x.id)};
+  if(!save())return;drawLog(b);const st=logForm.querySelector('[name=start]'),en=logForm.querySelector('[name=end]');
+  if(st)st.value=format==='audio'?fmtPos(b.pos):b.pos;if(en)en.value='';draftSave(logForm);render();
+  const now=format==='audio'?'audiobook':format==='ebook'?'ebook':'print';
+  toast(`Now logging ${b.title} as ${unit==='pct'&&format!=='audio'?`${now}, by percent`:now}.`,()=>{restoreTo(snap)();const x=book(b.id);if(logDlg.open&&x)drawLog(x)})}
+function logUnit(b,to){const N=swPages(b),f=swFrac(b);
+  if(to==='pct'){if(f==null&&b.pos>0)return swOpen(b,'pct');switchReading(b,{format:b.format,unit:'pct',pos:f==null?0:+(f*100).toFixed(1)});return}
+  if(!N)return swOpen(b,'pages');switchReading(b,{format:b.format,unit:'pages',total:N,pos:f==null?0:Math.round(f*N)})}
+function swOpen(b,unit){const d=logForm.querySelector('.sw-copy');if(!d)return;d.open=true;if(unit){const u=document.getElementById('swUnit');if(u)u.value=unit}swFill();document.getElementById('swTot')?.focus()}
+function swFill(){const b=book(logForm.dataset.book);if(!b)return;const fm=document.getElementById('swFmt')?.value,u=document.getElementById('swUnit'),aud=fm==='audio',pc=!aud&&u?.value==='pct';
+  document.getElementById('swUnitF').hidden=aud;const totF=document.getElementById('swTotF');totF.hidden=pc;
+  document.getElementById('swTotL').textContent=aud?'Total Length (h:mm)':'Total Pages';document.getElementById('swPosL').textContent=aud?'I’m At (h:mm)':pc?'I’m At (%)':'I’m On Page';
+  const tot=document.getElementById('swTot'),pos=document.getElementById('swPos'),f=swFrac(b);
+  const N=aud?(b.format==='audio'?b.total:0):swPages(b);tot.value=pc?'':N?(aud?fmtPos(N):N):'';tot.inputMode=aud?'text':'numeric';
+  const T=pc?100:N;pos.value=f!=null&&T?(aud?fmtPos(Math.round(f*T)):pc?+(f*100).toFixed(1):Math.round(f*T)):'';pos.inputMode=aud?'text':pc?'decimal':'numeric';pos.placeholder=f!=null?'Blank: carry over':''}
+function swApply(){const b=book(logForm.dataset.book),er=m=>{document.getElementById('swErr').textContent=m};if(!b)return;
+  const fm=document.getElementById('swFmt').value,aud=fm==='audio',pc=!aud&&document.getElementById('swUnit').value==='pct';
+  const rt=document.getElementById('swTot').value.trim(),rp=document.getElementById('swPos').value.trim();
+  const total=pc?100:aud?parsePos(rt):(/^\d+$/.test(rt)?+rt:NaN),f=swFrac(b),pos=rp===''?(f!=null&&total>0?(aud?Math.round(f*total):pc?+(f*100).toFixed(1):Math.round(f*total)):0):aud?parsePos(rp):pc?pctNum(rp):(/^\d+$/.test(rp)?+rp:NaN);
+  if(!pc&&rt!==''&&!(total>0))return er(aud?'Enter the total length as h:mm, for example 9:45.':'Enter the total pages as a whole number.');
+  if(pos==null||isNaN(pos)||pos<0)return er(aud?'Enter where you are as h:mm.':pc?'Enter a percent from 0 to 100.':'Enter the page you’re on.');
+  if((pc&&pos>100)||(!pc&&total>0&&pos>total))return er('That’s past the end of the book.');
+  switchReading(b,{format:fm,unit:pc?'pct':'pages',total:pc?100:(total||0),pos})}
 function drawLog(b,focus,preMin,moveTo){
   if(b.format==='unknown'||b.status==='want'&&!startSetupDone.has(b)){detachLogDraft();formatPick={b,focus,preMin,moveTo};logForm.dataset.mode='format';logForm.innerHTML=`<div class="dlg-h"><h2 id="logTitle">Start Reading</h2><button type="button" class="icon-btn x" data-act="closeLog" aria-label="Close">${ic('x')}</button></div><div class="form"><h3>${esc(b.title)}</h3><div class="f2"><label class="f">Reading Format<select class="inp" id="startFormat"><option value="print">Print / Ebook</option><option value="audio">Audiobook</option></select></label><label class="f" id="startLengthLabel"><span>Total Pages</span><input class="inp" id="startLength" value="${titleById(b.titleId)?.pages||''}" placeholder="Optional"></label></div><label class="f" id="startUnitRow">Track Progress By<select class="inp" id="startUnit"><option value="pages">Pages</option><option value="pct" ${isPct(b)?'selected':''}>Percent (what your e-reader shows)</option></select></label><div class="xs muted" id="startLenHint" style="margin-top:-6px">You can log minutes without a page count.</div>${readingEditionFields(b,'startReading')}<section><label class="chk"><input type="checkbox" id="startOwn"> I Own a Copy</label><div id="startCopyFields" hidden>${inlineCopyRow()}<p class="xs muted" id="startCopyNote" style="margin:6px 0 0" hidden>A different format from your reading is fine. It’s saved as a copy you own.</p></div></section><div id="formatError" class="err" role="alert"></div><div class="dlg-f"><button type="button" class="btn btn-ghost" data-act="startNew">Back</button><button type="button" class="btn btn-primary" data-act="startFormatGo">Continue to Log Reading</button></div></div>`;document.getElementById('startFormat').value=b.format==='audio'?'audio':'print';document.getElementById('startLength').value=b.total?(b.format==='audio'?fmtPos(b.total):b.total):titleById(b.titleId)?.pages||'';document.querySelector('#startLengthLabel span').textContent=b.format==='audio'?'Audio Length (h:mm)':'Total Pages';startUnitSync();return;}
 
@@ -5100,7 +5133,13 @@ function drawLog(b,focus,preMin,moveTo){
       <option value="reading" ${status==='reading'?'selected':''}>Currently Reading</option>
       <option value="paused">Paused</option><option value="finished" ${status==='finished'?'selected':''}>Finished</option><option value="dnf" ${status==='dnf'?'selected':''}>Did Not Finish</option></select></label>
     <details class="rt reading-edition-details"><summary class="link-btn sm">${b.edition?'Edition: '+esc(b.edition):'Edition (optional)'}</summary>${readingEditionFields(b,'logReading')}</details>
-    <div class="section-t">${audio?'Listening Progress':'Reading Progress'}</div>
+    <details class="rt sw-copy"><summary class="link-btn sm">Switched to a different copy?</summary><div class="sw-row">
+      <div class="f2"><label class="f">Now Reading<select class="inp" id="swFmt">${[['print','Print'],['ebook','Ebook'],['audio','Audiobook']].map(([v,l])=>`<option value="${v}" ${b.format===v?'selected':''}>${l}</option>`).join('')}</select></label>
+      <label class="f" id="swUnitF">Track Progress By<select class="inp" id="swUnit"><option value="pages" ${isPct(b)?'':'selected'}>Pages</option><option value="pct" ${isPct(b)?'selected':''}>Percent</option></select></label></div>
+      <div class="f2"><label class="f" id="swTotF"><span id="swTotL">Total Pages</span><input class="inp" id="swTot" autocomplete="off"></label><label class="f"><span id="swPosL">I’m On Page</span><input class="inp" id="swPos" autocomplete="off"></label></div>
+      <span class="xs muted">Your place carries over when both lengths are known. Earlier sessions stay as you logged them.</span>
+      <div class="err" id="swErr" role="alert"></div><div><button type="button" class="btn btn-ghost sm" data-act="swApply">Switch</button></div></div></details>
+    <div class="section-t lg-prog-h"><span>${audio?'Listening Progress':'Reading Progress'}</span>${audio?'':`<span class="vseg sm" role="group" aria-label="Track progress by"><button type="button" aria-pressed="${!isPct(b)}" data-act="logUnit" data-v="pages">Pages</button><button type="button" aria-pressed="${isPct(b)}" data-act="logUnit" data-v="pct">%</button></span>`}</div>
     <div class="f3">
       <label class="f">${audio?'Start':isPct(b)?'Start %':'Start Page'}<input class="inp" name="start" inputmode="${audio?'text':isPct(b)?'decimal':'numeric'}" value="${audio?fmtPos(b.pos):b.pos}" placeholder="${audio?'h:mm':''}"></label>
       <label class="f">${audio?'End':isPct(b)?'End %':'End Page'}<span class="sr-only opt-sr"></span><input class="inp" name="end" inputmode="${audio?'text':'numeric'}" placeholder="${audio?'h:mm':''}" data-ph="${audio?'h:mm':''}"></label>
@@ -5229,6 +5268,8 @@ function calcLog(){
   parts.push(`${lbl} after saving <b>${g.goalType==='minutes'?tm:g.goalType==='pages'?tp:tm+', '+tp}</b><button type="button" class="edit-goal" data-act="editGoal">${ic('pencil')}Edit Goal</button>`);
   el.innerHTML=parts.map(p=>`<span>${p}</span>`).join('');
 }
+logForm.addEventListener('change',e=>{if(e.target.id==='swFmt'||e.target.id==='swUnit')swFill()});
+logForm.addEventListener('toggle',e=>{if(e.target.classList?.contains('sw-copy')&&e.target.open)swFill()},true);
 logForm.addEventListener('input',e=>{
   if(logForm.dataset.mode==='format'){if(e.target.id==='startFormat')document.getElementById('startLength').value=e.target.value==='audio'?'':titleById(formatPick.b.titleId)?.pages||'';startUnitSync();return}
   if(logForm.dataset.mode==='new'){if(e.target.id==='newQ'){nwQueue(e.target.value);renderNewResults(e.target.value)}return}
@@ -5719,6 +5760,8 @@ document.addEventListener('click',e=>{
     case 'teSuggest':sgOpen(te.id);break;
     case 'sgClose':document.getElementById('sgDlg')?.close();break;
     case 'rwbOpen':rwbOpen(a.dataset.id);break;
+    case 'logUnit':{const b=book(logForm.dataset.book);if(b&&(a.dataset.v==='pct')!==isPct(b))logUnit(b,a.dataset.v);break}
+    case 'swApply':swApply();break;
     case 'rwbUse':{const to=titleById(a.dataset.to);if(!to)break;rwbOpen(a.dataset.id);rwb.pick={t:to};rwbRender();break}
     case 'rwbClose':document.getElementById('rwbDlg')?.close();rwb=null;break;
     case 'rwbPick':rwb.pick={t:titleById(a.dataset.id)};rwbRender();break;
