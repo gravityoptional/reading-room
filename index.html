@@ -3003,6 +3003,7 @@ function rereads(){
 function lovedAuthors(){
   const by={},put=(k,e)=>{const cur=by[k];if(!cur||e.score>cur.score||e.score===cur.score&&e.fin>cur.fin)by[k]=e};
   S.books.filter(b=>b.status==='finished'&&b.rating>=4).forEach(b=>{const t=titleById(b.titleId),k=t?.olAuthor?.[0];if(k)put(k,{key:k,score:b.rating,why:`You gave ${ti(t.title)} ${fmtStars(b.rating)}`,fin:b.finished||''})});
+  (S.favs||[]).forEach(id=>{const t=titleById(id),k=t?.olAuthor?.[0];if(k)put(k,{key:k,score:6,why:`You loved ${ti(t.title)}`,fin:myReading(id)?.finished||''})});   // a favorite outranks any rating
   rereads().forEach(r=>{const t=titleById(r.id),k=t?.olAuthor?.[0];if(k)put(k,{key:k,score:4,why:`You’ve read ${ti(t.title)} ${r.times===2?'twice':r.times+' times'}`,fin:r.fin})});
   return Object.values(by).sort((a,b)=>b.score-a.score||b.fin.localeCompare(a.fin)).slice(0,DISC_AUTHORS);
 }
@@ -3027,14 +3028,17 @@ async function discAuthor(k){
 /* Looks up loved authors one per second, keeping each list for two weeks in this browser. */
 async function discLoad(){
   if(discBusy||navigator.onLine===false)return;
-  const todo=lovedAuthors().filter(a=>!(discCache.a[a.key]?.ts>Date.now()-DISC_TTL));if(!todo.length)return;
-  discBusy=true;
+  discCache.a=discCache.a||{};discCache.b=discCache.b||{};
+  const todo=lovedAuthors().filter(a=>!(discCache.a[a.key]?.ts>Date.now()-DISC_TTL)),todoB=byrSources().filter(x=>!(discCache.b[x.id]?.ts>Date.now()-DISC_TTL));
+  if(!todo.length&&!todoB.length)return;
+  discBusy=true;const keep=()=>{try{localStorage.setItem(DISC_KEY,JSON.stringify(discCache))}catch(e){}if(view==='discover'||view==='dashboard')coverRedraw()};
   try{for(const a of todo){
     let items;try{items=await discAuthor(a.key)}catch(e){break}
-    discCache.a[a.key]={ts:Date.now(),items};try{localStorage.setItem(DISC_KEY,JSON.stringify(discCache))}catch(e){}
-    if(view==='discover'||view==='dashboard')coverRedraw();
+    discCache.a[a.key]={ts:Date.now(),items};keep();
     await new Promise(r=>setTimeout(r,1000));
-  }}finally{discBusy=false}
+  }
+  for(const x of todoB){let items;try{items=await discBecause(titleById(x.id))}catch(e){break}discCache.b[x.id]={ts:Date.now(),items};keep()}
+  }finally{discBusy=false}
 }
 /* English edition to read or borrow. Open Library's own pick of edition can be in any language (a Dutch Judy
    Moody, a French Martian), so for books shown with a free or borrowable ebook, look through the work's editions
@@ -3093,6 +3097,42 @@ function ruleAuthor(){
   for(let i=0;out.length<6&&lists.some(l=>l[i]);i++)lists.forEach(l=>{const it=l[i];if(it&&out.length<6&&!seen.has(discKey(it))){seen.add(discKey(it));out.push(it)}});
   return out;
 }
+/* Because You Read: books that share two Open Library subjects with a favorite or a book rated 4+, most shelved by
+   Open Library readers first. Tested Nov 11 on 10 family favorites: sensible for about 7. Subjects too broad to mean
+   anything (Fiction, Juvenile fiction, Accessible book…) are skipped, as are little-read and non-English books. */
+const BYR_GENERIC=/^(fiction|juvenile fiction|juvenile literature|nonfiction|accessible book|protected daisy|in library|large type books|lending library|open library staff picks|reading level.*|english (fiction|literature|language)|american (fiction|literature)|literature|novels?|fiction, general|children's (fiction|stories)|young adult fiction|new york times bestseller|nyt:.*|long now manual for civilization|internet archive wishlist|history|general|translations into .*|spanish language materials|.*\(fictitious character\).*|readers|series:.*|award:.*|fiction in english|criticism and interpretation|study guides|adult|comic books, strips.*)$/i;
+function byrSources(){
+  const sc=b=>(isFav(b.titleId)?2:0)+(b.rating>=4?1:0),seen=new Set(),out=[];
+  S.books.filter(b=>b.status==='finished'&&titleById(b.titleId)&&sc(b)>0).sort((a,b)=>sc(b)-sc(a)||(b.finished||'').localeCompare(a.finished||''))
+    .forEach(b=>{if(seen.has(b.titleId)||out.length>=3)return;seen.add(b.titleId);const t=titleById(b.titleId);out.push({id:t.id,why:isFav(t.id)?`Because you loved ${ti(t.title)}`:`Because you read ${ti(t.title)}`})});
+  return out}
+async function discBecause(t){if(!t)return [];
+  const j=async u=>{const r=await fetch(u,{headers:{Accept:'application/json'}});if(!r.ok)throw new Error('Open Library '+r.status);return r.json()};
+  const s=await j(`https://openlibrary.org/search.json?${t.olKey?'q='+encodeURIComponent('key:'+t.olKey):'title='+encodeURIComponent(srBare(t.title))+'&author='+encodeURIComponent(lastName(t.author))}&fields=key,subject,author_key&limit=1`);
+  const w=s.docs?.[0];if(!w)return [];
+  const subs=(w.subject||[]).map(x=>x.trim()).filter(x=>x.length<40&&!BYR_GENERIC.test(x)&&!/^[A-Z /&]+$/.test(x)&&!/[áéíóúñ]/i.test(x)).slice(0,8),mine=new Set(w.author_key||[]);
+  const pairs=[];for(let i=0;i<subs.length;i++)for(let k=i+1;k<subs.length;k++)pairs.push([subs[i],subs[k]]);
+  const tally=new Map();
+  for(const pr of pairs.slice(0,6)){await new Promise(r=>setTimeout(r,800));
+    const r=await j(`https://openlibrary.org/search.json?q=${encodeURIComponent(pr.map(x=>`subject:"${x.replace(/"/g,'')}"`).join(' AND '))}&fields=${DISC_FIELDS},readinglog_count&sort=readinglog&limit=20&lang=en`);
+    for(const d of r.docs||[]){const ak=d.author_key||[];
+      if(!d.title||ak.some(k=>mine.has(k))||DISC_JUNK.test(d.title)||/[\/;]/.test(d.title)||(d.first_publish_year||0)<1900||(d.readinglog_count||0)<50)continue;
+      if(d.language?.length&&!d.language.includes('eng'))continue;
+      const v=tally.get(d.key)||{d,n:0};v.n++;tally.set(d.key,v)}}
+  const per={};return [...tally.values()].sort((a,b)=>b.n-a.n||(b.d.readinglog_count||0)-(a.d.readinglog_count||0)).filter(({d})=>{const a=(d.author_key||[''])[0];per[a]=(per[a]||0)+1;return per[a]<=2}).slice(0,12)
+    .map(({d})=>({key:d.key,title:d.title,author:(d.author_name||[]).slice(0,2).join(', ')||'Unknown author',authorKeys:(d.author_key||[]).slice(0,2),ebook:olEbook(d),...olFree(d),year:d.first_publish_year||'',pages:d.number_of_pages_median||0,coverId:d.cover_i||0}))}
+function ruleBecause(){
+  const mine=new Set(S.books.map(b=>b.titleId));S.copies.forEach(c=>{if(c.owner==='me')mine.add(c.titleId)});
+  const names=[...mine].map(id=>normT(titleById(id)?.title)).filter(Boolean),known=n=>names.some(m=>m===n||n.length>=8&&m.length>=8&&(m.startsWith(n)||n.startsWith(m)));
+  const byAuthor=new Set(ruleAuthor().map(discKey));
+  const lists=byrSources().map(x=>(discCache.b?.[x.id]?.items||[]).map(it=>({rule:'because',reason:x.why,x:it,t:discMatch(it)})).filter(it=>!(it.t&&mine.has(it.t.id))&&!known(normT(it.x.title))&&!hiddenIt(it)&&!byAuthor.has(discKey(it))));
+  const out=[],seen=new Set();
+  for(let i=0;out.length<6&&lists.some(l=>l[i]);i++)lists.forEach(l=>{const it=l[i];if(it&&out.length<6&&!seen.has(discKey(it))){seen.add(discKey(it));out.push(it)}});
+  return out}
+/* Already on Your Shelf: books I own a copy of and haven't started, longest on the shelf first. */
+function ruleShelf(){
+  return S.titles.filter(t=>mbStatus(t)==='owned'&&!hiddenT(t)).sort((a,b)=>(a.added||0)-(b.added||0)).slice(0,6)
+    .map(t=>({rule:'toread',reason:t.added?`On your shelf since ${fmtMonY(new Date(t.added).toISOString().slice(0,10))}`:'On your shelf, not started yet',t}))}
 function ruleSeries(){
   const fin=new Set(S.books.filter(b=>b.status==='finished').map(b=>b.titleId)),busy=new Set(S.books.filter(b=>b.status==='reading'||b.status==='paused').map(b=>b.titleId));
   const by={};S.titles.forEach(t=>{if(t.series&&t.seriesNo!=null)(by[t.series]=by[t.series]||[]).push(t)});
@@ -3190,16 +3230,16 @@ function discoverBody(){
     return `<div class="disc dc-sub">${back}<div class="dc-sec-h dc-sub-h"><h2>Sent by Me</h2><span class="dc-rtools">${fromN?`<span class="vseg" role="group" aria-label="View"><button aria-pressed="${!shelf}" data-act="libView" data-v="grid">${ic('grid')}Grid</button><button aria-pressed="${shelf}" data-act="libView" data-v="shelf">${ic('shelf')}Shelf</button></span>`:''}</span></div>${fromMe()}</div>`}
   if(lib.rv==='to'&&!S.settings.solo){const ids=[...new Set(myRecs().map(r=>r.titleId))],items=ruleRecs(99);
     return `<div class="disc dc-sub">${back}<div class="dc-sec-h dc-sub-h"><h2>Recommended to You</h2>${recTools(fromN)}</div>${items.length?`<div class="dc-scroll dc-wrap">${items.map(dcard).join('')}</div>`:`<div class="empty">${ic('send')}<h3>No Recommendations Yet</h3><p>When someone in your group recommends a book to you, it shows up here.</p></div>`}</div>`}
-  const recs=ruleRecs(),nRecs=S.settings.solo?0:new Set(recsShown().map(r=>r.titleId)).size,author=ruleAuthor(),series=ruleSeries(),toRead=ruleToRead(),want=wantList().filter(b=>!hiddenT(titleById(b.titleId)));
+  const because=ruleBecause(),shelf=ruleShelf(),recs=ruleRecs(),nRecs=S.settings.solo?0:new Set(recsShown().map(r=>r.titleId)).size,author=ruleAuthor(),series=ruleSeries(),toRead=ruleToRead(),want=wantList().filter(b=>!hiddenT(titleById(b.titleId)));
   if(surprise&&!want.some(b=>b.id===surprise))surprise=null;
   const loading=!author.length&&discBusy?`<p class="xs muted" role="status">Looking for more books by authors you rated highly…</p>`:'';
   const sb=surprise&&book(surprise),sp=sb?[{rule:'toread',reason:'Picked at random from your To Read',t:titleById(sb.titleId)}]:[];
-  const have=series.length||want.length?`<section class="dc-have" aria-labelledby="haveH"><div class="dc-sec-h"><h2 id="haveH">Choose From What You Have</h2>${want.length?`<button class="btn btn-ghost sm" data-act="surprise">${ic('compass')}${sb?'Surprise Me Again':'Surprise Me'}</button>`:''}</div>
-    ${dcRow('dcSurprise','Surprise Me',sp,`<button class="link-btn sm" data-act="surpriseClear">${ic('x')}Clear</button>`)}${dcRow('dcSeries','Continue a Series',series)}${dcRow('dcToRead','From Your To Read',toRead)}</section>`:'';
+  const have=series.length||want.length||shelf.length?`<section class="dc-have" aria-labelledby="haveH"><div class="dc-sec-h"><h2 id="haveH">Choose From What You Have</h2>${want.length?`<button class="btn btn-ghost sm" data-act="surprise">${ic('compass')}${sb?'Surprise Me Again':'Surprise Me'}</button>`:''}</div>
+    ${dcRow('dcSurprise','Surprise Me',sp,`<button class="link-btn sm" data-act="surpriseClear">${ic('x')}Clear</button>`)}${dcRow('dcSeries','Continue a Series',series)}${dcRow('dcShelf','Already on Your Shelf',shelf)}${dcRow('dcToRead','From Your To Read',toRead)}</section>`:'';
   const recRow=recs.length?dcRow('dcRecs','Recommended to You',recs,`${nRecs>recs.length?`<button class="link-btn sm" data-act="goRecs">See All ${nRecs}</button>`:''}${recTools(fromN)}`)
     :S.settings.solo?'':`<div class="dc-rh dc-rh-only">${recTools(fromN)}</div>`;
-  const rows=recRow+dcRow('dcAuthor','More by This Author',author);
-  const none=!recs.length&&!author.length&&!have&&!loading?`<div class="empty">${ic('compass')}<h3>Suggestions Will Show Up Here</h3><p>Rate the books you finish and add a few to To Read. Discover uses them to suggest what to read next.</p></div>`:'';
+  const rows=recRow+dcRow('dcAuthor','More by This Author',author)+dcRow('dcBecause','Because You Read',because);
+  const none=!recs.length&&!author.length&&!because.length&&!have&&!loading?`<div class="empty">${ic('compass')}<h3>Suggestions Will Show Up Here</h3><p>Rate the books you finish and add a few to To Read. Discover uses them to suggest what to read next.</p></div>`:'';
   return `<div class="disc">${rows||loading?`<section class="dc-find" aria-label="Suggestions">${rows}${loading}</section>`:''}${have}${none}</div>`;
 }
 /* Your Next Read: three picks, each from a different rule, while nothing is being read or for a week after finishing a book. */
@@ -4491,7 +4531,7 @@ function achievements(){
   const yrs={};days.forEach(d=>{(yrs[d.slice(0,4)]=yrs[d.slice(0,4)]||[]).push(d)});
   const every=Object.keys(yrs).sort().filter(y=>new Set(yrs[y].map(d=>d.slice(5,7))).size===12).map(y=>yrs[y][yrs[y].length-1]);
   const gs=new Set();let g5=null;fb.forEach(b=>{const g=titleById(b.titleId)?.genre;if(g){gs.add(g);if(gs.size>=5&&!g5)g5=b.finished}});
-  const fp=fb.find(b=>['print','ebook'].includes(b.format)),fa=fb.find(b=>b.format==='audio'),fmtX=fp&&fa?(fp.finished>fa.finished?fp.finished:fa.finished):null;
+  const fp=fb.find(b=>b.format==='print'),fe=fb.find(b=>b.format==='ebook'),fa=fb.find(b=>b.format==='audio'),fmtX=fp&&fe&&fa?[fp.finished,fe.finished,fa.finished].sort().pop():null;   // one of each format
   const door=fb.find(b=>b.format!=='audio'&&b.total>=800),quick=fb.find(b=>b.started&&b.started===b.finished);
   const seenT={};let rr=null;fb.forEach(b=>{if(seenT[b.titleId]&&!rr)rr=b.finished;seenT[b.titleId]=1});
   let back=null;for(let i=1;i<days.length;i++)if(daysBetween(days[i-1],days[i])>=14){back=days[i];break}
@@ -4541,7 +4581,7 @@ function achievements(){
     M('Perfect Month','Read every day of a month','cal',pm.length,last(pm),pm.length),
     M('Double Goal','Meet both daily goals in one day','target',both.length,last(both),both.length),
     M('Genre Explorer','Finish books in 5 genres','compass',g5,g5),
-    M('Format Explorer','Finish a print book and an audiobook','head',fmtX,fmtX),
+    M('Format Explorer','Finish a print book, an ebook, and an audiobook','head',fmtX,fmtX),
     M('Doorstopper','Finish a book of 800 pages or more','book',door,door&&door.finished),
     M('Series Finisher','Finish every book in a series','library',serDone.length,last(serDone),serDone.length),
     M('Queue Clearer','Finish 5 books started from your Reading Queue','play',fq.length>=5,fq[4]),
