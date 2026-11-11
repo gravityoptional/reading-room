@@ -4436,7 +4436,7 @@ function upNextPanel(){
 }
 
 /* ---------- challenges ---------- */
-let chTab='mine',chMode='',cv={id:null},bv={id:null,tab:'books',adding:false,q:''},cf=null;
+let bDupSrc=null,chTab='mine',chMode='',cv={id:null},bv={id:null,tab:'books',adding:false,q:''},cf=null;
 const chDlg=document.getElementById('chDlg'),chBody=document.getElementById('chBody');
 const CT={books:{l:'Books',ic:'book'},pages:{l:'Pages',ic:'chart'},minutes:{l:'Reading Time',ic:'clock'},days:{l:'Reading Days',ic:'cal'},goaldays:{l:'Goal Days',ic:'target'},list:{l:'Book List',ic:'check'}};
 const MODE_L={personal:'Personal',coop:'Cooperative',comp:'Competition'};
@@ -4538,7 +4538,10 @@ function chCard(c){
 }
 function bStatus(b){const t=today();return t<b.readStart?'upcoming':t<=b.event?'active':'completed'}
 const BST={upcoming:'Upcoming',active:'Active',completed:'Completed'};
-const bList=b=>Object.entries(b.readers).flatMap(([w,ids])=>ids.map(id=>({w,id})));
+// Two ways to choose books: each reader picks (b.readers[w] = their picks), or the organizer sets the list (b.mode 'list', b.setList)
+const bIsList=b=>b.mode==='list';
+const bList=b=>bIsList(b)?(b.setList||[]).map(id=>({w:bCreator(b),id})):Object.entries(b.readers).flatMap(([w,ids])=>ids.map(id=>({w,id})));
+const bCanList=b=>bIsList(b)&&(bCreator(b)==='me'||b.moderator==='me');
 function readerDone(b,w){const ids=bList(b).map(x=>x.id);if(w==='me')return ids.filter(id=>S.books.some(x=>x.titleId===id&&x.status==='finished')).length;return (b.progress?.[w]||[]).filter(id=>ids.includes(id)).length}
 function battleCard(b){
   const st=bStatus(b),list=bList(b),role=b.moderator==='me'?'Moderator':b.readers.me?'Reader':'',nr=Object.keys(b.readers).length;
@@ -4854,7 +4857,10 @@ function saveCf(){
 const hiddenB=()=>S.settings.hiddenBattles||(S.settings.hiddenBattles=[]);
 let showHiddenB=false;
 const bCreator=b=>b.creator||({bb0:'keng',bb1:'corbin'})[b.id]||'me';
-function openBattle(id){chMode='battle';bv={id,tab:'books',adding:false,q:'',win:false,del:false};renderBattle();if(!chDlg.open)chDlg.showModal()}
+function openBattle(id){chMode='battle';const b=S.battles.find(x=>x.id===id);
+  // Details first until you've joined and (when readers pick) added a book; the organizer of a set list starts on the list
+  const tab=!b?'books':bIsList(b)?(b.readers.me||bCanList(b)?'books':'details'):(b.readers.me?.length?'books':'details');
+  bv={id,tab,adding:false,q:'',win:false,del:false};renderBattle();if(!chDlg.open)chDlg.showModal()}
 function renderBattle(){
   const b=S.battles.find(x=>x.id===bv.id);if(!b){chDlg.close();return}
   const st=bStatus(b),list=bList(b),open=st!=='completed',me=!!b.readers.me,mod=b.moderator==='me';
@@ -4865,10 +4871,11 @@ function renderBattle(){
     else acts=b.winner?`<span class="joined">🏆 Winner: ${esc(nameOf(b.winner))}</span><button class="link-btn" data-act="bWin">Change Winner</button>`:`<button class="btn btn-primary" data-act="bWin">🏆 Record Winner</button>`;
   }else if(!open&&b.winner)acts=`<span class="joined">🏆 Winner: ${esc(nameOf(b.winner))}</span>`;
   if(open){
-    if(me)acts=`<button class="btn btn-primary" data-act="bAdd" aria-expanded="${bv.adding}">${ic('plus')}Add My Book</button><button class="btn btn-ghost" data-act="bLeave">Leave Battle</button>`;
+    if(me)acts=`${bIsList(b)?'':`<button class="btn btn-primary" data-act="bAdd" aria-expanded="${bv.adding}">${ic('plus')}Add My Book</button>`}<button class="btn btn-ghost" data-act="bLeave">Leave Battle</button>`;
     else if(mod)acts=`<span class="joined">${ic('check')}You’re moderating</span><button class="btn btn-ghost" data-act="bUnmod">Step Down</button>`;
     else acts=`<button class="btn btn-primary" data-act="bJoin">${ic('plus')}Join as Reader</button>${b.moderator?'':`<button class="btn btn-ghost" data-act="bMod">Moderate</button>`}`;
     if(!me&&!mod&&(b.invited||[]).includes('me'))acts=`<div class="inv-box"><span class="small"><b>${esc(nameOf(b.invitedBy?.me||bCreator(b)))}</b> invited you to read in this battle.</span><span class="inv-acts">${acts}</span></div>`;
+    if(bCanList(b))acts=`<button class="btn ${me?'btn-ghost':'btn-primary'}" data-act="bAdd" aria-expanded="${bv.adding}">${ic('plus')}Add Books</button>`+acts;
     if((me||mod||bCreator(b)==='me')&&!S.settings.solo)acts+=`<button class="btn btn-ghost" data-act="bInv" aria-expanded="${!!bv.inv}">${ic('users')}Invite People</button>`;
   }
   acts+=`<button class="btn btn-ghost" data-act="bDup">${ic('copy')}Duplicate</button>`;
@@ -4877,14 +4884,15 @@ function renderBattle(){
   if(st==='completed')acts+=hiddenB().includes(b.id)?`<button class="link-btn" data-act="bHide" data-v="0">Show in My List</button>`:`<button class="link-btn" data-act="bHide" data-v="1">Hide from My List</button>`;
   const others=[...new Set([...Object.keys(b.readers),b.moderator].filter(w=>w&&w!=='me'))].map(nameOf);
   const confirmBox=bv.del?`<div class="b-confirm" role="alert"><div class="small"><b>Delete ${esc(b.name)}?</b> ${others.length?`${esc(others.length>1?others.slice(0,-1).join(', ')+' and '+others.at(-1):others[0])} ${others.length>1?'have':'has'} joined. Everyone’s picks and the shared book list will be lost.`:'No one else has joined yet. The book list will be lost.'} Reading already logged on these books stays in everyone’s History.</div><div class="acts"><button class="btn btn-del" data-act="bDelGo">Delete Battle</button><button class="btn btn-ghost" data-act="bDel">Keep It</button></div></div>`:'';
-  const adder=bv.adding?`<div class="recf"><div class="small" style="font-weight:600">Add a Book to the Shared List</div><label class="search">${ic('search')}<input id="bQ" type="search" placeholder="Search by title or author" value="${esc(bv.q)}" autocomplete="off" aria-label="Search for a book"></label><div id="bRes" class="pick-list">${bResults(b)}</div><div class="xs muted">Each book can be picked only once. Books already on the list don’t appear.</div></div>`:'';
+  const adder=bv.adding?`<div class="recf"><div class="small" style="font-weight:600">${bIsList(b)?'Add a Book to the List':'Add a Book to the Shared List'}</div><label class="search">${ic('search')}<input id="bQ" type="search" placeholder="Search by title or author" value="${esc(bv.q)}" autocomplete="off" aria-label="Search for a book"></label><div id="bRes" class="pick-list">${bResults(b)}</div><div class="xs muted">${bIsList(b)?'Add as many as you like; the search stays open. Books already on the list don’t appear.':'Each book can be picked only once. Books already on the list don’t appear.'}</div>${bIsList(b)?'<button type="button" class="btn btn-ghost sm" data-act="bAdd" style="justify-self:start">Done Adding</button>':''}</div>`:'';
   const tabs=[['books',`Book List (${list.length})`],['readers',`Readers (${Object.keys(b.readers).length})`],['details','Details']];
   let body='';
-  if(bv.tab==='books')body=list.length?list.map((x,i)=>{const t=titleById(x.id);return `<div class="b-row"><span class="b-n">${i+1}</span>${libCover(t)}<div class="cp-main"><div class="small"><b>${esc(t.title)}</b></div><div class="xs muted">${esc(t.author)} · Picked by ${esc(nameOf(x.w))}</div></div>${bookAct(x.id)}${x.w==='me'&&open?`<button class="link-btn sm" data-act="bRemove" data-id="${x.id}">Remove</button>`:''}</div>`}).join(''):`<p class="small muted">No books yet. Readers add their picks here.</p>`;
+  if(bv.tab==='books')body=list.length?list.map((x,i)=>{const t=titleById(x.id);return `<div class="b-row"><span class="b-n">${i+1}</span>${libCover(t)}<div class="cp-main"><div class="small"><b>${esc(t.title)}</b></div><div class="xs muted">${esc(t.author)}${bIsList(b)?'':` · Picked by ${esc(nameOf(x.w))}`}</div></div>${bookAct(x.id)}${open&&(bIsList(b)?bCanList(b):x.w==='me')?`<button class="link-btn sm" data-act="bRemove" data-id="${x.id}">Remove</button>`:''}</div>`}).join(''):`<p class="small muted">${bIsList(b)?(bCanList(b)?'No books yet. Use Add Books to build the list.':`No books yet. ${esc(nameOf(bCreator(b)))} is setting the list.`):'No books yet. Readers add their picks here.'}</p>`;
+  if(bv.tab==='books'&&bIsList(b)&&list.length)body=`<p class="xs muted" style="margin:0 0 6px">List set by ${esc(bCreator(b)==='me'?'you':nameOf(bCreator(b)))}</p>`+body;
   else if(bv.tab==='readers'){const n=list.length;
-    body=Object.keys(b.readers).map(w=>{const priv=w!=='me'&&S.members[w]?.share===false,d=readerDone(b,w),picks=b.readers[w].length;return `<div class="contrib"><span class="avatar" style="background:${avBg(w)}">${avInit(w)}</span><span class="small"><b>${esc(nameOf(w))}</b> <span class="xs muted">· ${picks} pick${picks===1?'':'s'}</span></span><span class="small muted">${priv?'Progress private':`${d} of ${n} books`}</span><div class="bar"><span style="width:${priv||!n?0:d/n*100}%"></span></div></div>`}).join('')+
+    body=Object.keys(b.readers).map(w=>{const priv=w!=='me'&&S.members[w]?.share===false,d=readerDone(b,w),picks=b.readers[w].length;return `<div class="contrib"><span class="avatar" style="background:${avBg(w)}">${avInit(w)}</span><span class="small"><b>${esc(nameOf(w))}</b>${bIsList(b)?'':` <span class="xs muted">· ${picks} pick${picks===1?'':'s'}</span>`}</span><span class="small muted">${priv?'Progress private':`${d} of ${n} books`}</span><div class="bar"><span style="width:${priv||!n?0:d/n*100}%"></span></div></div>`}).join('')+
       `<div class="contrib"><span class="avatar" style="background:${b.moderator?colorOf(b.moderator):'var(--secondary)'}">${b.moderator?initOf(b.moderator):'?'}</span><span class="small"><b>${b.moderator?esc(nameOf(b.moderator)):'No moderator yet'}</b> <span class="xs muted">· Moderator</span></span><span></span></div>`}
-  else body=`<p class="small" style="margin-top:0">${esc(b.desc||'')}</p><div class="small muted">Reading starts ${fmtDateY(b.readStart)} · Battle on ${fmtDateY(b.event)}</div><ul class="small muted" style="padding-left:18px"><li>Each reader adds one or more books; no book can be picked twice.</li><li>Everyone reads every book on the list.</li><li>The moderator runs the in-person battle and doesn’t pick books.</li><li>Reading progress comes from your normal reading logs.</li></ul>`;
+  else body=`<p class="small" style="margin-top:0">${esc(b.desc||'')}</p><div class="small muted">Reading starts ${fmtDateY(b.readStart)} · Battle on ${fmtDateY(b.event)}</div><ul class="small muted" style="padding-left:18px">${bIsList(b)?`<li>${esc(bCreator(b)==='me'?'You set':nameOf(bCreator(b))+' sets')} the book list; readers don’t add their own.</li>`:'<li>Each reader adds one or more books; no book can be picked twice.</li>'}<li>Everyone reads every book on the list.</li><li>The moderator runs the in-person battle and doesn’t pick books.</li><li>Reading progress comes from your normal reading logs.</li></ul>`;
   chBody.innerHTML=`<div class="dlg-h"><span class="chc-ic">${ic('library')}</span><div style="flex:1;min-width:0"><h2 id="chTitle">${esc(b.name)}</h2><div class="xs muted">Reading from ${fmtDateY(b.readStart)} · Battle on ${fmtDateY(b.event)}</div><div style="margin-top:6px"><span class="st ${st==='active'?'st-reading':st==='completed'?'st-finished':''}">${BST[st]}</span> <span class="xs muted">Started by ${esc(bCreator(b)==='me'?'You':nameOf(bCreator(b)))} · Moderator: ${b.moderator?esc(nameOf(b.moderator)):'none yet'}</span></div></div><button type="button" class="icon-btn x" data-act="closeCh" aria-label="Close">${ic('x')}</button></div>
   ${acts?`<div class="bd-acts">${acts}</div>`:''}${confirmBox}${bv.inv&&open?invitePicker('b',[...Object.keys(b.readers),b.moderator].filter(Boolean),b.invited||[],[]):''}${adder}
   <div class="bd-tabs" role="tablist" aria-label="Battle sections">${tabs.map(([k,l])=>`<button class="bd-tab" role="tab" id="tab-bt-${k}" aria-controls="btPanel" tabindex="${bv.tab===k?0:-1}" aria-selected="${bv.tab===k}" data-act="bTab" data-v="${k}">${l}</button>`).join('')}</div><div class="bd-body" role="tabpanel" id="btPanel" aria-labelledby="tab-bt-${bv.tab}">${body}</div>`;
@@ -4923,7 +4931,10 @@ function bOlQueue(){clearTimeout(bOlTimer);const raw=bv.q.trim(),k=olKey(raw);
     try{const items=await olSearch(raw,bOlCtl.signal);if(bv.ol?.q===k)bv.ol={q:k,state:'done',items}}catch(e){if(e.name==='AbortError')return;if(bv.ol?.q===k)bv.ol={q:k,state:'error',items:[]}}
     const el=document.getElementById('bRes'),b=S.battles.find(x=>x.id===bv.id);if(el&&b)el.innerHTML=bResults(b)},350)}
 function openBForm(b,dup){chMode='bform';const ed=!!b&&!dup,d=dup?dupPlan(dup.name,dup.readStart,dup.event):null;chBody.innerHTML=`<div class="dlg-h"><h2 id="chTitle" style="flex:1">${ed?'Edit Battle of the Books':d?'Duplicate Battle of the Books':'Start a Battle of the Books'}</h2><button type="button" class="icon-btn x" data-act="closeCh" aria-label="Close">${ic('x')}</button></div>
-  <div class="form"><label class="f">Name<input class="inp" id="bfName" maxlength="80" autocomplete="off" value="${ed?esc(b.name):d?esc(d.name):''}"></label><label class="f"><span>Description <span class="sub">(optional)</span></span><textarea class="inp" id="bfDesc" rows="2" maxlength="200">${ed?esc(b.desc||''):d?esc(dup.desc||''):''}</textarea></label>
+  <div class="form"><label class="f">Name<input class="inp" id="bfName" maxlength="80" autocomplete="off" value="${ed?esc(b.name):d?esc(d.name):''}"></label>${(()=>{const md=ed?(b.mode||'picks'):d?(dup.mode||'picks'):'picks',locked=ed&&bStatus(b)!=='upcoming';
+    return `<div class="f"><span class="fl">How Are Books Chosen?</span><span class="vseg" style="align-self:flex-start;width:fit-content" role="radiogroup" aria-label="How are books chosen">${[['picks','Each Reader Picks'],['list','I’ll Set the List']].map(([v,l])=>`<button type="button" role="radio" aria-checked="${md===v}" aria-pressed="${md===v}" data-act="bfMode" data-v="${v}" ${locked?'disabled':''}>${l}</button>`).join('')}</span>
+    <span class="xs muted" id="bfModeHint" style="display:block;margin-top:4px">${md==='list'?'You choose the books. Readers join and read your list.':'Readers join and add their own books, as many as they like.'}${locked?' Can’t change once reading has started.':''}</span><input type="hidden" id="bfMode" value="${md}"></div>`})()}
+  <label class="f"><span>Description <span class="sub">(optional)</span></span><textarea class="inp" id="bfDesc" rows="2" maxlength="200" placeholder="${(ed?b.mode:d?dup.mode:'')==='list'?'For example: The 2027 school list. Read as many as you can before the battle.':'For example: Pick one or two books you think everyone should read.'}">${ed?esc(b.desc||''):d?esc(dup.desc||''):''}</textarea></label>
   <div class="f2"><label class="f">Reading Starts<input class="inp" type="date" id="bfStart" value="${ed?b.readStart:d?d.start:today()}"></label><label class="f">Battle Date<input class="inp" type="date" id="bfEvent" value="${ed?b.event:d?d.end||'':''}"></label></div>
   ${d?`<p class="xs muted" style="margin:0">A fresh start: readers, picks, the moderator, and results don’t carry over.</p>`:''}${ed&&Object.keys(b.readers).length?`<p class="xs muted" style="margin:0">Readers who already joined keep their picks and progress. Changing the dates can change whether the battle shows as Upcoming, Active, or Completed.</p>`:''}
   <div class="err" id="bfErr" role="alert"></div><div class="dlg-f"><button class="btn btn-ghost" data-act="${ed?'bEditCancel':'closeCh'}">Cancel</button><button class="btn btn-primary" data-act="${ed?'bSave':'bCreate'}">${ed?'Save Changes':'Start Battle'}</button></div></div>`;
@@ -5746,18 +5757,20 @@ document.addEventListener('click',e=>{
     case 'cfSave':saveCf();break;
     case 'openBattle':openBattle(a.dataset.id);break;
     case 'bTab':bv.tab=a.dataset.v;renderBattle();break;
-    case 'bJoin':{const b=S.battles.find(x=>x.id===bv.id);b.readers.me=[];bv.adding=true;save();renderBattle();setTimeout(()=>document.getElementById('bQ')?.focus(),30);toast(`You joined ${b.name} as a reader.`);break}
+    case 'bJoin':{const b=S.battles.find(x=>x.id===bv.id);b.readers.me=[];bv.adding=!bIsList(b);if(bIsList(b))bv.tab='books';save();renderBattle();setTimeout(()=>document.getElementById('bQ')?.focus(),30);toast(`You joined ${b.name} as a reader.`);break}
     case 'bLeave':{const snap=snapshot(),b=S.battles.find(x=>x.id===bv.id);delete b.readers.me;bv.adding=false;save();renderBattle();toast(`Left ${b.name}. Your picks were removed.`,restoreTo(snap));break}
     case 'bMod':{const b=S.battles.find(x=>x.id===bv.id);b.moderator='me';save();renderBattle();toast(`You’re moderating ${b.name}.`);break}
     case 'bUnmod':{const b=S.battles.find(x=>x.id===bv.id);b.moderator=null;save();renderBattle();toast('You stepped down as moderator.');break}
     case 'bAdd':bv.adding=!bv.adding;bv.q='';bv.ol=null;renderBattle();if(bv.adding)setTimeout(()=>document.getElementById('bQ')?.focus(),30);break;
-    case 'bPickOL':{const x=bv.ol?.items[+a.dataset.i];if(!x)break;const b=S.battles.find(y=>y.id===bv.id),t=olTitleFrom(x);if(bList(b).some(y=>y.id===t.id)){toast('Someone already picked that book.');break}b.readers.me.push(t.id);bv.adding=false;bv.q='';bv.ol=null;save();renderBattle();toast(`Added ${t.title} to the shared list.`);break}
-    case 'bPick':{const b=S.battles.find(x=>x.id===bv.id),t=titleById(a.dataset.id);if(bList(b).some(x=>x.id===t.id)){toast('Someone already picked that book.');break}b.readers.me.push(t.id);bv.adding=false;bv.q='';save();renderBattle();toast(`Added ${t.title} to the shared list.`);break}
-    case 'bRemove':{const b=S.battles.find(x=>x.id===bv.id);b.readers.me=b.readers.me.filter(x=>x!==a.dataset.id);save();renderBattle();break}
-    case 'bNew':openBForm();break;
+    case 'bPickOL':case 'bPick':{const b=S.battles.find(y=>y.id===bv.id);let t;if(a.dataset.act==='bPickOL'){const x=bv.ol?.items[+a.dataset.i];if(!x)break;t=olTitleFrom(x)}else t=titleById(a.dataset.id);if(!b||!t)break;
+      if(bList(b).some(y=>y.id===t.id)){toast(bIsList(b)?'That book is already on the list.':'Someone already picked that book.');break}
+      if(bIsList(b)){if(!bCanList(b))break;(b.setList=b.setList||[]).push(t.id);bv.q='';bv.ol=null;bv.tab='books';save();renderBattle();setTimeout(()=>document.getElementById('bQ')?.focus(),30);toast(`Added ${t.title} to the list.`);break}
+      b.readers.me.push(t.id);bv.adding=false;bv.q='';bv.ol=null;bv.tab='books';save();renderBattle();toast(`Added ${t.title} to the shared list.`);break}
+    case 'bRemove':{const b=S.battles.find(x=>x.id===bv.id);if(bIsList(b)){if(bCanList(b))b.setList=(b.setList||[]).filter(x=>x!==a.dataset.id)}else b.readers.me=b.readers.me.filter(x=>x!==a.dataset.id);save();renderBattle();break}
+    case 'bNew':bDupSrc=null;openBForm();break;
     case 'bEdit':{const b=S.battles.find(x=>x.id===bv.id);if(b&&bCreator(b)==='me')openBForm(b);break}
     case 'bEditCancel':openBattle(bv.id);break;
-    case 'bDup':{const b=S.battles.find(x=>x.id===bv.id);if(b)openBForm(null,b);break}
+    case 'bDup':{const b=S.battles.find(x=>x.id===bv.id);if(b){bDupSrc=b.id;openBForm(null,b)}break}
     case 'bDel':bv.del=!bv.del;renderBattle();break;
     case 'bDelGo':{const b=S.battles.find(x=>x.id===bv.id);if(!b||bCreator(b)!=='me'||bStatus(b)==='completed')break;const snap=snapshot();
       S.battles=S.battles.filter(x=>x!==b);S.notifs=S.notifs.filter(n=>!(n.link&&n.link.type==='battle'&&n.link.id===b.id));save();chDlg.close();render();toast(`Deleted ${b.name}.`,restoreTo(snap));break}
@@ -5769,11 +5782,20 @@ document.addEventListener('click',e=>{
     case 'chCardDel':openCh(a.dataset.id);cv.del=true;renderCh();setTimeout(()=>document.querySelector('#chDlg .b-confirm [data-act=chDel]')?.focus(),30);break;
     case 'chCardHide':{const c=S.challenges.find(x=>x.id===a.dataset.id),h=hiddenC();if(a.dataset.v==='1'){if(!h.includes(c.id))h.push(c.id)}else S.settings.hiddenCh=h.filter(x=>x!==c.id);save();render();toast(a.dataset.v==='1'?`Hid ${c.name} from your lists. Its trophies stay on the Trophy Wall.`:`${c.name} is back in your lists.`);break}
     case 'bShowHidden':showHiddenB=!showHiddenB;render();break;
+    case 'bfMode':{const v=a.dataset.v;document.getElementById('bfMode').value=v;a.parentElement.querySelectorAll('button').forEach(x=>{x.setAttribute('aria-pressed',x===a);x.setAttribute('aria-checked',x===a)});
+      document.getElementById('bfModeHint').textContent=v==='list'?'You choose the books. Readers join and read your list.':'Readers join and add their own books, as many as they like.';
+      document.getElementById('bfDesc').placeholder=v==='list'?'For example: The 2027 school list. Read as many as you can before the battle.':'For example: Pick one or two books you think everyone should read.';break}
     case 'bSave':{const b=S.battles.find(x=>x.id===bv.id);if(!b||bCreator(b)!=='me')break;const v=id=>document.getElementById(id).value.trim(),er=m=>document.getElementById('bfErr').textContent=m;
       if(!v('bfName'))return er('Give the battle a name.');if(!v('bfStart')||!v('bfEvent'))return er('Choose when reading starts and the battle date.');if(v('bfEvent')<v('bfStart'))return er('The battle date must be after reading starts.');
-      Object.assign(b,{name:v('bfName'),desc:v('bfDesc'),readStart:v('bfStart'),event:v('bfEvent')});save();openBattle(b.id);toast(`Saved changes to ${b.name}.`);break}
+      const nm=v('bfMode')==='list'?'list':'picks',was=b.mode==='list'?'list':'picks';let extra='';
+      if(nm!==was){if(nm==='list'){b.setList=[...new Set(bList(b).map(x=>x.id))];Object.keys(b.readers).forEach(w=>b.readers[w]=[]);b.mode='list';extra=' Everyone’s picks are now your list.'}
+        else{const n=(b.setList||[]).length;if(b.readers.me)b.readers.me=[...(b.setList||[])];delete b.mode;delete b.setList;extra=n?(b.readers.me?' The list became your picks.':' The list was cleared; readers add their own books.'):''}}
+      Object.assign(b,{name:v('bfName'),desc:v('bfDesc'),readStart:v('bfStart'),event:v('bfEvent')});save();openBattle(b.id);toast(`Saved changes to ${b.name}.${extra}`);break}
     case 'bCreate':{const v=id=>document.getElementById(id).value.trim(),er=m=>document.getElementById('bfErr').textContent=m;if(!v('bfName'))return er('Give the battle a name.');if(!v('bfStart')||!v('bfEvent'))return er('Choose when reading starts and the battle date.');if(v('bfEvent')<v('bfStart'))return er('The battle date must be after reading starts.');
-      const b={id:'bb'+uid(),name:v('bfName'),desc:v('bfDesc'),readStart:v('bfStart'),event:v('bfEvent'),moderator:null,readers:{},progress:{},creator:'me'};S.battles.push(b);save();chTab='battle';render();openBattle(b.id);toast(`Started ${b.name}.`);break}
+      const b={id:'bb'+uid(),name:v('bfName'),desc:v('bfDesc'),readStart:v('bfStart'),event:v('bfEvent'),moderator:null,readers:{},progress:{},creator:'me'};
+      if(v('bfMode')==='list'){b.mode='list';const src=chMode==='bform'&&bDupSrc?S.battles.find(x=>x.id===bDupSrc):null;b.setList=src&&bIsList(src)?[...(src.setList||[])]:[]}
+      S.battles.push(b);save();chTab='battle';render();openBattle(b.id);if(bIsList(b)&&!b.setList.length){bv.adding=true;renderBattle();setTimeout(()=>document.getElementById('bQ')?.focus(),30)}
+      toast(bIsList(b)?(b.setList.length?`Started ${b.name} with the same ${b.setList.length} books.`:`Started ${b.name}. Now add the books to the list.`):`Started ${b.name}.`);break}
     case 'awardNew':openAwardForm();break;
     case 'awgEdit':awEdit=a.dataset.id;render();setTimeout(()=>document.getElementById('awgName')?.focus(),30);break;
     case 'awgCancel':awEdit=null;render();break;
