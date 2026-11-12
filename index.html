@@ -3483,7 +3483,7 @@ const descWaiting=t=>!descOf(t)&&(!!t.olKey&&t.desc===undefined&&!(t.descTried>D
 const gbDesc={};let gbBusy=null;
 /* Reading Room's Google Books API key. It's visible in the page by design (browser keys always are); Google only
    accepts it from gravityoptional.github.io and only for the Books API. country: Google needs it to answer. */
-const GB_KEY='AIzaSyA7zEScGktN2WltXh6C_79xoJEipsRt67c',GB_COUNTRY='US';
+const GB_KEY='AIzaSyAd_Iod-Yx6TgTKYHKcW-16tk36UnALHdE',GB_COUNTRY='US';
 function gbSafe(raw){
   // Keep Google's own formatting tags (paragraphs, line breaks, bold, italics); show everything else as text.
   const doc=new DOMParser().parseFromString(`<div>${raw}</div>`,'text/html'),ok={P:'p',BR:'br',B:'b',STRONG:'b',I:'i',EM:'i'};
