@@ -2079,7 +2079,7 @@ function yirData(Y){const ys=String(Y),fin=S.books.filter(b=>b.status==='finishe
     favs:[...new Map(done.filter(b=>b.titleId&&isFav(b.titleId)).map(b=>[b.titleId,b])).values()],   // each favorite finished this year, once, in the order finished
     rated:done.filter(b=>b.rating).sort((a,b)=>b.rating-a.rating||b.finished.localeCompare(a.finished)).slice(0,5),
     minutes:sess.reduce((n,x)=>n+(x.minutes||0),0),streak:days.length?longestStreakRange(days):{n:0},goalDays:days.filter(d=>goalState(d).met).length,
-    hasSessions:sess.length>0,imported:done.some(b=>titleById(b.titleId)?.grId)}}
+    hasSessions:sess.length>0,imported:done.some(b=>titleById(b.titleId)?.grId),importedSG:done.some(b=>titleById(b.titleId)?.sgImport)}}
 function yirCard(){const Y=yirOpenYear();if(Y==null)return '';const d=yirData(Y);if(!d.done.length&&!NEXT)return '';
   return `<section class="card yir-card" aria-labelledby="yirH"><div class="card-h"><span class="ico">${ic('book')}</span><h2 id="yirH">Your ${Y} in Books${yirYear()==null?' <span class="xs muted">(Preview)</span>':''}</h2></div>
   <p class="small" style="margin:0 0 10px">${d.done.length?`${d.done.length} book${d.done.length===1?'':'s'} finished${d.pages?`, ${d.pages.toLocaleString()} pages`:''}. See your year at a glance.`:`Finish a book in ${Y} and your year in review fills in here.`}</p>
@@ -2104,7 +2104,7 @@ function yirOpen(){const Y=yirOpenYear();if(Y==null)return;const d=yirData(Y);
   ${d.favs.length?`<section class="yir-sec"><h3>Your Favorites of ${d.Y}</h3><div class="yir-rated">${d.favs.map(b=>{const t=titleById(b.titleId)||b;return `<button type="button" class="yir-book" data-act="yirBook" data-id="${t.id}">${libCover(t,72)}<span class="small"><b>${esc(t.title)}</b></span><span class="xs yir-fav" aria-label="Favorite">♥</span></button>`}).join('')}</div></section>`:''}
   ${d.rated.length?`<section class="yir-sec"><h3>Your Highest Rated</h3><div class="yir-rated">${d.rated.map(b=>{const t=titleById(b.titleId)||b;return `<button type="button" class="yir-book" data-act="yirBook" data-id="${t.id}">${libCover(t,72)}<span class="small"><b>${esc(t.title)}</b></span><span class="xs" style="color:var(--orange);font-weight:600">${b.rating}★</span></button>`}).join('')}</div></section>`:''}
   ${time?`<section class="yir-sec"><h3>Your Reading Habit</h3><div class="yir-tiles">${time}</div></section>`:''}
-  <p class="xs muted" style="margin:16px 0 0">${[d.imported?'Includes books imported from Goodreads.':'',d.undated?`<button type="button" class="link-btn sm yir-ud-btn" data-act="yirUndated" aria-expanded="${yirShowUndated}" aria-controls="yirUndated">${d.undated} finished book${d.undated===1?' has':'s have'} no finish date</button>, so ${d.undated===1?'it isn’t':'they aren’t'} counted.`:''].filter(Boolean).join(' ')}</p>
+  <p class="xs muted" style="margin:16px 0 0">${[d.imported||d.importedSG?`Includes books imported from ${[d.imported?'Goodreads':'',d.importedSG?'StoryGraph':''].filter(Boolean).join(' and ')}.`:'',d.undated?`<button type="button" class="link-btn sm yir-ud-btn" data-act="yirUndated" aria-expanded="${yirShowUndated}" aria-controls="yirUndated">${d.undated} finished book${d.undated===1?' has':'s have'} no finish date</button>, so ${d.undated===1?'it isn’t':'they aren’t'} counted.`:''].filter(Boolean).join(' ')}</p>
   ${d.undated&&yirShowUndated?`<div class="yir-ud" id="yirUndated">${d.undatedList.map(b=>{const t=titleById(b.titleId)||b;return `<div class="yir-ud-row">${libCover(t,34)}<span class="small yir-ud-t"><b>${esc(t.title)}</b><span class="xs muted">${esc(t.author)}</span></span><button type="button" class="btn btn-ghost sm" data-act="yirDate" data-id="${b.id}">Add the Date</button></div>`}).join('')}</div>`:''}</div>`;
   if(!dl.open)dl.showModal();setTimeout(()=>dl.querySelector('[data-act=yirClose]')?.focus(),40)}
 function activityCard(){
@@ -4259,48 +4259,65 @@ function grParse(text){const rows=csvRows(text.replace(/^\uFEFF/,''));if(!rows.l
     const isbn=grClean(get(r,'ISBN13'))||grClean(get(r,'ISBN')),pages=parseInt(get(r,'Number of Pages'))||0,rating=parseInt(get(r,'My Rating'))||0,owned=parseInt(get(r,'Owned Copies'))||0;
     return {grId:get(r,'Book Id'),title,author:get(r,'Author')||'Unknown author',series,seriesNo,isbn:/^(\d{9}[\dX]|\d{13})$/.test(isbn)?isbn:'',pages,rating:rating>=1&&rating<=5?rating:0,status,
       finished:grDate(get(r,'Date Read')),added:grDate(get(r,'Date Added')),owned:owned>0,format:grFormat(get(r,'Binding')),year:parseInt(get(r,'Original Publication Year'))||parseInt(get(r,'Year Published'))||0}}).filter(x=>x.title)}
-function grMatch(x){return S.titles.find(t=>x.grId&&t.grId===x.grId)||S.titles.find(t=>x.isbn&&t.isbn===x.isbn)||S.titles.find(t=>olKey(t.title)===olKey(x.title)&&olKey(t.author||'')===olKey(x.author))}
+/* StoryGraph's export (Manage Account → Export StoryGraph Library): Title, Authors, ISBN/UID, Format, Read Status,
+   Star Rating (quarter stars), Review, Date Added, Dates Read ("2026/08/15-2026/08/17", several separated by commas),
+   Owned?. Read Count, Moods, Pace, Contributors, and Tags aren't used. */
+function sgParse(text){const rows=csvRows(text.replace(/^﻿/,''));if(!rows.length)return null;const h=rows[0].map(x=>x.trim()),col=n=>h.indexOf(n);
+  if(col('Title')<0||col('Read Status')<0||col('Authors')<0)return null;
+  const get=(r,n)=>{const i=col(n);return i<0?'':String(r[i]||'').trim()};
+  const ST={read:'finished','currently-reading':'reading','to-read':'want','did-not-finish':'dnf',paused:'paused'};
+  return rows.slice(1).map(r=>{const title=get(r,'Title').replace(/\s+/g,' ').trim(),author=(get(r,'Authors').split(',')[0]||'').trim()||'Unknown author';
+    const isbn=grClean(get(r,'ISBN/UID')),f=get(r,'Format').toLowerCase(),format=/audio/.test(f)?'audio':/digital|ebook|kindle/.test(f)?'ebook':'physical';
+    const ranges=get(r,'Dates Read').split(',').map(x=>x.trim()).filter(Boolean),last=ranges.at(-1)||'',[a,b]=last.split('-').map(x=>grDate(x));
+    const finished=grDate(get(r,'Last Date Read'))||b||a||'',started=b?a:'',sr=parseFloat(get(r,'Star Rating'))||0,rating=sr>0?Math.min(5,Math.max(0.5,Math.round(sr*2)/2)):0;
+    return {title,author,series:'',seriesNo:0,isbn:/^(\d{9}[\dX]|\d{13})$/.test(isbn)?isbn:'',pages:0,rating,status:ST[get(r,'Read Status').toLowerCase()]||'want',
+      finished,started,added:grDate(get(r,'Date Added')),owned:/^y/i.test(get(r,'Owned?')),format,readFmt:format==='audio'?'audio':format==='ebook'?'ebook':'print',year:0,review:get(r,'Review')}}).filter(x=>x.title)}
+function grMatch(x){const first=a=>olKey(String(a||'').split(',')[0]);return S.titles.find(t=>x.grId&&t.grId===x.grId)||S.titles.find(t=>x.isbn&&t.isbn===x.isbn)||S.titles.find(t=>olKey(t.title)===olKey(x.title)&&(olKey(t.author||'')===olKey(x.author)||first(t.author)===first(x.author)))}
 function gImportBody(){
-  if(!gi||!gi.items)return `<div class="form"><div><h3 style="margin:0 0 4px">Import from Goodreads</h3><p class="small muted" style="margin:0">Bring in your shelves, reading dates, ratings, and the books you own. You’ll see everything before it’s added.</p></div>
-    <ol class="small" style="margin:0;padding-left:20px;display:grid;gap:4px"><li>On Goodreads (on a computer, or the website on your phone), open <b>My Books</b>, then <b>Import and export</b>.</li><li>Choose <b>Export Library</b>, wait for the link, and download the file.</li><li>Choose that file here.</li></ol>
-    <div><button type="button" class="btn btn-primary" data-act="grPick">${ic('library')}Choose Goodreads File</button></div><div class="err" id="grErr" role="alert">${gi&&gi.err?esc(gi.err):''}</div>
+  if(!gi||!gi.items)return `<div class="form"><div><h3 style="margin:0 0 4px">Import from Goodreads or StoryGraph</h3><p class="small muted" style="margin:0">Bring in your shelves, reading dates, ratings, and the books you own. You’ll see everything before it’s added.</p></div>
+    <details class="rt" open><summary class="link-btn sm">From Goodreads</summary><ol class="small" style="margin:6px 0 0;padding-left:20px;display:grid;gap:4px"><li>On Goodreads (on a computer, or the website on your phone), open <b>My Books</b>, then <b>Import and export</b>.</li><li>Choose <b>Export Library</b>, wait for the link, and download the file.</li><li>Choose that file here.</li></ol></details>
+    <details class="rt"><summary class="link-btn sm">From StoryGraph</summary><ol class="small" style="margin:6px 0 0;padding-left:20px;display:grid;gap:4px"><li>On StoryGraph, open your profile picture, then <b>Manage Account</b>.</li><li>Under Manage Your Data, choose <b>Export StoryGraph Library</b>, then <b>Generate Export</b>. When it’s ready, download the file.</li><li>Choose that file here.</li></ol></details>
+    <div><button type="button" class="btn btn-primary" data-act="grPick">${ic('library')}Choose Your File</button></div><div class="err" id="grErr" role="alert">${gi&&gi.err?esc(gi.err):''}</div>
     <p class="xs muted" style="margin:0">The file stays on your device; only the books you import are saved.</p></div>`;
   const it=gi.items,news=it.filter(x=>!x.match),olds=it.filter(x=>x.match),owned=it.filter(x=>x.owned&&(!x.match||gi.old==='update'&&!copiesOf(x.match.id).some(c=>c.owner==='me'&&c.format===x.format)));   // copies this import would add
-  const st={finished:'Finished',reading:'Currently Reading',want:'To Read',dnf:'Did Not Finish'};
+  const st={finished:'Finished',reading:'Currently Reading',want:'To Read',dnf:'Did Not Finish',paused:'Paused'};
   const group=!S.settings.solo;
   const rows=it.slice(0,gi.showAll?it.length:40).map((x,i)=>`<div class="gr-row" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 8px;padding:7px 0;border-top:1px solid var(--border)">
     <span class="small"><b>${esc(x.title)}</b> <span class="muted">· ${esc(x.author)}</span></span><span class="xs ${x.match?'muted':''}" style="text-align:right">${x.match?'Already here':'New'}</span>
     <span class="xs muted">${st[x.status]}${x.finished?` · ${fmtDateY(x.finished)}`:''}${x.rating?` · ${x.rating}★`:''}${x.owned?` · You own it (${FMT[x.format]})`:''}</span>
     ${group&&x.owned&&gi.share==='choose'&&owned.includes(x)?`<label class="chk xs" style="justify-self:end"><input type="checkbox" data-grshare="${it.indexOf(x)}" ${gi.pick.has(it.indexOf(x))?'checked':''}> Share</label>`:'<span></span>'}</div>`).join('');
-  return `<div class="form"><div><h3 style="margin:0 0 4px">${it.length} Book${it.length===1?'':'s'} in Your Goodreads File</h3><p class="small muted" style="margin:0">${news.length} new${olds.length?`, ${olds.length} already in your library`:''}${owned.length?`. ${owned.length} marked as books you own.`:'.'}</p></div>
-    ${olds.length?`<fieldset style="border:0;padding:0;margin:0;display:grid;gap:4px"><legend class="small" style="font-weight:600;margin-bottom:4px">Books Already Here</legend><label class="chk small"><input type="radio" name="grOld" value="skip" ${gi.old==='skip'?'checked':''}> Leave them as they are</label><label class="chk small"><input type="radio" name="grOld" value="update" ${gi.old==='update'?'checked':''}> Update their status, dates, and rating from Goodreads</label></fieldset>`:''}
+  return `<div class="form"><div><h3 style="margin:0 0 4px">${it.length} Book${it.length===1?'':'s'} in Your ${gi.src||'Goodreads'} File</h3><p class="small muted" style="margin:0">${news.length} new${olds.length?`, ${olds.length} already in your library`:''}${owned.length?`. ${owned.length} marked as books you own.`:'.'}</p></div>
+    ${olds.length?`<fieldset style="border:0;padding:0;margin:0;display:grid;gap:4px"><legend class="small" style="font-weight:600;margin-bottom:4px">Books Already Here</legend><label class="chk small"><input type="radio" name="grOld" value="skip" ${gi.old==='skip'?'checked':''}> Leave them as they are</label><label class="chk small"><input type="radio" name="grOld" value="update" ${gi.old==='update'?'checked':''}> Update their status, dates, and rating from ${gi.src||'Goodreads'}</label></fieldset>`:''}
     ${group&&owned.length?`<fieldset style="border:0;padding:0;margin:0;display:grid;gap:4px"><legend class="small" style="font-weight:600;margin-bottom:4px">Show the ${owned.length} Book${owned.length===1?'':'s'} You Own in the ${esc(GN())} Library?</legend><label class="chk small"><input type="radio" name="grShare" value="all" ${gi.share==='all'?'checked':''}> Share All ${owned.length}</label><label class="chk small"><input type="radio" name="grShare" value="choose" ${gi.share==='choose'?'checked':''}> Let Me Choose</label><label class="chk small"><input type="radio" name="grShare" value="none" ${gi.share==='none'?'checked':''}> Keep All Private</label></fieldset>`:''}
     <div class="gr-list" style="max-height:300px;overflow:auto">${rows}${it.length>40&&!gi.showAll?`<button type="button" class="link-btn sm" data-act="grAll">Show All ${it.length}</button>`:''}</div>
     <div class="err" id="grErr" role="alert"></div>
     <div class="dlg-f"><button type="button" class="btn btn-ghost" data-act="grReset">Choose Another File</button>${(n=>n?`<button type="button" class="btn btn-primary" data-act="grGo">Import ${n} Book${n===1?'':'s'}</button>`:`<button type="button" class="btn btn-primary" disabled>Nothing New to Import</button>`)(gi.old==='update'?it.length:news.length)}</div></div>`}
 function grPick(){const inp=document.createElement('input');inp.type='file';inp.accept='.csv,text/csv';inp.hidden=true;document.body.appendChild(inp);
-  inp.addEventListener('change',async()=>{const f=inp.files[0];inp.remove();if(!f)return;let items=null;try{items=grParse(await f.text())}catch(e){}
-    if(!items){gi={err:'That isn’t a Goodreads library export. Choose the .csv file from Goodreads’ Export Library.'};renderAdd();return}
+  inp.addEventListener('change',async()=>{const f=inp.files[0];inp.remove();if(!f)return;let items=null,src='Goodreads';try{const tx=await f.text();items=grParse(tx);if(!items){items=sgParse(tx);src='StoryGraph'}}catch(e){}
+    if(!items){gi={err:'That isn’t a Goodreads or StoryGraph library export. Choose the .csv file from either site’s export.'};renderAdd();return}
     if(!items.length){gi={err:'That file has no books in it.'};renderAdd();return}
-    items.forEach(x=>x.match=grMatch(x));gi={items,old:'skip',share:'all',pick:new Set(items.map((x,i)=>x.owned?i:-1).filter(i=>i>=0)),showAll:false};renderAdd()});
+    items.forEach(x=>x.match=grMatch(x));gi={items,src,old:'skip',share:'all',pick:new Set(items.map((x,i)=>x.owned?i:-1).filter(i=>i>=0)),showAll:false};renderAdd()});
   inp.click()}
 function grApply(){if(!gi||!gi.items)return;const snap=snapshot(),group=!S.settings.solo;let added=0,updated=0,copies=0;
   gi.items.forEach((x,i)=>{let t=x.match;const isNew=!t;
     if(!isNew&&gi.old!=='update'){if(!t.grId&&x.grId)t.grId=x.grId;return}            // left as it is (only remembered for next time)
     if(!t){t={id:'t'+uid(),by:'me',title:x.title,author:x.author,c:hashStr(x.title)%COVERS.length,added:x.added?Date.parse(x.added):Date.now()};S.titles.push(t)}
+    if(gi.src==='StoryGraph'&&!t.sgImport)t.sgImport=1;   // for Year in Review's "Includes books imported" line
     if(!t.grId&&x.grId)t.grId=x.grId;if(!t.isbn&&x.isbn)t.isbn=x.isbn;if(!t.pages&&x.pages)t.pages=x.pages;if(!t.series&&x.series){t.series=x.series;t.seriesNo=x.seriesNo}if(!t.year&&x.year)t.year=x.year;
     let r=S.books.find(b=>b.titleId===t.id&&b.status!=='finished')||S.books.find(b=>b.titleId===t.id);
-    const fmt=x.format==='audio'?'audio':'print',done=x.status==='finished';
+    const fmt=x.readFmt||(x.format==='audio'?'audio':'print'),done=x.status==='finished';
     if(!r){r={id:'r'+uid(),titleId:t.id,title:t.title,author:t.author,format:x.status==='want'?'unknown':fmt,total:x.status==='want'?0:(t.pages||0),pos:0,status:x.status,c:t.c};S.books.push(r);added++}
     else{Object.assign(r,{status:x.status});if(x.status!=='want'&&r.format==='unknown'){r.format=fmt;r.total=t.pages||r.total||0}updated++}
     if(done){r.pos=r.total||0;if(x.finished)r.finished=x.finished}
+    if(x.started&&!r.started)r.started=x.started;
+    if(x.review&&!S.notes[t.id])S.notes[t.id]=x.review.slice(0,2000);   // a review becomes your private book note
     if(x.status==='want'&&!r.wantSince&&x.added)r.wantSince=x.added;
     if(x.rating&&(isNew||gi.old==='update'))r.rating=x.rating;
     if(x.status==='dnf'&&!r.dnfOn&&x.finished)r.dnfOn=x.finished;
     if(x.owned&&!copiesOf(t.id).some(c=>c.owner==='me'&&c.format===x.format)){const shared=group&&(gi.share==='all'||gi.share==='choose'&&gi.pick.has(i));
       S.copies.push({id:'c'+uid(),titleId:t.id,owner:'me',format:x.format,edition:'',loanTo:null,...(shared?{}:{private:true})});copies++}});
-  const n=added+updated;gi=null;save();addDlg.close();view='library';lib.tab='mybooks';render();window.scrollTo(0,0);
-  toast(`Imported ${n} book${n===1?'':'s'} from Goodreads${copies?`, with ${copies} cop${copies===1?'y':'ies'} you own`:''}.`,restoreTo(snap),'Undo removes everything this import added.')}
+  const n=added+updated,src0=gi.src;gi=null;save();addDlg.close();view='library';lib.tab='mybooks';render();window.scrollTo(0,0);
+  const src=src0||'Goodreads';toast(`Imported ${n} book${n===1?'':'s'} from ${src}${copies?`, with ${copies} cop${copies===1?'y':'ies'} you own`:''}.`,restoreTo(snap),'Undo removes everything this import added.')}
 function addManual(){adCaptureManual();const m=ad.manual,er=text=>document.getElementById('amErr').textContent=text,title=m.title.trim(),author=m.author.trim()||'Unknown author';
   if(!title)return er('Enter the book’s title.');if(m.pages.trim()&&(!/^\d+$/.test(m.pages.trim())||+m.pages<=0))return er('Enter a positive whole number of pages, or leave it blank.');
   const t=S.titles.find(t=>olKey(t.title)===olKey(title)&&olKey(t.author)===olKey(author));
