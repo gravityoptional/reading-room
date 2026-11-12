@@ -491,7 +491,7 @@ button.cal-d{border:0;font:inherit;color:inherit;cursor:pointer;position:relativ
 .bd-acts{gap:6px}
 .bd-acts .btn{padding:8px 11px;gap:6px}
 /* The text column's children join the header grid so the buttons can run under the close button (and under the cover on phones). */
-.bd-h{display:grid;grid-template-columns:auto 1fr auto;grid-template-rows:auto auto auto 1fr;gap:0 16px;align-items:start}
+.bd-h{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-rows:auto auto auto 1fr;gap:0 16px;align-items:start}
 .bd-h>div:not(.cover){display:contents}
 .bd-h>.cover{grid-column:1;grid-row:1/5}
 .bd-h h2{grid-column:2;grid-row:1}
@@ -696,7 +696,7 @@ h1,h2,h3{letter-spacing:-.01em}
 .grp-btn #grpName{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .grp-btn svg.i{width:16px;height:16px;color:var(--text-2)}
 .grp-btn:hover{background:var(--surface-alt)}
-#grpMenu{right:auto;left:0;width:280px}
+#grpMenu{right:auto;left:0;width:280px}@media (min-width:721px) and (max-width:1100px){#grpMenu{left:auto;right:0}}   /* tablets: the menu opens leftward so it stays on screen */
 .grp-opt{display:flex!important;align-items:center;gap:10px}
 .grp-opt span{flex:1}
 .grp-opt[aria-pressed="true"]{color:var(--primary);font-weight:600}
@@ -842,7 +842,7 @@ main section.card .card-h .ico{display:none}
 @media (max-width:359px),(min-width:721px) and (max-width:900px){.grp-btn #grpName{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}}
 @media (max-width:359px){.hero2-goal{flex-wrap:wrap}}
 @media (max-width:720px){.me-btn svg.i{display:none}}
-#meMenu{width:340px}#meMenu .row label,#meMenu .row>.small{white-space:nowrap}#meMenu .row select{max-width:180px}.card-h .more svg.i{width:15px;height:15px;vertical-align:-3px;margin-right:4px}
+#meMenu{width:340px;max-width:calc(100vw - 24px)}@media (max-width:379px){#meMenu .row{flex-wrap:wrap;gap:4px 10px}#meMenu .row select{max-width:100%;min-width:0}}#meMenu .row label,#meMenu .row>.small{white-space:nowrap}#meMenu .row select{max-width:180px}.card-h .more svg.i{width:15px;height:15px;vertical-align:-3px;margin-right:4px}
 /* tabs: no stray scrollbar */
 .tabs{border-bottom:0;box-shadow:inset 0 -1px 0 var(--border);overflow-y:hidden}
 .tabs>.tab{margin-bottom:0}
@@ -1318,6 +1318,8 @@ a.btn{text-decoration:none}
 /* Compact search introduction; wrap naturally on narrower phones. */
 .libby-hint{display:flex;align-items:center;gap:8px;margin-top:6px}.libby-hint>span{flex:1;min-width:0}.libby-hint .lh-x{width:26px;height:26px;margin-left:auto}.libby-hint .lh-x svg{width:14px;height:14px}.lh-glow{outline:3px solid var(--primary);outline-offset:2px;transition:outline-color .4s}
 .vseg button:disabled{opacity:.5;cursor:not-allowed}
+@media (max-width:400px){.vseg.addb-tabs{display:flex}.vseg.addb-tabs button{flex:1 1 0;min-width:0;justify-content:center;text-align:center;padding:8px 6px;font-size:13px}}   /* three choices fit a small phone */
+.bd-h h2,.bd-h .bd-au{overflow-wrap:anywhere}
 #trashDlg .tr-l{list-style:none;margin:0;padding:0;display:grid;gap:8px}#trashDlg .tr-r{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid var(--border);border-radius:12px}#trashDlg .tr-t{display:grid;gap:2px;min-width:0}#trashDlg .btn:disabled{opacity:.45;cursor:not-allowed}.tr-link{margin-top:6px;justify-self:start}
 #pgvDlg .pgv-sec{display:grid;gap:8px}#pgvDlg .pgv-h{font-size:1rem;margin:0}#pgvDlg .pgv-l{list-style:none;margin:0;padding:0;display:grid;gap:6px}#pgvDlg .pgv-r{padding:8px 10px;border:1px solid var(--border);border-radius:10px;font-size:.92rem}#pgvDlg .pgv-never{font-size:.88rem;padding:10px 12px;border-radius:10px;background:var(--primary-light)}
 #logForm .lg-prog-h{display:flex;align-items:center;justify-content:space-between;gap:10px}#logForm .sw-row{display:grid;gap:8px;margin-top:8px}#logForm .sw-copy[open]{padding:10px 12px;border:1px solid var(--border);border-radius:12px}
