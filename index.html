@@ -285,7 +285,7 @@ textarea.inp{resize:none;min-height:0;overflow-y:hidden;max-height:240px}#bdNote
 .err{color:var(--red);font-size:13px;min-height:0}
 .chk{display:flex;gap:8px;align-items:center;font-size:14px}
 .chk input{width:18px;height:18px;accent-color:var(--primary)}
-.dlg-f{display:flex;gap:10px;justify-content:flex-end;margin-top:6px}
+.dlg-f{display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end;margin-top:6px}
 .dlg-f .btn{min-width:120px}
 .radio{display:flex;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px}
 .radio input{accent-color:var(--primary);width:17px;height:17px}
@@ -1318,6 +1318,7 @@ a.btn{text-decoration:none}
 /* Compact search introduction; wrap naturally on narrower phones. */
 .libby-hint{display:flex;align-items:center;gap:8px;margin-top:6px}.libby-hint>span{flex:1;min-width:0}.libby-hint .lh-x{width:26px;height:26px;margin-left:auto}.libby-hint .lh-x svg{width:14px;height:14px}.lh-glow{outline:3px solid var(--primary);outline-offset:2px;transition:outline-color .4s}
 .vseg button:disabled{opacity:.5;cursor:not-allowed}
+#trashDlg .tr-l{list-style:none;margin:0;padding:0;display:grid;gap:8px}#trashDlg .tr-r{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid var(--border);border-radius:12px}#trashDlg .tr-t{display:grid;gap:2px;min-width:0}#trashDlg .btn:disabled{opacity:.45;cursor:not-allowed}.tr-link{margin-top:6px;justify-self:start}
 #pgvDlg .pgv-sec{display:grid;gap:8px}#pgvDlg .pgv-h{font-size:1rem;margin:0}#pgvDlg .pgv-l{list-style:none;margin:0;padding:0;display:grid;gap:6px}#pgvDlg .pgv-r{padding:8px 10px;border:1px solid var(--border);border-radius:10px;font-size:.92rem}#pgvDlg .pgv-never{font-size:.88rem;padding:10px 12px;border-radius:10px;background:var(--primary-light)}
 #logForm .lg-prog-h{display:flex;align-items:center;justify-content:space-between;gap:10px}#logForm .sw-row{display:grid;gap:8px;margin-top:8px}#logForm .sw-copy[open]{padding:10px 12px;border:1px solid var(--border);border-radius:12px}
 #logForm .new-heading{margin-bottom:0}
@@ -2462,6 +2463,31 @@ function sessNoteWhere(x){const b=book(x.bookId);const pg=x.start!=null&&x.end!=
 const sessNotesFor=ids=>S.sessions.filter(x=>ids.includes(x.bookId)&&String(x.note||'').trim()).sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.ts||0)-(a.ts||0));
 function lastNoteBox(r){if(!['reading','paused'].includes(r.status))return '';const x=sessNotesFor([r.id])[0];if(!x)return '';
   return `<details class="lastnote" ${r.status==='paused'?'open':''}><summary>My Last Note</summary><div class="ln-box"><div class="xs muted">${sessNoteWhere(x)}</div><p class="ln-t">${esc(x.note)}</p><button class="link-btn sm" data-act="bdTab" data-v="notes" style="padding:0">See All My Notes</button></div></details>`}
+/* F8 Recently Deleted: reading sessions and calendar notes you delete are kept for 30 days (private, synced with your
+   reading), then removed for good. Restore puts one back where it was; totals and streaks update once, and nothing is
+   posted to Group Activity or awarded a second time. Books removed from My Books keep their own Undo. */
+const TRASH_DAYS=30;
+function trashPut(kind,item,book){if(!item)return;(S.trash=S.trash||[]).push({id:'tr'+uid(),kind,item:JSON.parse(JSON.stringify(item)),book:book||'',at:today()})}
+function trashList(){const cut=addDays(today(),-TRASH_DAYS);if(S.trash?.some(x=>x.at<cut))S.trash=S.trash.filter(x=>x.at>=cut);return [...(S.trash||[])].sort((a,b)=>b.at.localeCompare(a.at))}
+function trashDesc(x){if(x.kind==='note')return {h:`Calendar note · ${noteRange(x.item)}`,sub:x.item.text?`“${String(x.item.text).slice(0,90)}${String(x.item.text).length>90?'…':''}”`:''};
+  const s=x.item,pg=s.unit==='pct'&&s.start!=null?`${s.start}%–${s.end}%`:s.start!=null&&s.end!=null&&s.pages?`pages ${s.start}–${s.end}`:s.pages?`${s.pages} pages`:'';
+  return {h:`Reading session · ${x.book||'A book'}`,sub:[fmtDateY(s.date),s.minutes?fmtMin(s.minutes):'',pg].filter(Boolean).join(' · ')}}
+function trashOpen(){let d=document.getElementById('trashDlg');if(!d){d=document.createElement('dialog');d.id='trashDlg';d.setAttribute('aria-labelledby','trashTitle');document.body.appendChild(d)}trashRender();if(!d.open)d.showModal()}
+function trashRender(){const d=document.getElementById('trashDlg');if(!d)return;const L=trashList();
+  const rows=L.map(x=>{const t=trashDesc(x),left=TRASH_DAYS-daysBetween(x.at,today()),gone=x.kind==='session'&&!book(x.item.bookId);
+    return `<li class="tr-r"><span class="tr-t"><b>${esc(t.h)}</b>${t.sub?`<span class="xs muted">${esc(t.sub)}</span>`:''}<span class="xs muted">Deleted ${fmtDate(x.at)} (${left} day${left===1?'':'s'} left)${gone?' · its book was removed from My Books':''}</span></span>
+      <button type="button" class="btn btn-ghost sm" data-act="trashRestore" data-id="${x.id}" ${gone?'disabled':''}>Restore</button></li>`}).join('');
+  const tt=document.getElementById('toast');if(tt&&d.contains(tt))document.body.appendChild(tt);
+  d.innerHTML=`<div class="dlg"><div class="dlg-h"><div style="flex:1;min-width:0"><h2 id="trashTitle">Recently Deleted</h2><div class="small muted">Kept for ${TRASH_DAYS} days, then removed for good</div></div><button type="button" class="icon-btn x" data-act="trashClose" aria-label="Close">${ic('x')}</button></div>
+    <div class="form">${L.length?`<ul class="tr-l">${rows}</ul>`:'<p class="small muted" style="margin:0">Nothing here. Deleted reading sessions and calendar notes stay here for 30 days.</p>'}
+    <p class="xs muted" style="margin:0">Restoring puts it back where it was; your totals and streaks update once. Books you removed from My Books use their own Undo.</p>
+    <div class="dlg-f"><button type="button" class="btn btn-primary" data-act="trashClose">Done</button></div></div></div>`;
+  if(tt&&tt.parentNode===document.body&&!tt.hidden&&d.open)d.appendChild(tt)}
+function trashRestore(id){const x=(S.trash||[]).find(y=>y.id===id);if(!x)return;const snap=snapshot();
+  if(x.kind==='session'){const b=book(x.item.bookId);if(!b)return;if(!S.sessions.some(y=>y.id===x.item.id))S.sessions.push(x.item);syncPos(b)}
+  else if(!(S.journal||[]).some(y=>y.id===x.item.id))(S.journal=S.journal||[]).push(x.item);
+  S.trash=S.trash.filter(y=>y!==x);S.seen=evSnap();   // the activity it once caused isn't posted again
+  save();render();trashRender();toast(x.kind==='session'?`Restored the session for ${x.book||'the book'}.`:`Restored the note for ${noteRange(x.item)}.`,restoreTo(snap))}
 function historyView(){
   requestAnimationFrame(clampNotes);
   const y=today().slice(0,4),ys=S.sessions.filter(x=>x.date.slice(0,4)===y);
@@ -2505,7 +2531,7 @@ function historyView(){
   const rereads=rr.length?rr.map(([tid,v])=>{const tt=titleById(tid);return `<div class="rr"><button class="sess-b" data-act="openTitle" data-id="${tid}">${esc(tt.title)}</button>${[...v].sort((a,b)=>{const k=x=>x.started||x.finished||(['reading','paused','want'].includes(x.status)?'9999':'0000');return k(a).localeCompare(k(b))}).map((b,i)=>`<div class="small muted rr-row">Read-through ${i+1}: ${b.started?`started ${fmtDateY(b.started)}`:'start date unknown'}${b.finished?`, finished ${fmtDateY(b.finished)}`:b.status==='finished'?', finished, date unknown':''} <span class="st st-${b.status}">${STATUS[b.status]}</span>${b.edition?` · Edition: ${esc(b.edition)}`:''} <button class="link-btn sm" data-act="editBook" data-book="${b.id}">Edit Reading</button></div>`).join('')}</div>`}).join('')
     :`<p class="small muted" style="margin:0">When you read a book again, each read-through appears here with its own dates.</p>`;
   return `<div class="hist"><div><h1 class="page-h">History</h1><p class="muted" style="margin:2px 0 0">Your reading over time. Only you can see this page.</p></div>
-  <section class="ns" aria-label="Search My Notes"><label class="search">${ic('search')}<input id="notesQ" type="search" placeholder="Search my notes" value="${esc(hist.nq||'')}" aria-label="Search my book, session, and calendar notes" autocomplete="off"></label><div id="notesRes" class="ns-res">${notesResults()}</div></section>
+  <section class="ns" aria-label="Search My Notes"><label class="search">${ic('search')}<input id="notesQ" type="search" placeholder="Search my notes" value="${esc(hist.nq||'')}" aria-label="Search my book, session, and calendar notes" autocomplete="off"></label><div id="notesRes" class="ns-res">${notesResults()}</div>${(()=>{const n=trashList().length;return n?`<button type="button" class="link-btn sm tr-link" data-act="trashOpen">Recently Deleted (${n})</button>`:''})()}</section>
   <section class="card"><div class="card-h"><span class="ico">${ic('chart')}</span><h2>This Year</h2></div><div class="stats hstats">${stats.map(([i,n,l,c])=>`<div class="stat ${i==='flame'?'o':''}">${ic(i)}<div class="n">${n}</div><div class="l">${l}</div>${c||''}</div>`).join('')}</div>${hist.panel==='read'?(()=>{const last={};ys.forEach(x=>{const id=book(x.bookId)?.titleId;if(id&&(!last[id]||x.date>last[id]))last[id]=x.date});const ids=Object.keys(last).sort((a,b)=>last[b].localeCompare(last[a]));
     return bookPanel(`Books you logged reading for in ${y}, most recent first`,ids.map(id=>[id,`Last read ${fmtDate(last[id])}`]))})():hist.panel==='fin'?bookPanel(`Books you finished in ${y}, most recent first`,finishedIn(y)):''}</section>
   <div class="hgrid"><section class="card" data-tour="calendar"><div class="card-h"><span class="ico">${ic('cal')}</span><h2>${hist.mode==='year'?Y:`${MONF[M-1]} ${Y}`}</h2><span class="vseg cal-mode" role="group" aria-label="Calendar view"><button aria-pressed="${hist.mode!=='year'}" data-act="histMode" data-v="month">Month</button><button aria-pressed="${hist.mode==='year'}" data-act="histMode" data-v="year">Year</button></span><span class="cal-nav"><button class="icon-btn" data-act="histM" data-v="${hist.mode==='year'?-12:-1}" aria-label="Previous ${hist.mode==='year'?'year':'month'}">${ic('chevL')}</button><button class="icon-btn" data-act="histM" data-v="${hist.mode==='year'?12:1}" aria-label="Next ${hist.mode==='year'?'year':'month'}" ${(hist.mode==='year'?String(Y)>=t.slice(0,4):m>=t.slice(0,7))?'disabled':''}>${ic('chevR')}</button></span></div>
@@ -5726,7 +5752,7 @@ document.addEventListener('click',e=>{
     case 'sessEdit':openSess(a.dataset.id);break;
     case 'closeSess':sessDlg.close();break;
     case 'cancelSess':{const id=sessForm.dataset.id;draftCancel(sessForm,sessDlg,()=>openSess(id),'changes');break}
-    case 'sessDel':{sessForm.dataset.done='1';draftClear(sessForm.dataset.dkey);const snap=snapshot(),x=S.sessions.find(y=>y.id===sessForm.dataset.id);ensureProgressBase(book(x.bookId));S.sessions=S.sessions.filter(y=>y!==x);syncPos(book(x.bookId));save();sessDlg.close();render();toast('Session deleted.',restoreTo(snap),'Your book itself wasn’t changed.');break}
+    case 'sessDel':{sessForm.dataset.done='1';draftClear(sessForm.dataset.dkey);const snap=snapshot(),x=S.sessions.find(y=>y.id===sessForm.dataset.id);ensureProgressBase(book(x.bookId));S.sessions=S.sessions.filter(y=>y!==x);trashPut('session',x,book(x.bookId)?.title);syncPos(book(x.bookId));save();sessDlg.close();render();toast('Session deleted.',restoreTo(snap),'Kept in History → Recently Deleted for 30 days.');break}
     case 'upAdd':{S.upNext=S.upNext||[];if(upList().length>=10){toast('Your Reading Queue holds 10 books. Remove one first.');break}if(!S.upNext.includes(a.dataset.id))S.upNext.push(a.dataset.id);save();refreshLib();toast(`Added ${book(a.dataset.id).title} to your Reading Queue.`);break}
     case 'upRm':{S.upNext=(S.upNext||[]).filter(x=>x!==a.dataset.id);save();refreshLib();break}
     case 'upMove':{const L=upList().map(b=>b.id),i=L.indexOf(a.dataset.id),j=i+(+a.dataset.v);if(j<0||j>=L.length)break;[L[i],L[j]]=[L[j],L[i]];S.upNext=L;save();refreshLib();break}
@@ -5832,7 +5858,7 @@ document.addEventListener('click',e=>{
     case 'noteEdit':openNote(a.dataset.id);break;
     case 'noteClose':noteDlg.close();break;
     case 'noteCancel':{const id=noteForm.dataset.id,d=noteForm.querySelector('[name=nStart]').value;draftCancel(noteForm,noteDlg,()=>openNote(id||null,d),'note');break}
-    case 'noteDel':{noteForm.dataset.done='1';draftClear(noteForm.dataset.dkey);const id=noteForm.dataset.id,snap=snapshot(),n=S.journal.find(x=>x.id===id);S.journal=S.journal.filter(x=>x.id!==id);save();noteDlg.close();const y=window.scrollY;render();window.scrollTo(0,y);toast(`Deleted the note for ${noteRange(n)}.`,restoreTo(snap));break}
+    case 'noteDel':{noteForm.dataset.done='1';draftClear(noteForm.dataset.dkey);const id=noteForm.dataset.id,snap=snapshot(),n=S.journal.find(x=>x.id===id);S.journal=S.journal.filter(x=>x.id!==id);trashPut('note',n);save();noteDlg.close();const y=window.scrollY;render();window.scrollTo(0,y);toast(`Deleted the note for ${noteRange(n)}.`,restoreTo(snap),'Kept in History → Recently Deleted for 30 days.');break}
     case 'histM':hist.m=monthAdd(hist.m,+a.dataset.v);if(hist.m>today().slice(0,7))hist.m=today().slice(0,7);hist.sel=null;render();break;
     case 'histMode':hist.mode=a.dataset.v;hist.sel=null;render();break;
     case 'histOpenM':hist.m=a.dataset.v;hist.mode='month';hist.sel=null;render();break;
@@ -5843,6 +5869,9 @@ document.addEventListener('click',e=>{
     case 'rwbOpen':rwbOpen(a.dataset.id);break;
     case 'libbySet':{closeMenus();acctOpen();setTimeout(()=>{const i=document.getElementById('acctLibby');if(!i)return;i.scrollIntoView({block:'center'});i.focus();i.classList.add('lh-glow');setTimeout(()=>i.classList.remove('lh-glow'),2400)},80);break}
     case 'libbyHide':{S.settings.libbyHintOff=true;save();a.closest('.libby-hint')?.remove();toast('Hidden. You can set your library any time in Account Settings.');break}
+    case 'trashOpen':trashOpen();break;
+    case 'trashClose':document.getElementById('trashDlg')?.close();break;
+    case 'trashRestore':trashRestore(a.dataset.id);break;
     case 'pgvOpen':closeMenus();pgvOpen();break;
     case 'pgvClose':document.getElementById('pgvDlg')?.close();break;
     case 'pgvShare':document.getElementById('pgvDlg')?.close();document.getElementById('meMenu').hidden=false;scrollTo(0,0);break;
