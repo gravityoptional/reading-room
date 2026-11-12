@@ -4286,7 +4286,7 @@ function grParse(text){const rows=csvRows(text.replace(/^\uFEFF/,''));if(!rows.l
     return {grId:get(r,'Book Id'),title,author:get(r,'Author')||'Unknown author',series,seriesNo,isbn:/^(\d{9}[\dX]|\d{13})$/.test(isbn)?isbn:'',pages,rating:rating>=1&&rating<=5?rating:0,status,
       finished:grDate(get(r,'Date Read')),added:grDate(get(r,'Date Added')),owned:owned>0,format:grFormat(get(r,'Binding')),year:parseInt(get(r,'Original Publication Year'))||parseInt(get(r,'Year Published'))||0}}).filter(x=>x.title)}
 /* StoryGraph's export (Manage Account → Export StoryGraph Library): Title, Authors, ISBN/UID, Format, Read Status,
-   Star Rating (quarter stars), Review, Date Added, Dates Read ("2026/08/15-2026/08/17", several separated by commas),
+   Star Rating (quarter stars, rounded down to halves), Review, Date Added, Dates Read ("2026/08/15-2026/08/17", several separated by commas),
    Owned?. Read Count, Moods, Pace, Contributors, and Tags aren't used. */
 function sgParse(text){const rows=csvRows(text.replace(/^﻿/,''));if(!rows.length)return null;const h=rows[0].map(x=>x.trim()),col=n=>h.indexOf(n);
   if(col('Title')<0||col('Read Status')<0||col('Authors')<0)return null;
@@ -4295,7 +4295,7 @@ function sgParse(text){const rows=csvRows(text.replace(/^﻿/,''));if(!rows.leng
   return rows.slice(1).map(r=>{const title=get(r,'Title').replace(/\s+/g,' ').trim(),author=(get(r,'Authors').split(',')[0]||'').trim()||'Unknown author';
     const isbn=grClean(get(r,'ISBN/UID')),f=get(r,'Format').toLowerCase(),format=/audio/.test(f)?'audio':/digital|ebook|kindle/.test(f)?'ebook':'physical';
     const ranges=get(r,'Dates Read').split(',').map(x=>x.trim()).filter(Boolean),last=ranges.at(-1)||'',[a,b]=last.split('-').map(x=>grDate(x));
-    const finished=grDate(get(r,'Last Date Read'))||b||a||'',started=b?a:'',sr=parseFloat(get(r,'Star Rating'))||0,rating=sr>0?Math.min(5,Math.max(0.5,Math.round(sr*2)/2)):0;
+    const finished=grDate(get(r,'Last Date Read'))||b||a||'',started=b?a:'',sr=parseFloat(get(r,'Star Rating'))||0,rating=sr>0?Math.min(5,Math.max(0.5,Math.floor(sr*2+1e-9)/2)):0;   // round down: 4.25 → 4, 4.75 → 4.5 (a 4.5 or 5 would have been given)
     return {title,author,series:'',seriesNo:0,isbn:/^(\d{9}[\dX]|\d{13})$/.test(isbn)?isbn:'',pages:0,rating,status:ST[get(r,'Read Status').toLowerCase()]||'want',
       finished,started,added:grDate(get(r,'Date Added')),owned:/^y/i.test(get(r,'Owned?')),format,readFmt:format==='audio'?'audio':format==='ebook'?'ebook':'print',year:0,review:get(r,'Review')}}).filter(x=>x.title)}
 function grMatch(x){const first=a=>olKey(String(a||'').split(',')[0]);return S.titles.find(t=>x.grId&&t.grId===x.grId)||S.titles.find(t=>x.isbn&&t.isbn===x.isbn)||S.titles.find(t=>olKey(t.title)===olKey(x.title)&&(olKey(t.author||'')===olKey(x.author)||first(t.author)===first(x.author)))}
