@@ -3087,9 +3087,10 @@ async function discAuthor(k){
 /* Looks up loved authors one per second, keeping each list for two weeks in this browser. */
 async function discLoad(){
   if(discBusy||navigator.onLine===false)return;
-  discCache.a=discCache.a||{};discCache.b=discCache.b||{};
+  discCache.a=discCache.a||{};discCache.b=discCache.b||{};discCache.w=discCache.w||{};
   const todo=lovedAuthors().filter(a=>!(discCache.a[a.key]?.ts>Date.now()-DISC_TTL)),todoB=byrSources().filter(x=>!byrFresh(x));
-  if(!todo.length&&!todoB.length)return;
+  const todoW=()=>awardCands().slice(0,10).filter(c=>!awFresh(c));
+  if(!todo.length&&!todoB.length&&!todoW().length)return;
   discBusy=true;const keep=()=>{try{localStorage.setItem(DISC_KEY,JSON.stringify(discCache))}catch(e){}if(view==='discover'||view==='dashboard')coverRedraw()};
   try{for(const a of todo){
     let items;try{items=await discAuthor(a.key)}catch(e){break}
@@ -3097,6 +3098,7 @@ async function discLoad(){
     await new Promise(r=>setTimeout(r,1000));
   }
   for(let n=0;n<6;n++){const x=byrSources().find(y=>!byrFresh(y));if(!x)break;let items;try{items=await discBecause(titleById(x.id))}catch(e){break}discCache.b[x.id]={ts:Date.now(),items};keep()}   // an empty book hands its slot to the next candidate
+  for(const c of todoW()){let item;try{item=await discAward(c)}catch(e){break}discCache.w[c.slug]={ts:Date.now(),item};keep();await new Promise(r=>setTimeout(r,1000))}   // award winners: covers and where to get them, from Open Library
   if(view==='discover'&&!document.querySelector('dialog[open]'))render()
   }finally{discBusy=false}
 }
@@ -3193,6 +3195,48 @@ function ruleBecause(){
   const auK=it=>(it.x.authorKeys?.[0])||lastName((it.x.author||'').split(',')[0]).toLowerCase();
   for(let i=0;out.length<6&&lists.some(l=>l[i]);i++)lists.forEach((l,j)=>{const it=l[i];if(!it||out.length>=6||seen.has(discKey(it))||au.has(auK(it))||(per.get(j)||0)>=cap)return;
     seen.add(discKey(it));au.add(auK(it));per.set(j,(per.get(j)||0)+1);out.push(it)});
+  return out}
+/* Award Winners for You (Discover release 2). A starter list of past winners, newest first; add each year's winners
+   here (children's lists are announced in late January, the Pulitzer and Edgar in spring, the Hugo in August, the
+   National Book Awards in November). Which lists a member sees comes from what they read and love, until the
+   Suggestions For setting exists: children's lists for readers of Children's books, Printz and the Young People's
+   award for Young Adult readers, the Hugo for science fiction and fantasy, the Edgar for mystery and thriller, the
+   Pulitzer and National Book Awards for general adult readers. Reason line: "Newbery Medal, 2021". */
+const AWARD_LISTS={newbery:'Newbery Medal',caldecott:'Caldecott Medal',geisel:'Geisel Award',printz:'Printz Award',nbaYP:'National Book Award, Young People’s Literature',nbaF:'National Book Award, Fiction',nbaN:'National Book Award, Nonfiction',pulitzer:'Pulitzer Prize for Fiction',hugo:'Hugo Award, Best Novel',edgar:'Edgar Award, Best Novel'};
+const AWARDS={
+ newbery:[[2026,'All the Blues in the Sky','Renée Watson'],[2025,'The First State of Being','Erin Entrada Kelly'],[2024,'The Eyes and the Impossible','Dave Eggers'],[2023,'Freewater','Amina Luqman-Dawson'],[2022,'The Last Cuentista','Donna Barba Higuera'],[2021,'When You Trap a Tiger','Tae Keller'],[2020,'New Kid','Jerry Craft'],[2019,'Merci Suárez Changes Gears','Meg Medina'],[2018,'Hello, Universe','Erin Entrada Kelly'],[2017,'The Girl Who Drank the Moon','Kelly Barnhill'],[2016,'Last Stop on Market Street','Matt de la Peña'],[2015,'The Crossover','Kwame Alexander']],
+ caldecott:[[2026,'Fireworks','Matthew Burgess'],[2025,'Chooch Helped','Andrea L. Rogers'],[2024,'Big','Vashti Harrison'],[2023,'Hot Dog','Doug Salati'],[2022,'Watercress','Andrea Wang'],[2021,'We Are Water Protectors','Carole Lindstrom'],[2020,'The Undefeated','Kwame Alexander'],[2019,'Hello Lighthouse','Sophie Blackall'],[2018,'Wolf in the Snow','Matthew Cordell'],[2017,'Radiant Child','Javaka Steptoe'],[2016,'Finding Winnie','Lindsay Mattick'],[2015,'The Adventures of Beekle','Dan Santat']],
+ geisel:[[2026,'Stop That Mop!','Jonathan Fenske'],[2025,'Vacation','Ame Dyckman'],[2024,'Fox Has a Problem','Corey R. Tabor'],[2023,'I Did It!','Michael Emberley'],[2022,'Fox at Night','Corey R. Tabor'],[2021,'See the Cat: Three Stories About a Dog','David LaRochelle'],[2020,'Stop! Bot!','James Yang'],[2019,'Fox the Tiger','Corey R. Tabor'],[2018,'Charlie & Mouse','Laurel Snyder'],[2017,'We Are Growing!','Laurie Keller'],[2016,'Don’t Throw It to Mo!','David A. Adler'],[2015,'You Are (Not) Small','Anna Kang']],
+ printz:[[2026,'Legendary Frybread Drive-In','Cynthia Leitich Smith'],[2025,'Brownstone','Samuel Teer'],[2024,'The Collectors: Stories','A.S. King'],[2023,'All My Rage','Sabaa Tahir'],[2022,'Firekeeper’s Daughter','Angeline Boulley'],[2021,'Everything Sad Is Untrue','Daniel Nayeri'],[2020,'Dig','A.S. King'],[2019,'The Poet X','Elizabeth Acevedo'],[2018,'We Are Okay','Nina LaCour'],[2017,'March: Book Three','John Lewis'],[2016,'Bone Gap','Laura Ruby'],[2015,'I’ll Give You the Sun','Jandy Nelson']],
+ nbaYP:[[2025,'The Teacher of Nomad Land','Daniel Nayeri'],[2024,'Kareem Between','Shifa Saltagi Safadi'],[2023,'A First Time for Everything','Dan Santat'],[2022,'All My Rage','Sabaa Tahir'],[2021,'Last Night at the Telegraph Club','Malinda Lo'],[2020,'King and the Dragonflies','Kacen Callender'],[2019,'1919: The Year That Changed America','Martin W. Sandler'],[2018,'The Poet X','Elizabeth Acevedo'],[2017,'Far from the Tree','Robin Benway'],[2016,'March: Book Three','John Lewis'],[2015,'Challenger Deep','Neal Shusterman']],
+ nbaF:[[2025,'The True True Story of Raja the Gullible (and His Mother)','Rabih Alameddine'],[2024,'James','Percival Everett'],[2023,'Blackouts','Justin Torres'],[2022,'The Rabbit Hutch','Tess Gunty'],[2021,'Hell of a Book','Jason Mott'],[2020,'Interior Chinatown','Charles Yu'],[2019,'Trust Exercise','Susan Choi'],[2018,'The Friend','Sigrid Nunez'],[2017,'Sing, Unburied, Sing','Jesmyn Ward'],[2016,'The Underground Railroad','Colson Whitehead'],[2015,'Fortune Smiles','Adam Johnson']],
+ nbaN:[[2025,'One Day, Everyone Will Have Always Been Against This','Omar El Akkad'],[2024,'Soldiers and Kings','Jason De León'],[2023,'The Rediscovery of America','Ned Blackhawk'],[2022,'South to America','Imani Perry'],[2021,'All That She Carried','Tiya Miles'],[2020,'The Dead Are Arising','Les Payne'],[2019,'The Yellow House','Sarah M. Broom'],[2018,'The New Negro: The Life of Alain Locke','Jeffrey C. Stewart'],[2017,'The Future Is History','Masha Gessen'],[2016,'Stamped from the Beginning','Ibram X. Kendi'],[2015,'Between the World and Me','Ta-Nehisi Coates']],
+ pulitzer:[[2026,'Angel Down','Daniel Kraus'],[2025,'James','Percival Everett'],[2024,'Night Watch','Jayne Anne Phillips'],[2023,'Demon Copperhead','Barbara Kingsolver'],[2023,'Trust','Hernan Diaz'],[2022,'The Netanyahus','Joshua Cohen'],[2021,'The Night Watchman','Louise Erdrich'],[2020,'The Nickel Boys','Colson Whitehead'],[2019,'The Overstory','Richard Powers'],[2018,'Less','Andrew Sean Greer'],[2017,'The Underground Railroad','Colson Whitehead'],[2016,'The Sympathizer','Viet Thanh Nguyen'],[2015,'All the Light We Cannot See','Anthony Doerr']],
+ hugo:[[2026,'The Everlasting','Alix E. Harrow'],[2025,'The Tainted Cup','Robert Jackson Bennett'],[2024,'Some Desperate Glory','Emily Tesh'],[2023,'Nettle & Bone','T. Kingfisher'],[2022,'A Desolation Called Peace','Arkady Martine'],[2021,'Network Effect','Martha Wells'],[2020,'A Memory Called Empire','Arkady Martine'],[2019,'The Calculating Stars','Mary Robinette Kowal'],[2018,'The Stone Sky','N.K. Jemisin'],[2017,'The Obelisk Gate','N.K. Jemisin'],[2016,'The Fifth Season','N.K. Jemisin'],[2015,'The Three-Body Problem','Cixin Liu']],
+ edgar:[[2026,'The Big Empty','Robert Crais'],[2025,'The In Crowd','Charlotte Vassell'],[2024,'Flags on the Bayou','James Lee Burke'],[2023,'Notes on an Execution','Danya Kukafka'],[2022,'Five Decembers','James Kestrel'],[2021,'Djinn Patrol on the Purple Line','Deepa Anappara'],[2020,'The Stranger Diaries','Elly Griffiths'],[2019,'Down the River unto the Sea','Walter Mosley'],[2018,'Bluebird, Bluebird','Attica Locke'],[2017,'Before the Fall','Noah Hawley'],[2016,'Let Me Die in His Footsteps','Lori Roy'],[2015,'Mr. Mercedes','Stephen King']]};
+// The lists that fit this reader, strongest signal first. Needs three finished books to go on.
+function awardLists(){const fin=S.books.filter(b=>b.status==='finished'&&titleById(b.titleId));if(fin.length<3)return [];
+  const g=b=>genreKey(titleById(b.titleId).genre),loved=b=>isFav(b.titleId)||b.rating>=4,n={},L={};
+  fin.forEach(b=>{const k=g(b);if(!k)return;n[k]=(n[k]||0)+1;if(loved(b))L[k]=(L[k]||0)+1});
+  const c=(...ks)=>ks.reduce((a,k)=>a+(n[k]||0)+2*(L[k]||0),0),kids=c("children's"),ya=c('young adult'),sff=c('science fiction','fantasy'),mys=c('mystery','thriller'),horror=c('horror');
+  const nonf=c(...GENRE_GROUPS.nonfiction.map(genreKey)),adult=fin.length-(n["children's"]||0)-(n['young adult']||0);
+  const out=[];if(sff>=3)out.push(['hugo',sff]);if(mys>=3)out.push(['edgar',mys]);if(kids>=3)out.push(['newbery',kids],['caldecott',kids-.1],['geisel',kids-.2]);if(ya>=2)out.push(['printz',ya],['nbaYP',ya-.1]);
+  if(nonf>=3)out.push(['nbaN',nonf]);if(adult>=3)out.push(['pulitzer',adult/2],['nbaF',adult/2-.1]);
+  return out.sort((a,b)=>b[1]-a[1]).map(x=>x[0])}
+const awSlug=(t,a)=>normT(t)+'|'+lastName(a).toLowerCase();
+// Candidates in display order: take turns between this reader's lists, newest winners first, skipping books already theirs
+function awardCands(){const mine=new Set(S.books.map(b=>b.titleId));S.copies.forEach(c=>{if(c.owner==='me')mine.add(c.titleId)});
+  const have=new Set([...mine].map(id=>{const t=titleById(id);return t?awSlug(t.title,t.author):''})),seen=new Set(),out=[],lists=awardLists().map(k=>({k,rows:AWARDS[k]}));
+  for(let i=0;i<14&&out.length<18;i++)lists.forEach(({k,rows})=>{const r=rows[i];if(!r)return;const slug=awSlug(r[1],r[2]);if(seen.has(slug)||have.has(slug))return;seen.add(slug);out.push({slug,list:k,year:r[0],title:r[1],author:r[2]})});
+  return out}
+const awFresh=c=>{const w=discCache.w?.[c.slug];return w&&w.ts>Date.now()-(w.item?DISC_TTL*4:DISC_TTL)};
+async function discAward(c){
+  const r=await fetch(`https://openlibrary.org/search.json?title=${encodeURIComponent(c.title.replace(/[:(].*$/,'').trim())}&author=${encodeURIComponent(lastName(c.author))}&fields=${DISC_FIELDS}&limit=5&lang=en`,{headers:{Accept:'application/json'}});
+  if(!r.ok)throw new Error('Open Library '+r.status);const docs=(await r.json()).docs||[],nt=normT(c.title),d=docs.find(x=>normT(x.title)===nt)||docs.find(x=>normT(x.title).startsWith(nt.slice(0,12)))||null;if(!d)return null;
+  return {key:d.key,title:c.title,author:c.author,authorKeys:(d.author_key||[]).slice(0,2),ebook:olEbook(d),...olFree(d),year:d.first_publish_year||'',pages:d.number_of_pages_median||0,coverId:d.cover_i||0}}
+function ruleAward(){const taken=new Set([...ruleAuthor(),...ruleBecause()].map(discKey)),out=[];
+  for(const c of awardCands()){const x=discCache.w?.[c.slug]?.item;if(!x)continue;const it={rule:'award',reason:`${AWARD_LISTS[c.list]}, ${c.year}`,x,t:discMatch(x)};
+    if(it.t&&myReading(it.t.id)||hiddenIt(it)||taken.has(discKey(it)))continue;out.push(it);if(out.length>=6)break}
   return out}
 /* Already on Your Shelf: books I own a copy of and haven't started, longest on the shelf first. */
 function ruleShelf(){
@@ -3298,7 +3342,7 @@ function discoverBody(){
     return `<div class="disc dc-sub">${back}<div class="dc-sec-h dc-sub-h"><h2>Sent by Me</h2><span class="dc-rtools">${fromN?`<span class="vseg" role="group" aria-label="View"><button aria-pressed="${!shelf}" data-act="libView" data-v="grid">${ic('grid')}Grid</button><button aria-pressed="${shelf}" data-act="libView" data-v="shelf">${ic('shelf')}Shelf</button></span>`:''}</span></div>${fromMe()}</div>`}
   if(lib.rv==='to'&&!S.settings.solo){const ids=[...new Set(myRecs().map(r=>r.titleId))],items=ruleRecs(99);
     return `<div class="disc dc-sub">${back}<div class="dc-sec-h dc-sub-h"><h2>Recommended to You</h2>${recTools(fromN)}</div>${items.length?`<div class="dc-scroll dc-wrap">${items.map(dcard).join('')}</div>`:`<div class="empty">${ic('send')}<h3>No Recommendations Yet</h3><p>When someone in your group recommends a book to you, it shows up here.</p></div>`}</div>`}
-  const because=ruleBecause(),shelf=ruleShelf(),recs=ruleRecs(),nRecs=S.settings.solo?0:new Set(recsShown().map(r=>r.titleId)).size,author=ruleAuthor(),series=ruleSeries(),toRead=ruleToRead(),want=wantList().filter(b=>!hiddenT(titleById(b.titleId)));
+  const because=ruleBecause(),award=ruleAward(),shelf=ruleShelf(),recs=ruleRecs(),nRecs=S.settings.solo?0:new Set(recsShown().map(r=>r.titleId)).size,author=ruleAuthor(),series=ruleSeries(),toRead=ruleToRead(),want=wantList().filter(b=>!hiddenT(titleById(b.titleId)));
   if(surprise&&!want.some(b=>b.id===surprise))surprise=null;
   const loading=!author.length&&discBusy?`<p class="xs muted" role="status">Looking for more books by authors you rated highly…</p>`:'';
   const sb=surprise&&book(surprise),sp=sb?[{rule:'toread',reason:'Picked at random from your To Read',t:titleById(sb.titleId)}]:[];
@@ -3306,8 +3350,8 @@ function discoverBody(){
     ${dcRow('dcSurprise','Surprise Me',sp,`<button class="link-btn sm" data-act="surpriseClear">${ic('x')}Clear</button>`)}${dcRow('dcSeries','Continue a Series',series)}${dcRow('dcShelf','Already on Your Shelf',shelf)}${dcRow('dcToRead','From Your To Read',toRead)}</section>`:'';
   const recRow=recs.length?dcRow('dcRecs','Recommended to You',recs,`${nRecs>recs.length?`<button class="link-btn sm" data-act="goRecs">See All ${nRecs}</button>`:''}${recTools(fromN)}`)
     :S.settings.solo?'':`<div class="dc-rh dc-rh-only">${recTools(fromN)}</div>`;
-  const rows=recRow+dcRow('dcAuthor','More by This Author',author)+dcRow('dcBecause','Because You Read',because);
-  const none=!recs.length&&!author.length&&!because.length&&!have&&!loading?`<div class="empty">${ic('compass')}<h3>Suggestions Will Show Up Here</h3><p>Rate the books you finish and add a few to To Read. Discover uses them to suggest what to read next.</p></div>`:'';
+  const rows=recRow+dcRow('dcAuthor','More by This Author',author)+dcRow('dcBecause','Because You Read',because)+dcRow('dcAward','Award Winners for You',award);
+  const none=!recs.length&&!author.length&&!because.length&&!award.length&&!have&&!loading?`<div class="empty">${ic('compass')}<h3>Suggestions Will Show Up Here</h3><p>Rate the books you finish and add a few to To Read. Discover uses them to suggest what to read next.</p></div>`:'';
   return `<div class="disc">${rows||loading?`<section class="dc-find" aria-label="Suggestions">${rows}${loading}</section>`:''}${have}${none}</div>`;
 }
 /* Your Next Read: three picks, each from a different rule, while nothing is being read or for a week after finishing a book. */
