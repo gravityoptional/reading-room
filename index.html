@@ -1236,7 +1236,7 @@ body:has(.menu:not([hidden])) .tour-offer{display:none}
 /* Finish window */
 .nx-q{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:center;border:2px solid var(--primary);border-radius:14px;padding:12px 14px;margin-bottom:20px}
 .nx-q .dc-why{margin:2px 0 10px}
-.nx-undo{padding:0 4px}
+.nx-undo{padding:3px 12px;margin-left:8px;min-height:0;font-size:13px;vertical-align:baseline}
 .fin-date{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:4px}
 .fin-date .inp{width:auto}
 .fin-add{padding:0 4px}
@@ -3391,7 +3391,10 @@ function nextReadStrip(){
    Discover More picks beside it (the next book in the finished book's series leads, when it isn't queued).
    With an empty queue, three picks as on the dashboard. */
 const nextDlg=document.getElementById('nextDlg'),nextBody=document.getElementById('nextBody');
+nextDlg.addEventListener('cancel',()=>nextAfter());   // Escape closes it too
 let nextDone=null;
+/* Closing the You Finished window leaves a short Undo, for "I tapped Done and then realized". */
+function nextAfter(){const u=nextDone?.undo,t=nextDone?.title;if(!u||nextDone.said)return;nextDone.said=true;setTimeout(()=>toast(`Finished ${t}.`,()=>{if(u()!==false){render();toast('Undone.')}}),60)}
 function nextMore(tid){
   const queued=new Set(upList().map(b=>b.titleId)),out=[],seen=new Set();
   const add=it=>{if(!it||out.length>=2)return;const k=discKey(it);if(seen.has(k)||it.t&&queued.has(it.t.id))return;seen.add(k);out.push(it)};
@@ -3403,7 +3406,9 @@ function nextMore(tid){
   return out;
 }
 function openNextDlg(b,undo){
-  nextDone={title:b.title,tid:b.titleId,bookId:b.id,undo,rec:false,sent:[]};renderNextDlg();if(!nextDlg.open)nextDlg.showModal();
+  // Undo still works after rating in this window: the reading goes back to how it was when the window opened, then the finish is undone
+  const rec0=JSON.stringify(b),undo2=undo&&(()=>{const i=S.books.findIndex(x=>x.id===b.id);if(i>=0&&JSON.stringify(S.books[i])!==rec0){S.books[i]=JSON.parse(rec0);if(!save())return false}return undo()});
+  nextDone={title:b.title,tid:b.titleId,bookId:b.id,undo:undo2,rec:false,sent:[]};renderNextDlg();if(!nextDlg.open)nextDlg.showModal();
   nextBody.querySelector('[autofocus]')?.focus();return true;
 }
 /* Rate it (optional, private), thank whoever recommended it, and recommend it on. Each is independent; solo
@@ -3429,7 +3434,7 @@ function renderNextDlg(){
     body=`<h3 class="dc-h">What’s Next?</h3><div class="nx-q"><button class="dl-cover" data-act="openTitle" data-id="${qt.id}" data-tab="about" tabindex="-1" aria-hidden="true">${libCover(qt,64)}</button><div class="dl-txt"><button class="dl-t" data-act="openTitle" data-id="${qt.id}" data-tab="about">${esc(dispT(qt.title))}</button><div class="dc-why">First in your Reading Queue</div>${(()=>{const w=wantActs(qt,q);return `<div class="nx-q-acts">${w.btn}${w.line.replace('<div class="dc-get">','<div class="dc-get nx-start">')}</div>`})()}</div></div>
       ${more.length?`<h3 class="dc-h">Discover More</h3><div class="dc-lines">${more.map(drow).join('')}</div>`:''}`}
   else{const picks=nextPicks();body=picks.length?`<h3 class="dc-h">What’s Next?</h3><div class="dc-lines">${picks.map(drow).join('')}</div>`:''}
-  nextBody.innerHTML=`<div class="dlg-h"><div style="flex:1;min-width:0"><h2 id="nxTitle">🎉 You finished ${ti(nextDone.title)}!</h2><div class="muted small">That’s ${n} book${n===1?'':'s'} this year.${nextDone.undo?' <button class="link-btn sm nx-undo" data-act="nextUndo">Undo</button>':''}</div></div><button type="button" class="icon-btn x" data-act="nextClose" aria-label="Close">${ic('x')}</button></div>
+  nextBody.innerHTML=`<div class="dlg-h"><div style="flex:1;min-width:0"><h2 id="nxTitle">🎉 You finished ${ti(nextDone.title)}!</h2><div class="muted small">That’s ${n} book${n===1?'':'s'} this year.${nextDone.undo?' <button class="btn btn-ghost sm nx-undo" data-act="nextUndo">Undo</button>':''}</div></div><button type="button" class="icon-btn x" data-act="nextClose" aria-label="Close">${ic('x')}</button></div>
   ${nxShare()}${body}
   <div class="nx-f"><button class="link-btn" data-go="discover">See More in Discover</button><button class="btn btn-primary" data-act="nextClose" autofocus>Done</button></div>`;
 }
@@ -5459,7 +5464,7 @@ logForm.addEventListener('input',e=>{
 logForm.addEventListener('submit',e=>{
   e.preventDefault();
   if(logForm.dataset.mode!=='log')return;
-  const {f,b,audio,start,end}=readLog();let {minutes}=readLog();
+  const {f,b,audio,start,end}=readLog();let {minutes}=readLog();const logSnap=snapshot();
   const err=m=>{document.getElementById('logErr').textContent=m};
   const hasStart=String(f.start).trim()!=='',hasEnd=String(f.end).trim()!=='';
   if(!f.date)return err('Choose a date.');
@@ -5521,7 +5526,7 @@ logForm.addEventListener('submit',e=>{
   if(S.timer?.bookId===b.id){if(logForm.dataset.timerStart===String(S.timer.start)&&S.timer.stop&&minutes!=null)S.timer=null;else if(finished&&!S.timer.stop)S.timer.stop=Date.now();}
   logForm.dataset.done='1';draftClear(logForm.dataset.dkey);save();logDlg.close();render();
   const after=goalState(f.date),sk=streak(),g=S.settings,isToday=f.date===today(),logged=range||minutes!=null;
-  if(finished){if(!openNextDlg(b))toast(`🎉 You finished ${b.title}!`,null,`That’s ${yearFinished()} book${yearFinished()===1?'':'s'} this year.`,true)}
+  if(finished){const un=restoreTo(logSnap),undo=()=>{const ok=un();if(ok)render();return ok};if(!openNextDlg(b,undo))toast(`🎉 You finished ${b.title}!`,()=>{if(undo())toast('Undone.')},`That’s ${yearFinished()} book${yearFinished()===1?'':'s'} this year.`,true)}
   else if(started){const g=S.settings,left=[];if(g.goalType!=='pages')left.push(`${Math.max(1,Math.ceil(g.goalMinutes-after.mins))} more minutes`);if(g.goalType!=='minutes')left.push(`${Math.max(1,g.goalPages-after.pages)} more pages`);
     const sub=!logged?'Happy reading!':!before.met&&after.met&&isToday?`Goal met for today, too. 🔥 ${sk} day streak`:after.met||!isToday?`🔥 ${sk} day streak. Happy reading!`:`${left.join(' or ')} to reach today’s goal.`;
     toast(`📖 You started ${b.title}!`,null,sub,true);if(!before.met&&after.met&&isToday)document.querySelector('.rings')?.classList.add('pop')}
@@ -6040,7 +6045,7 @@ document.addEventListener('click',e=>{
     case 'getBorrow':{if(nextDlg.open)nextDlg.close();if(!bookDlg.open||bd.id!==a.dataset.id)openTitle(a.dataset.id);bd.tab='copies';bd.reqNote=a.dataset.c;renderBD();setTimeout(()=>document.getElementById('reqNoteTx')?.focus(),30);break}
     case 'goRecs':view='library';lib.tab='discover';lib.rv='to';render();window.scrollTo(0,0);break;
     case 'surpriseClear':surprise=null;refreshLib();document.querySelector('[data-act=surprise]')?.focus();break;
-    case 'nextClose':nextDlg.close();break;
+    case 'nextClose':nextAfter();nextDlg.close();break;
     case 'dnfWhy':{dnfSel.note=document.getElementById('dnfNote').value;dnfSel.why=dnfSel.why.includes(a.dataset.v)?dnfSel.why.filter(x=>x!==a.dataset.v):[...dnfSel.why,a.dataset.v];renderDnf();dnfBody.querySelector(`[data-act=dnfWhy][data-v="${a.dataset.v}"]`)?.focus();break}
     case 'dnfSave':{const b=book(dnfSel.id),note=document.getElementById('dnfNote').value.trim(),had=!!(b.dnfWhy||b.dnfNote);
       if(dnfSel.why.length)b.dnfWhy=DNF_WHY.map(x=>x[0]).filter(k=>dnfSel.why.includes(k));else delete b.dnfWhy;if(note)b.dnfNote=note;else delete b.dnfNote;
@@ -6049,7 +6054,7 @@ document.addEventListener('click',e=>{
     case 'dnfClose':dnfDlg.close();break;
     case 'dnfUndo':{const u=dnfSel?.undo;dnfDlg.close();if(u){u();toast('Undone.')}break}
     case 'dnfEdit':{const b=book(a.dataset.book);if(b)openDnf(b);break}
-    case 'nextUndo':{const u=nextDone?.undo;nextDlg.close();if(u){u();toast('Undone.')}break}
+    case 'nextUndo':{const u=nextDone?.undo;nextDlg.close();if(u&&u()!==false){render();toast('Undone.')}break}
     case 'toggleWant':toggleWant(a.dataset.id);break;
     case 'dismissRec':{const snap=snapshot(),t=titleById(a.dataset.id),who=[...new Set(S.recs.filter(r=>r.titleId===a.dataset.id).map(r=>nameOf(r.from)))].join(' and ');
       // Kept private: the recommendation stays as sent; only this member's hidden list changes.
