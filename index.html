@@ -1321,7 +1321,7 @@ a.btn{text-decoration:none}
 @media (max-width:400px){.vseg.addb-tabs{display:flex}.vseg.addb-tabs button{flex:1 1 0;min-width:0;justify-content:center;text-align:center;padding:8px 6px;font-size:13px}}   /* three choices fit a small phone */
 .bd-h h2,.bd-h .bd-au{overflow-wrap:anywhere}
 #trashDlg .tr-l{list-style:none;margin:0;padding:0;display:grid;gap:8px}#trashDlg .tr-r{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid var(--border);border-radius:12px}#trashDlg .tr-t{display:grid;gap:2px;min-width:0}#trashDlg .btn:disabled{opacity:.45;cursor:not-allowed}.tr-link{margin-top:6px;justify-self:start}
-#nsDlg .ns-list{max-height:min(46vh,380px);overflow:auto;display:grid;gap:2px;border:1px solid var(--border);border-radius:12px;padding:6px}#nsDlg .ns-row{display:flex;gap:10px;align-items:flex-start;padding:7px 8px;border-radius:8px;cursor:pointer}#nsDlg .ns-row:hover{background:var(--primary-light)}#nsDlg .ns-row input{margin-top:3px;flex:none}#nsDlg .ns-tools{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center}.dc-ns{margin:18px 0 0}.ns-chk{align-items:flex-start}.ns-chk input{margin-top:3px}
+#nsDlg .ns-list{max-height:min(46vh,380px);overflow:auto;display:grid;gap:2px;border:1px solid var(--border);border-radius:12px;padding:6px}#nsDlg .ns-row{display:flex;gap:10px;align-items:flex-start;padding:7px 8px;border-radius:8px;cursor:pointer}#nsDlg .ns-row:hover{background:var(--primary-light)}#nsDlg .ns-row input{margin-top:3px;flex:none}#nsDlg .ns-tools{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center}.dc-ns{margin:18px 0 0}.nx-ns{margin-top:8px;align-items:flex-start}.nx-ns input{margin-top:2px}#nsDlg .ns-when{display:flex;flex-direction:row;align-items:center;gap:10px}#nsDlg .ns-when select{width:auto}.ns-chk{align-items:flex-start}.ns-chk input{margin-top:3px}
 #pgvDlg .pgv-sec{display:grid;gap:8px}#pgvDlg .pgv-h{font-size:1rem;margin:0}#pgvDlg .pgv-l{list-style:none;margin:0;padding:0;display:grid;gap:6px}#pgvDlg .pgv-r{padding:8px 10px;border:1px solid var(--border);border-radius:10px;font-size:.92rem}#pgvDlg .pgv-never{font-size:.88rem;padding:10px 12px;border-radius:10px;background:var(--primary-light)}
 #logForm .lg-prog-h{display:flex;align-items:center;justify-content:space-between;gap:10px}#logForm .sw-row{display:grid;gap:8px;margin-top:8px}#logForm .sw-copy[open]{padding:10px 12px;border:1px solid var(--border);border-radius:12px}
 #logForm .new-heading{margin-bottom:0}
@@ -3053,9 +3053,11 @@ const fmtStars=r=>`${r} star${r===1?'':'s'}`;
 const ti=x=>`<i>${esc(x)}</i>`;
 const fmtMonY=d=>`${MONF[+d.slice(5,7)-1]} ${d.slice(0,4)}`;
 /* Books you've finished more than once and never rated count as loved too: a reread says as much as a rating. */
-/* Leave Out of My Suggestions (James, Nov 14): for books read to someone else. Discover ignores them when working out
+/* Leave Out of My Suggestions (James, Nov 14): for books that don't reflect what the reader likes now (read to
+   someone else, read long ago, read for a specific purpose). Discover ignores them when working out
    what the reader likes (More by This Author, Because You Read, Award Winners). They count everywhere else. */
 const noSug=id=>(S.noSug||[]).includes(id);
+function noSugSet(id,on){const had=noSug(id);if(on&&!had)(S.noSug=S.noSug||[]).push(id);else if(!on&&had)S.noSug=S.noSug.filter(x=>x!==id)}
 function rereads(){
   const n={},rated=new Set(S.books.filter(b=>b.status==='finished'&&b.rating).map(b=>b.titleId));
   S.books.forEach(b=>{if(b.status==='finished')n[b.titleId]=(n[b.titleId]||0)+1});
@@ -3245,11 +3247,14 @@ function ruleAward(){const taken=new Set([...ruleAuthor(),...ruleBecause()].map(
 /* Choosing many at once: every book I've started or finished, filtered by genre, with a checkbox each. */
 let ns=null;
 function nsBooks(){const seen=new Set(),out=[];S.books.forEach(b=>{if(b.status==='want'||seen.has(b.titleId))return;const t=titleById(b.titleId);if(!t)return;seen.add(t.id);out.push(t)});return out.sort((a,b)=>sortKey(a.title).localeCompare(sortKey(b.title)))}
-function nsOpen(){ns={sel:new Set(S.noSug||[]),g:''};let d=document.getElementById('nsDlg');if(!d){d=document.createElement('dialog');d.id='nsDlg';d.setAttribute('aria-labelledby','nsTitle');document.body.appendChild(d)}nsRender();if(!d.open)d.showModal()}
+const NS_WHEN=[['','Any Time'],['old','Before 2000'],['00s','2000–2009'],['10s','2010–2019'],['20s','2020 or Later'],['none','No Finish Date']];
+function nsWhen(t){const ys=S.books.filter(b=>b.titleId===t.id&&b.finished).map(b=>+b.finished.slice(0,4));if(!ys.length)return 'none';const y=Math.max(...ys);return y<2000?'old':y<2010?'00s':y<2020?'10s':'20s'}
+function nsOpen(){ns={sel:new Set(S.noSug||[]),g:'',w:''};let d=document.getElementById('nsDlg');if(!d){d=document.createElement('dialog');d.id='nsDlg';d.setAttribute('aria-labelledby','nsTitle');document.body.appendChild(d)}nsRender();if(!d.open)d.showModal()}
 function nsRender(){const d=document.getElementById('nsDlg');if(!d||!ns)return;const all=nsBooks(),gs={};all.forEach(t=>{const g=t.genre||'No Genre';gs[g]=(gs[g]||0)+1});
-  const shown=all.filter(t=>!ns.g||(t.genre||'No Genre')===ns.g),nSel=all.filter(t=>ns.sel.has(t.id)).length,y=d.querySelector('.ns-list')?.scrollTop||0;
-  d.innerHTML=`<div class="dlg"><div class="dlg-h"><div style="flex:1;min-width:0"><h2 id="nsTitle">Leave Out of My Suggestions</h2><div class="small muted">For books you read to someone else. Discover won’t use them to work out what you like; they still count everywhere else.</div></div><button type="button" class="icon-btn x" data-act="nsClose" aria-label="Close">${ic('x')}</button></div>
+  const nsIn=t=>(!ns.g||(t.genre||'No Genre')===ns.g)&&(!ns.w||nsWhen(t)===ns.w),shown=all.filter(nsIn),nSel=all.filter(t=>ns.sel.has(t.id)).length,y=d.querySelector('.ns-list')?.scrollTop||0;
+  d.innerHTML=`<div class="dlg"><div class="dlg-h"><div style="flex:1;min-width:0"><h2 id="nsTitle">Leave Out of My Suggestions</h2><div class="small muted">For books that don’t reflect what you like to read now: ones you read to someone else, long ago, or for a specific purpose. Discover won’t use them to work out what you like; they still count everywhere else.</div></div><button type="button" class="icon-btn x" data-act="nsClose" aria-label="Close">${ic('x')}</button></div>
    <div class="form"><div class="chips" role="group" aria-label="Genre">${[['','All',all.length],...Object.keys(gs).sort().map(g=>[g,g,gs[g]])].map(([v,l,n])=>`<button type="button" class="tab sm" aria-pressed="${ns.g===v}" data-act="nsGenre" data-v="${esc(v)}">${esc(l)} <span class="cnt">${n}</span></button>`).join('')}</div>
+   <label class="f ns-when"><span class="small">When Finished</span><select class="inp sm" data-nswhen>${NS_WHEN.map(([v,l])=>`<option value="${v}" ${ns.w===v?'selected':''}>${l}</option>`).join('')}</select></label>
    <div class="ns-tools small"><span class="muted">${nSel} left out</span><span><button type="button" class="link-btn sm" data-act="nsAll" data-v="1">Leave Out All ${shown.length} Shown</button><span aria-hidden="true" class="muted"> · </span><button type="button" class="link-btn sm" data-act="nsAll" data-v="0">Include All Shown</button></span></div>
    <div class="ns-list">${shown.map(t=>`<label class="ns-row"><input type="checkbox" data-ns="${esc(t.id)}" ${ns.sel.has(t.id)?'checked':''}><span class="small"><b>${esc(t.title)}</b> <span class="muted">· ${esc(t.author)}</span></span></label>`).join('')||'<p class="small muted">No books here yet.</p>'}</div>
    <div class="dlg-f"><button type="button" class="btn btn-ghost" data-act="nsClose">Cancel</button><button type="button" class="btn btn-primary" data-act="nsSave">Save</button></div></div></div>`;
@@ -3370,7 +3375,7 @@ function discoverBody(){
     :S.settings.solo?'':`<div class="dc-rh dc-rh-only">${recTools(fromN)}</div>`;
   const rows=recRow+dcRow('dcAuthor','More by This Author',author)+dcRow('dcBecause','Because You Read',because)+dcRow('dcAward','Award Winners for You',award);
   const none=!recs.length&&!author.length&&!because.length&&!award.length&&!have&&!loading?`<div class="empty">${ic('compass')}<h3>Suggestions Will Show Up Here</h3><p>Rate the books you finish and add a few to To Read. Discover uses them to suggest what to read next.</p></div>`:'';
-  const nsN=(S.noSug||[]).length,nsLine=S.books.some(b=>b.status!=='want')?`<p class="xs muted dc-ns">Reading to someone else? <button type="button" class="link-btn sm" data-act="nsOpen" style="padding:0 2px">Leave books out of your suggestions</button>${nsN?` (${nsN} left out)`:''}</p>`:'';
+  const nsN=(S.noSug||[]).length,nsLine=S.books.some(b=>b.status!=='want')?`<p class="xs muted dc-ns">Read some books that don’t reflect your taste? <button type="button" class="link-btn sm" data-act="nsOpen" style="padding:0 2px">Leave books out of your suggestions</button>${nsN?` (${nsN} left out)`:''}</p>`:'';
   return `<div class="disc">${rows||loading?`<section class="dc-find" aria-label="Suggestions">${rows}${loading}</section>`:''}${have}${none}${nsLine}</div>`;
 }
 /* Your Next Read: three picks, each from a different rule, while nothing is being read or for a week after finishing a book. */
@@ -3405,7 +3410,7 @@ function openNextDlg(b,undo){
    readers see only the rating. */
 function nxShare(){
   const b=book(nextDone.bookId),t=titleById(nextDone.tid),solo=!!S.settings.solo;if(!b||!t)return '';
-  const rate=`<div class="nx-rate">${starsFor(b)}<span class="xs muted">Your rating, optional · ${rateWho()}</span></div>`;
+  const rate=`<div class="nx-rate">${starsFor(b)}<span class="xs muted">Your rating, optional · ${rateWho()}</span></div><label class="chk xs nx-ns"><input type="checkbox" data-nsone="${esc(t.id)}" ${noSug(t.id)?'checked':''}> <span>Leave out of my suggestions <span class="muted">(for books that don’t reflect what you like to read; it still counts everywhere else)</span></span></label>`;
   const froms=solo?[]:[...new Set(S.recs.filter(r=>r.titleId===t.id).map(r=>r.from))];
   const thanked=w=>(S.thanks||[]).some(x=>x.titleId===t.id&&x.to===w);
   const thank=froms.map(w=>`<div class="nx-line">${thanked(w)?`<span class="small muted nx-thanked" tabindex="-1">${ic('check')}Thanks sent to ${esc(nameOf(w))}</span>`:`<span class="small">${esc(nameOf(w))} recommended this.</span><button class="link-btn sm" data-act="nxThank" data-w="${w}">${ic('heart')}Thank ${esc(nameOf(w))}</button>`}</div>`).join('');
@@ -4424,6 +4429,8 @@ document.addEventListener('input',e=>{
   else if(e.target.id==='bdNotes'){S.notes[bd.id]=e.target.value;save()}
 });
 document.addEventListener('change',e=>{
+  if(e.target.dataset?.nswhen!==undefined&&ns){ns.w=e.target.value;nsRender();return}
+  if(e.target.dataset?.nsone){noSugSet(e.target.dataset.nsone,e.target.checked);save();return}
   if(e.target.dataset?.ns&&ns){const id=e.target.dataset.ns;if(e.target.checked)ns.sel.add(id);else ns.sel.delete(id);const c=document.querySelector('#nsDlg .ns-tools .muted');if(c)c.textContent=`${nsBooks().filter(t=>ns.sel.has(t.id)).length} left out`;return}
   if(e.target.dataset?.sel){const id=e.target.dataset.sel;if(e.target.checked)lib.sel.add(id);else lib.sel.delete(id);const y=window.scrollY;refreshLib();window.scrollTo(0,y);return}
   if(gi&&gi.items&&(e.target.name==='grOld'||e.target.name==='grShare')){gi[e.target.name==='grOld'?'old':'share']=e.target.value;const y=document.querySelector('.gr-list')?.scrollTop;renderAdd();document.querySelector(`[name=${e.target.name}][value=${e.target.value}]`)?.focus();return}
@@ -5310,12 +5317,13 @@ function drawLog(b,focus,preMin,moveTo){
     <div class="f lg-when"><div class="f2 cu-dates"><label class="f cu-from" hidden>From<input class="inp" type="date" name="from" max="${today()}"></label><label class="f"><span class="cu-to">Date</span><input class="inp" type="date" name="date" value="${today()}" max="${today()}"></label></div>
       <label class="chk"><input type="checkbox" name="cu"> Covers more than one day</label><span class="xs muted cu-note" hidden>Counts toward totals and challenges, but not streaks or daily goals.</span></div>
     <label class="f"><span>Add a Note <span class="sub">(optional, only you see it)</span></span><textarea class="inp lg-note" name="note" rows="1" maxlength="200" data-count="200" aria-describedby="logNoteCount" placeholder=""></textarea><span class="lg-cnt" hidden>${charCount('logNoteCount',0,200)}</span></label>
+    <label class="chk small ns-chk lg-ns" hidden><input type="checkbox" name="noSug" ${noSug(b.titleId)?'checked':''}> <span>Leave out of my suggestions <span class="sub">(for books that don’t reflect what you like to read; it still counts everywhere else)</span></span></label>
     <input type="checkbox" name="finished" hidden tabindex="-1" aria-hidden="true">
     <div class="err" id="logErr" role="alert"></div><div class="log-ask" id="logAsk" hidden></div>
     <div class="dlg-f"><button type="button" class="btn btn-ghost" data-act="cancelLog">Cancel</button><button type="submit" class="btn btn-primary">Save Reading</button></div>
   </div>`;
   logForm.dataset.timerStart=preMin&&S.timer?.bookId===b.id&&S.timer.stop?String(S.timer.start):'';
-  logForm.dataset.book=b.id;logForm.dataset.mode='log';logForm.dataset.ok='';logForm.dataset.autoFin='';
+  logForm.dataset.book=b.id;logForm.dataset.mode='log';setTimeout(()=>typeof lgNsSync==='function'&&lgNsSync(),0);logForm.dataset.ok='';logForm.dataset.autoFin='';
   if(S.settings.solo)logForm.querySelector('.reading-together')?.remove();
   const dk='log:'+(b.titleId||b.id),hadDraft=draftAttach(logForm,dk,'reading entry',preMin?['minutes']:null);
   notePromptSet(b,dk,hadDraft);
@@ -5427,6 +5435,8 @@ function calcLog(){
   parts.push(`${lbl} after saving <b>${g.goalType==='minutes'?tm:g.goalType==='pages'?tp:tm+', '+tp}</b><button type="button" class="edit-goal" data-act="editGoal">${ic('pencil')}Edit Goal</button>`);
   el.innerHTML=parts.map(p=>`<span>${p}</span>`).join('');
 }
+const lgNsSync=()=>{const l=logForm.querySelector('.lg-ns');if(l)l.hidden=!(logForm.status?.value==='finished'||logForm.finished?.checked)};
+['input','change'].forEach(ev=>logForm.addEventListener(ev,()=>setTimeout(lgNsSync,0)));
 logForm.addEventListener('change',e=>{if(e.target.id==='swFmt'||e.target.id==='swUnit')swFill()});
 logForm.addEventListener('toggle',e=>{if(e.target.classList?.contains('sw-copy')&&e.target.open)swFill()},true);
 logForm.addEventListener('input',e=>{
@@ -5499,6 +5509,7 @@ logForm.addEventListener('submit',e=>{
   const started=wasWant&&b.status==='reading';
   if(started){selBook=b.id;if((S.upNext||[]).includes(b.id))b.fromQueue=true;if(b.wantSince&&daysBetween(b.wantSince,f.date)>=365)b.rescued=f.date}
   if(started){const re=S.books.some(x=>x!==b&&x.titleId===b.titleId&&x.status==='finished');postBook(re?'reread':'started',re?'started rereading':'started a new book',b)}
+  if(finished){const c=logForm.querySelector('[name=noSug]');if(c)noSugSet(b.titleId,c.checked)}   // whether or not activity is shared
   if(S.settings.share){
     if(finished&&!wasFinished)S.activity.push({id:uid(),who:'me',kind:'finished',text:'finished',book:b.title,titleId:b.titleId,ts:Date.now(),r:{}});
     else if(range||minutes!=null)S.activity.push({id:uid(),who:'me',kind:'session',text:'logged a reading session',book:b.title,titleId:b.titleId,extra:minutes!=null?fmtMin(minutes):(audio?`${fmtMin(span)} of audio`:isPct(b)?`${+span.toFixed(1)}% of the book`:`${span} pages`),ts:Date.now(),r:{}});
@@ -5582,7 +5593,7 @@ function openEdit(id){
     ${hasSessions?'<p class="xs muted">Reading format is fixed because this reading has logged sessions. This protects the page or audio positions in your history.</p>':''}
     ${seriesFields(b)}
     ${statusPicker(b)}
-    <label class="chk small ns-chk"><input type="checkbox" name="noSug" ${noSug(b.titleId)?'checked':''}> <span>Leave out of my suggestions <span class="sub">(for books you read to someone else; it still counts everywhere else)</span></span></label>
+    <label class="chk small ns-chk"><input type="checkbox" name="noSug" ${noSug(b.titleId)?'checked':''}> <span>Leave out of my suggestions <span class="sub">(for books that don’t reflect what you like to read; it still counts everywhere else)</span></span></label>
     <div class="err" id="editErr" role="alert"></div>
     ${rmBox('rmReading',S.books.filter(x=>x.titleId===b.titleId).length>1?'Removes this read-through, its reading sessions, and its rating. Your other read-throughs of this book stay.':'Removes this book from My Books with its reading sessions and rating. Copies you own stay; remove them under Copies.')}
     <div class="dlg-f"><button type="button" class="btn btn-ghost" data-act="closeEdit">Cancel</button><button type="submit" class="btn btn-primary">Save Changes</button></div>
@@ -5630,7 +5641,7 @@ editForm.addEventListener('submit',e=>{
   }
   if(b.status==='finished'){if(hasLen(b))b.pos=b.total;if(f.finished){b.finished=f.finished;delete b.readIt;delete b.markedOn}else{delete b.finished;b.readIt=true;b.markedOn=b.markedOn||today()}}
   saveReadingEdition(b,readEdition(editForm,'editReading'));
-  {const on=f.noSug==='on',had=noSug(b.titleId);if(on&&!had)(S.noSug=S.noSug||[]).push(b.titleId);else if(!on&&had)S.noSug=S.noSug.filter(x=>x!==b.titleId)}
+  noSugSet(b.titleId,f.noSug==='on');
   const tt=titleById(b.titleId);if(tt){updateBookIdentity(tt,b.title,b.author);if(['print','ebook'].includes(b.format)&&hasLen(b)&&!isPct(b))tt.pages=b.total;const sn=(f.series||'').trim();tt.series=sn||undefined;tt.seriesNo=sn&&String(f.seriesNo||'').trim()!==''&&!isNaN(+f.seriesNo)?+f.seriesNo:undefined;if(sn&&/^\d+$/.test(String(f.seriesLen||'').trim()))(S.seriesLen=S.seriesLen||{})[sn]=+f.seriesLen}
   {const w=[...editForm.querySelectorAll('[name=readWith]:checked')].map(x=>x.value),added=w.filter(x=>!(b.with||[]).includes(x));
    if(editForm.querySelector('[name=readWith]')){if(w.length)b.with=w;else delete b.with}
@@ -5971,7 +5982,7 @@ document.addEventListener('click',e=>{
     case 'nsOpen':nsOpen();break;
     case 'nsClose':ns=null;document.getElementById('nsDlg')?.close();break;
     case 'nsGenre':ns.g=a.dataset.v;nsRender();break;
-    case 'nsAll':{const on=a.dataset.v==='1';nsBooks().filter(t=>!ns.g||(t.genre||'No Genre')===ns.g).forEach(t=>on?ns.sel.add(t.id):ns.sel.delete(t.id));nsRender();break}
+    case 'nsAll':{const on=a.dataset.v==='1';nsBooks().filter(t=>(!ns.g||(t.genre||'No Genre')===ns.g)&&(!ns.w||nsWhen(t)===ns.w)).forEach(t=>on?ns.sel.add(t.id):ns.sel.delete(t.id));nsRender();break}
     case 'nsSave':nsSave();break;
     case 'pgvOpen':closeMenus();pgvOpen();break;
     case 'pgvClose':document.getElementById('pgvDlg')?.close();break;
