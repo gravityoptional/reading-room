@@ -1321,6 +1321,7 @@ a.btn{text-decoration:none}
 @media (max-width:400px){.vseg.addb-tabs{display:flex}.vseg.addb-tabs button{flex:1 1 0;min-width:0;justify-content:center;text-align:center;padding:8px 6px;font-size:13px}}   /* three choices fit a small phone */
 .bd-h h2,.bd-h .bd-au{overflow-wrap:anywhere}
 #trashDlg .tr-l{list-style:none;margin:0;padding:0;display:grid;gap:8px}#trashDlg .tr-r{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid var(--border);border-radius:12px}#trashDlg .tr-t{display:grid;gap:2px;min-width:0}#trashDlg .btn:disabled{opacity:.45;cursor:not-allowed}.tr-link{margin-top:6px;justify-self:start}
+#nsDlg .ns-list{max-height:min(46vh,380px);overflow:auto;display:grid;gap:2px;border:1px solid var(--border);border-radius:12px;padding:6px}#nsDlg .ns-row{display:flex;gap:10px;align-items:flex-start;padding:7px 8px;border-radius:8px;cursor:pointer}#nsDlg .ns-row:hover{background:var(--primary-light)}#nsDlg .ns-row input{margin-top:3px;flex:none}#nsDlg .ns-tools{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center}.dc-ns{margin:18px 0 0}.ns-chk{align-items:flex-start}.ns-chk input{margin-top:3px}
 #pgvDlg .pgv-sec{display:grid;gap:8px}#pgvDlg .pgv-h{font-size:1rem;margin:0}#pgvDlg .pgv-l{list-style:none;margin:0;padding:0;display:grid;gap:6px}#pgvDlg .pgv-r{padding:8px 10px;border:1px solid var(--border);border-radius:10px;font-size:.92rem}#pgvDlg .pgv-never{font-size:.88rem;padding:10px 12px;border-radius:10px;background:var(--primary-light)}
 #logForm .lg-prog-h{display:flex;align-items:center;justify-content:space-between;gap:10px}#logForm .sw-row{display:grid;gap:8px;margin-top:8px}#logForm .sw-copy[open]{padding:10px 12px;border:1px solid var(--border);border-radius:12px}
 #logForm .new-heading{margin-bottom:0}
@@ -3052,17 +3053,20 @@ const fmtStars=r=>`${r} star${r===1?'':'s'}`;
 const ti=x=>`<i>${esc(x)}</i>`;
 const fmtMonY=d=>`${MONF[+d.slice(5,7)-1]} ${d.slice(0,4)}`;
 /* Books you've finished more than once and never rated count as loved too: a reread says as much as a rating. */
+/* Leave Out of My Suggestions (James, Nov 14): for books read to someone else. Discover ignores them when working out
+   what the reader likes (More by This Author, Because You Read, Award Winners). They count everywhere else. */
+const noSug=id=>(S.noSug||[]).includes(id);
 function rereads(){
   const n={},rated=new Set(S.books.filter(b=>b.status==='finished'&&b.rating).map(b=>b.titleId));
   S.books.forEach(b=>{if(b.status==='finished')n[b.titleId]=(n[b.titleId]||0)+1});
-  return Object.keys(n).filter(id=>n[id]>1&&!rated.has(id)).map(id=>({id,times:n[id],fin:S.books.filter(b=>b.titleId===id&&b.finished).map(b=>b.finished).sort().pop()||''}));
+  return Object.keys(n).filter(id=>n[id]>1&&!rated.has(id)&&!noSug(id)).map(id=>({id,times:n[id],fin:S.books.filter(b=>b.titleId===id&&b.finished).map(b=>b.finished).sort().pop()||''}));
 }
 /* Authors of books you rated 4 or more, each with your highest-rated book by them, then authors you've reread
    (ranked with 4-star books). Ties go to the most recent finish. */
 function lovedAuthors(){
   const by={},put=(k,e)=>{const cur=by[k];if(!cur||e.score>cur.score||e.score===cur.score&&e.fin>cur.fin)by[k]=e};
-  S.books.filter(b=>b.status==='finished'&&b.rating>=4).forEach(b=>{const t=titleById(b.titleId),k=t?.olAuthor?.[0];if(k)put(k,{key:k,score:b.rating,why:`You gave ${ti(t.title)} ${fmtStars(b.rating)}`,fin:b.finished||''})});
-  (S.favs||[]).forEach(id=>{const t=titleById(id),k=t?.olAuthor?.[0];if(k)put(k,{key:k,score:6,why:`You loved ${ti(t.title)}`,fin:myReading(id)?.finished||''})});   // a favorite outranks any rating
+  S.books.filter(b=>b.status==='finished'&&b.rating>=4&&!noSug(b.titleId)).forEach(b=>{const t=titleById(b.titleId),k=t?.olAuthor?.[0];if(k)put(k,{key:k,score:b.rating,why:`You gave ${ti(t.title)} ${fmtStars(b.rating)}`,fin:b.finished||''})});
+  (S.favs||[]).filter(id=>!noSug(id)).forEach(id=>{const t=titleById(id),k=t?.olAuthor?.[0];if(k)put(k,{key:k,score:6,why:`You loved ${ti(t.title)}`,fin:myReading(id)?.finished||''})});   // a favorite outranks any rating
   rereads().forEach(r=>{const t=titleById(r.id),k=t?.olAuthor?.[0];if(k)put(k,{key:k,score:4,why:`You’ve read ${ti(t.title)} ${r.times===2?'twice':r.times+' times'}`,fin:r.fin})});
   return Object.values(by).sort((a,b)=>b.score-a.score||b.fin.localeCompare(a.fin)).slice(0,DISC_AUTHORS);
 }
@@ -3165,7 +3169,7 @@ function ruleAuthor(){
 const BYR_GENERIC=/^(fiction|juvenile fiction|juvenile literature|nonfiction|accessible book|protected daisy|in library|large type books|lending library|open library staff picks|reading level.*|english (fiction|literature|language)|american (fiction|literature)|literature|novels?|fiction, general|children's (fiction|stories)|young adult fiction|new york times bestseller|nyt:.*|long now manual for civilization|internet archive wishlist|history|general|translations into .*|spanish language materials|.*\(fictitious character\).*|readers|series:.*|award:.*|fiction in english|criticism and interpretation|study guides|adult|comic books, strips.*)$/i;
 function byrCands(){
   const sc=b=>(isFav(b.titleId)?2:0)+(b.rating>=4?1:0),seen=new Set(),out=[];
-  S.books.filter(b=>b.status==='finished'&&titleById(b.titleId)&&sc(b)>0).sort((a,b)=>sc(b)-sc(a)||(b.finished||'').localeCompare(a.finished||''))
+  S.books.filter(b=>b.status==='finished'&&titleById(b.titleId)&&!noSug(b.titleId)&&sc(b)>0).sort((a,b)=>sc(b)-sc(a)||(b.finished||'').localeCompare(a.finished||''))
     .forEach(b=>{if(seen.has(b.titleId)||out.length>=6)return;seen.add(b.titleId);const t=titleById(b.titleId);out.push({id:t.id,why:isFav(t.id)?`Because you loved ${ti(t.title)}`:`Because you read ${ti(t.title)}`})});
   return out}
 // Up to six candidates in order (favorites first, then 4+); the first three that gave picks, or haven't been looked up yet
@@ -3215,7 +3219,7 @@ const AWARDS={
  hugo:[[2026,'The Everlasting','Alix E. Harrow'],[2025,'The Tainted Cup','Robert Jackson Bennett'],[2024,'Some Desperate Glory','Emily Tesh'],[2023,'Nettle & Bone','T. Kingfisher'],[2022,'A Desolation Called Peace','Arkady Martine'],[2021,'Network Effect','Martha Wells'],[2020,'A Memory Called Empire','Arkady Martine'],[2019,'The Calculating Stars','Mary Robinette Kowal'],[2018,'The Stone Sky','N.K. Jemisin'],[2017,'The Obelisk Gate','N.K. Jemisin'],[2016,'The Fifth Season','N.K. Jemisin'],[2015,'The Three-Body Problem','Cixin Liu']],
  edgar:[[2026,'The Big Empty','Robert Crais'],[2025,'The In Crowd','Charlotte Vassell'],[2024,'Flags on the Bayou','James Lee Burke'],[2023,'Notes on an Execution','Danya Kukafka'],[2022,'Five Decembers','James Kestrel'],[2021,'Djinn Patrol on the Purple Line','Deepa Anappara'],[2020,'The Stranger Diaries','Elly Griffiths'],[2019,'Down the River unto the Sea','Walter Mosley'],[2018,'Bluebird, Bluebird','Attica Locke'],[2017,'Before the Fall','Noah Hawley'],[2016,'Let Me Die in His Footsteps','Lori Roy'],[2015,'Mr. Mercedes','Stephen King']]};
 // The lists that fit this reader, strongest signal first. Needs three finished books to go on.
-function awardLists(){const fin=S.books.filter(b=>b.status==='finished'&&titleById(b.titleId));if(fin.length<3)return [];
+function awardLists(){const fin=S.books.filter(b=>b.status==='finished'&&titleById(b.titleId)&&!noSug(b.titleId));if(fin.length<3)return [];
   const g=b=>genreKey(titleById(b.titleId).genre),loved=b=>isFav(b.titleId)||b.rating>=4,n={},L={};
   fin.forEach(b=>{const k=g(b);if(!k)return;n[k]=(n[k]||0)+1;if(loved(b))L[k]=(L[k]||0)+1});
   const c=(...ks)=>ks.reduce((a,k)=>a+(n[k]||0)+2*(L[k]||0),0),kids=c("children's"),ya=c('young adult'),sff=c('science fiction','fantasy'),mys=c('mystery','thriller'),horror=c('horror');
@@ -3238,6 +3242,20 @@ function ruleAward(){const taken=new Set([...ruleAuthor(),...ruleBecause()].map(
   for(const c of awardCands()){const x=discCache.w?.[c.slug]?.item;if(!x)continue;const it={rule:'award',reason:`${AWARD_LISTS[c.list]}, ${c.year}`,x,t:discMatch(x)};
     if(it.t&&myReading(it.t.id)||hiddenIt(it)||taken.has(discKey(it)))continue;out.push(it);if(out.length>=6)break}
   return out}
+/* Choosing many at once: every book I've started or finished, filtered by genre, with a checkbox each. */
+let ns=null;
+function nsBooks(){const seen=new Set(),out=[];S.books.forEach(b=>{if(b.status==='want'||seen.has(b.titleId))return;const t=titleById(b.titleId);if(!t)return;seen.add(t.id);out.push(t)});return out.sort((a,b)=>sortKey(a.title).localeCompare(sortKey(b.title)))}
+function nsOpen(){ns={sel:new Set(S.noSug||[]),g:''};let d=document.getElementById('nsDlg');if(!d){d=document.createElement('dialog');d.id='nsDlg';d.setAttribute('aria-labelledby','nsTitle');document.body.appendChild(d)}nsRender();if(!d.open)d.showModal()}
+function nsRender(){const d=document.getElementById('nsDlg');if(!d||!ns)return;const all=nsBooks(),gs={};all.forEach(t=>{const g=t.genre||'No Genre';gs[g]=(gs[g]||0)+1});
+  const shown=all.filter(t=>!ns.g||(t.genre||'No Genre')===ns.g),nSel=all.filter(t=>ns.sel.has(t.id)).length,y=d.querySelector('.ns-list')?.scrollTop||0;
+  d.innerHTML=`<div class="dlg"><div class="dlg-h"><div style="flex:1;min-width:0"><h2 id="nsTitle">Leave Out of My Suggestions</h2><div class="small muted">For books you read to someone else. Discover won’t use them to work out what you like; they still count everywhere else.</div></div><button type="button" class="icon-btn x" data-act="nsClose" aria-label="Close">${ic('x')}</button></div>
+   <div class="form"><div class="chips" role="group" aria-label="Genre">${[['','All',all.length],...Object.keys(gs).sort().map(g=>[g,g,gs[g]])].map(([v,l,n])=>`<button type="button" class="tab sm" aria-pressed="${ns.g===v}" data-act="nsGenre" data-v="${esc(v)}">${esc(l)} <span class="cnt">${n}</span></button>`).join('')}</div>
+   <div class="ns-tools small"><span class="muted">${nSel} left out</span><span><button type="button" class="link-btn sm" data-act="nsAll" data-v="1">Leave Out All ${shown.length} Shown</button><span aria-hidden="true" class="muted"> · </span><button type="button" class="link-btn sm" data-act="nsAll" data-v="0">Include All Shown</button></span></div>
+   <div class="ns-list">${shown.map(t=>`<label class="ns-row"><input type="checkbox" data-ns="${esc(t.id)}" ${ns.sel.has(t.id)?'checked':''}><span class="small"><b>${esc(t.title)}</b> <span class="muted">· ${esc(t.author)}</span></span></label>`).join('')||'<p class="small muted">No books here yet.</p>'}</div>
+   <div class="dlg-f"><button type="button" class="btn btn-ghost" data-act="nsClose">Cancel</button><button type="button" class="btn btn-primary" data-act="nsSave">Save</button></div></div></div>`;
+  const l=d.querySelector('.ns-list');if(l)l.scrollTop=y}
+function nsSave(){const snap=snapshot(),before=(S.noSug||[]).length;S.noSug=[...ns.sel].filter(id=>titleById(id));const n=S.noSug.length;ns=null;save();document.getElementById('nsDlg').close();render();
+  toast(n?`${n===1?'1 book is':`${n} books are`} left out of your suggestions.`:'No books are left out of your suggestions.',n!==before?restoreTo(snap):null)}
 /* Already on Your Shelf: books I own a copy of and haven't started, longest on the shelf first. */
 function ruleShelf(){
   return S.titles.filter(t=>mbStatus(t)==='owned'&&!hiddenT(t)).sort((a,b)=>(a.added||0)-(b.added||0)).slice(0,6)
@@ -3352,7 +3370,8 @@ function discoverBody(){
     :S.settings.solo?'':`<div class="dc-rh dc-rh-only">${recTools(fromN)}</div>`;
   const rows=recRow+dcRow('dcAuthor','More by This Author',author)+dcRow('dcBecause','Because You Read',because)+dcRow('dcAward','Award Winners for You',award);
   const none=!recs.length&&!author.length&&!because.length&&!award.length&&!have&&!loading?`<div class="empty">${ic('compass')}<h3>Suggestions Will Show Up Here</h3><p>Rate the books you finish and add a few to To Read. Discover uses them to suggest what to read next.</p></div>`:'';
-  return `<div class="disc">${rows||loading?`<section class="dc-find" aria-label="Suggestions">${rows}${loading}</section>`:''}${have}${none}</div>`;
+  const nsN=(S.noSug||[]).length,nsLine=S.books.some(b=>b.status!=='want')?`<p class="xs muted dc-ns">Reading to someone else? <button type="button" class="link-btn sm" data-act="nsOpen" style="padding:0 2px">Leave books out of your suggestions</button>${nsN?` (${nsN} left out)`:''}</p>`:'';
+  return `<div class="disc">${rows||loading?`<section class="dc-find" aria-label="Suggestions">${rows}${loading}</section>`:''}${have}${none}${nsLine}</div>`;
 }
 /* Your Next Read: three picks, each from a different rule, while nothing is being read or for a week after finishing a book. */
 const nextPicks=()=>[ruleAuthor()[0],ruleSeries()[0],ruleToRead()[0]].filter(Boolean);
@@ -4405,6 +4424,7 @@ document.addEventListener('input',e=>{
   else if(e.target.id==='bdNotes'){S.notes[bd.id]=e.target.value;save()}
 });
 document.addEventListener('change',e=>{
+  if(e.target.dataset?.ns&&ns){const id=e.target.dataset.ns;if(e.target.checked)ns.sel.add(id);else ns.sel.delete(id);const c=document.querySelector('#nsDlg .ns-tools .muted');if(c)c.textContent=`${nsBooks().filter(t=>ns.sel.has(t.id)).length} left out`;return}
   if(e.target.dataset?.sel){const id=e.target.dataset.sel;if(e.target.checked)lib.sel.add(id);else lib.sel.delete(id);const y=window.scrollY;refreshLib();window.scrollTo(0,y);return}
   if(gi&&gi.items&&(e.target.name==='grOld'||e.target.name==='grShare')){gi[e.target.name==='grOld'?'old':'share']=e.target.value;const y=document.querySelector('.gr-list')?.scrollTop;renderAdd();document.querySelector(`[name=${e.target.name}][value=${e.target.value}]`)?.focus();return}
   if(gi&&gi.items&&e.target.dataset?.grshare!=null){const i=+e.target.dataset.grshare;if(e.target.checked)gi.pick.add(i);else gi.pick.delete(i);return}
@@ -5562,6 +5582,7 @@ function openEdit(id){
     ${hasSessions?'<p class="xs muted">Reading format is fixed because this reading has logged sessions. This protects the page or audio positions in your history.</p>':''}
     ${seriesFields(b)}
     ${statusPicker(b)}
+    <label class="chk small ns-chk"><input type="checkbox" name="noSug" ${noSug(b.titleId)?'checked':''}> <span>Leave out of my suggestions <span class="sub">(for books you read to someone else; it still counts everywhere else)</span></span></label>
     <div class="err" id="editErr" role="alert"></div>
     ${rmBox('rmReading',S.books.filter(x=>x.titleId===b.titleId).length>1?'Removes this read-through, its reading sessions, and its rating. Your other read-throughs of this book stay.':'Removes this book from My Books with its reading sessions and rating. Copies you own stay; remove them under Copies.')}
     <div class="dlg-f"><button type="button" class="btn btn-ghost" data-act="closeEdit">Cancel</button><button type="submit" class="btn btn-primary">Save Changes</button></div>
@@ -5609,6 +5630,7 @@ editForm.addEventListener('submit',e=>{
   }
   if(b.status==='finished'){if(hasLen(b))b.pos=b.total;if(f.finished){b.finished=f.finished;delete b.readIt;delete b.markedOn}else{delete b.finished;b.readIt=true;b.markedOn=b.markedOn||today()}}
   saveReadingEdition(b,readEdition(editForm,'editReading'));
+  {const on=f.noSug==='on',had=noSug(b.titleId);if(on&&!had)(S.noSug=S.noSug||[]).push(b.titleId);else if(!on&&had)S.noSug=S.noSug.filter(x=>x!==b.titleId)}
   const tt=titleById(b.titleId);if(tt){updateBookIdentity(tt,b.title,b.author);if(['print','ebook'].includes(b.format)&&hasLen(b)&&!isPct(b))tt.pages=b.total;const sn=(f.series||'').trim();tt.series=sn||undefined;tt.seriesNo=sn&&String(f.seriesNo||'').trim()!==''&&!isNaN(+f.seriesNo)?+f.seriesNo:undefined;if(sn&&/^\d+$/.test(String(f.seriesLen||'').trim()))(S.seriesLen=S.seriesLen||{})[sn]=+f.seriesLen}
   {const w=[...editForm.querySelectorAll('[name=readWith]:checked')].map(x=>x.value),added=w.filter(x=>!(b.with||[]).includes(x));
    if(editForm.querySelector('[name=readWith]')){if(w.length)b.with=w;else delete b.with}
@@ -5946,6 +5968,11 @@ document.addEventListener('click',e=>{
     case 'trashOpen':trashOpen();break;
     case 'trashClose':document.getElementById('trashDlg')?.close();break;
     case 'trashRestore':trashRestore(a.dataset.id);break;
+    case 'nsOpen':nsOpen();break;
+    case 'nsClose':ns=null;document.getElementById('nsDlg')?.close();break;
+    case 'nsGenre':ns.g=a.dataset.v;nsRender();break;
+    case 'nsAll':{const on=a.dataset.v==='1';nsBooks().filter(t=>!ns.g||(t.genre||'No Genre')===ns.g).forEach(t=>on?ns.sel.add(t.id):ns.sel.delete(t.id));nsRender();break}
+    case 'nsSave':nsSave();break;
     case 'pgvOpen':closeMenus();pgvOpen();break;
     case 'pgvClose':document.getElementById('pgvDlg')?.close();break;
     case 'pgvShare':document.getElementById('pgvDlg')?.close();document.getElementById('meMenu').hidden=false;scrollTo(0,0);break;
