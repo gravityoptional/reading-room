@@ -4893,7 +4893,7 @@ function renderChForm(){
   if(!types.includes(cf.type))cf.type=types[0];
   const unit={books:'books',pages:'pages',minutes:'hours',days:'days'}[cf.type];
   const listPick=cf.type==='list'?`<div class="f"><span class="fl" style="margin:0">Books</span><div class="chips">${cf.titleIds.map(id=>`<span class="chip-x">${esc(titleById(id)?.title||'')}<button class="icon-btn" style="padding:2px" data-act="cfRm" data-id="${id}" aria-label="Remove">${ic('x')}</button></span>`).join('')||'<span class="xs muted">No books yet.</span>'}</div>
-    <label class="search" style="margin-top:6px">${ic('search')}<input id="cfQ" type="search" placeholder="Add a book by title or author" value="${esc(cf.q)}" autocomplete="off" aria-label="Add a book"></label><div id="cfRes" class="pick-list" style="margin-top:6px">${cfResults()}</div></div>`:'';
+    <label class="search" style="margin-top:6px">${ic('search')}<input id="cfQ" type="search" placeholder="Add a book by title or author" value="${esc(cf.q)}" autocomplete="off" aria-label="Add a book"></label><div id="cfRes" class="pick-list" style="margin-top:6px">${cfResults()}</div><span class="xs muted">Books that aren’t in My Books yet are added to your To Read list${cf.mode==='personal'?'':', and to each person’s who joins'}.</span></div>`:'';
   chBody.innerHTML=`<div class="dlg-h"><h2 id="chTitle" style="flex:1">${cf.id?'Edit Challenge':cf.dup?'Duplicate Challenge':'Create a Challenge'}</h2><button type="button" class="icon-btn x" data-act="closeCh" aria-label="Close">${ic('x')}</button></div>
   <div class="form">
     ${cf.id?'':`<div class="vseg addb-tabs" role="group" aria-label="Who is it for">${[['personal','Personal'],['coop','Group Cooperative'],['comp','Group Competition']].map(([k,l])=>`<button aria-pressed="${cf.mode===k}" data-act="cfMode" data-v="${k}">${l}</button>`).join('')}</div>
@@ -4921,7 +4921,32 @@ function cfWarn(){if(cf.mode==='comp'||!cf.start||(cf.type==='list'&&cf.countPri
   if(cf.type==='list'&&early.length)return `⚠ ${early.length===1?`You finished ${esc(early[0].title)} before ${fmtDateY(cf.start)}, so it won’t count`:`You finished ${early.length} books on this list before ${fmtDateY(cf.start)}, so they won’t count`}. Change the start date, or turn on “Also count books finished before the start date.”`;
   if(cf.start>today())return `⚠ This starts ${fmtDateY(cf.start)}. Books you finish before then won’t count.`;return ''}
 document.addEventListener('input',e=>{if(chMode==='form'&&['cfStart','cfPrior','cfEnd'].includes(e.target.id)){captureCf();const w=document.getElementById('cfWarn');if(w)w.innerHTML=cfWarn()}});
-function cfResults(){const q=cf.q.trim().toLowerCase();if(!q)return '';return S.titles.filter(t=>!cf.titleIds.includes(t.id)&&(t.title+' '+t.author).toLowerCase().includes(q)).slice(0,6).map(t=>`<button type="button" class="pick" data-act="cfAdd" data-id="${t.id}">${libCover(t)}<span><span class="pick-t">${esc(t.title)}</span><span class="xs muted">${esc(t.author)}</span></span></button>`).join('')||'<span class="xs muted">No matches.</span>'}
+/* Putting a book on a list you mean to read is the same intent as To Read: books that aren't in My Books yet (no
+   reading, no copy of mine) go on To Read. Returns how many were added. */
+function tbrAdd(ids){let n=0;[...new Set(ids)].forEach(id=>{const t=titleById(id);if(!t||myReading(id)||copiesOf(id).some(c=>c.owner==='me'))return;
+  S.books.push({id:'r'+uid(),titleId:t.id,title:t.title,author:t.author,format:'unknown',total:0,pos:0,status:'want',c:t.c,wantSince:today()});n++});return n}
+const tbrMissing=ids=>[...new Set(ids)].filter(id=>titleById(id)&&!myReading(id)&&!copiesOf(id).some(c=>c.owner==='me'));
+const tbrSaid=n=>n?`${n===1?'1 book':`${n} books`} added to your To Read list.`:'';
+/* The Book List search: books already here first, then Open Library, so any book can go on the list. */
+function cfResults(){const raw=cf.q.trim(),q=raw.toLowerCase();if(!q)return '';
+  const mine=S.titles.filter(t=>!cf.titleIds.includes(t.id)&&(t.title+' '+t.author).toLowerCase().includes(q)).slice(0,6);
+  const here=mine.map(t=>`<button type="button" class="pick" data-act="cfAdd" data-id="${t.id}">${libCover(t)}<span><span class="pick-t">${esc(t.title)}</span><span class="xs muted">${esc(t.author)}</span></span></button>`).join('');
+  const o=cf.ol;let ol='';
+  if(raw.length<3)ol=here?'':'<span class="xs muted">Keep typing to search Open Library.</span>';
+  else if(!o||o.q!==olKey(raw)||o.state==='loading')ol='<div class="pick-h">From Open Library</div><span class="xs muted" role="status">Searching Open Library…</span>';
+  else if(o.state==='error')ol='<div class="pick-h">From Open Library</div><span class="xs muted">Open Library didn’t answer. Check your connection and try again.</span>';
+  else{const items=o.items.map((x,i)=>({x,i})).filter(({x})=>{const t=olExisting(x);return !t||(!cf.titleIds.includes(t.id)&&!mine.includes(t))}).slice(0,6);
+    ol=items.length?'<div class="pick-h">From Open Library</div>'+items.map(({x,i})=>`<button type="button" class="pick" data-act="cfAddOL" data-i="${i}">${libCover({title:x.title,author:x.author,c:hashStr(x.title)%COVERS.length,cover:x.coverId?`https://covers.openlibrary.org/b/id/${x.coverId}-S.jpg`:''})}<span><span class="pick-t">${esc(x.title)}</span><span class="xs muted">${[esc(x.author),x.year].filter(Boolean).join(' · ')}</span></span></button>`).join('')
+      :here?'':'<span class="xs muted">No matches. Check the spelling, or try the author’s name.</span>'}
+  return here+ol}
+let cfOlTimer=null,cfOlCtl=null;
+function cfOlQueue(){clearTimeout(cfOlTimer);const raw=cf.q.trim(),k=olKey(raw);
+  if(raw.length<3){cfOlCtl?.abort();cf.ol=null;return}
+  if(cf.ol&&cf.ol.q===k&&cf.ol.state!=='error')return;
+  cf.ol={q:k,state:'loading',items:[]};const mine=cf;
+  cfOlTimer=setTimeout(async()=>{cfOlCtl?.abort();cfOlCtl=new AbortController();
+    try{const items=await olSearch(raw,cfOlCtl.signal);if(cf===mine&&cf.ol?.q===k)cf.ol={q:k,state:'done',items}}catch(e){if(e.name==='AbortError')return;if(cf===mine&&cf.ol?.q===k)cf.ol={q:k,state:'error',items:[]}}
+    const el=document.getElementById('cfRes');if(el&&cf===mine)el.innerHTML=cfResults()},350)}
 function saveCf(){
   captureCf();const er=m=>{document.getElementById('cfErr').textContent=m};
   if(!cf.name.trim())return er('Give the challenge a title.');
@@ -4935,12 +4960,12 @@ function saveCf(){
   if(cf.start&&cf.end&&cf.end<cf.start)return er('The end date must be after the start date.');
   if(cf.mode!=='personal'&&!cf.id&&cf.who==='invite'&&!cf.invite.length)return er('Choose at least one person to invite.');
   const data={name:cf.name.trim(),desc:cf.desc.trim(),type:cf.type,target,titleIds:cf.type==='list'?cf.titleIds:undefined,start:cf.start||null,end:cf.end||null,countPrior:cf.type==='list'&&!!cf.countPrior,rule:cf.type==='list'?'all':cf.rule,ruleVal:cf.ruleVal};
-  if(cf.id){Object.assign(S.challenges.find(x=>x.id===cf.id),data);save();openCh(cf.id);toast('Challenge updated.');return}
+  if(cf.id){const ex=S.challenges.find(x=>x.id===cf.id);Object.assign(ex,data);const n=data.titleIds&&(ex.participants||[]).includes('me')?tbrAdd(data.titleIds):0;save();openCh(cf.id);toast('Challenge updated.',null,tbrSaid(n));return}
   const c={id:'ch'+uid(),mode:cf.mode,creator:'me',participants:['me'],sample:{},...data};
   if(c.mode!=='personal'&&cf.who==='invite'){c.inviteOnly=true;c.invited=[...cf.invite]}
-  S.challenges.push(c);
+  S.challenges.push(c);const tbrN=c.type==='list'?tbrAdd(c.titleIds):0;
   if(c.mode!=='personal'){if(c.inviteOnly)post('invite',`invited ${c.invited.map(nameOf).join(' and ')} to a challenge:`,c.name,null,c.id);else post('challenge','started a group challenge:',c.name)}
-  chTab=c.mode==='personal'?'mine':'family';save();chDlg.close();view='challenges';render();toast(`Created ${c.name}.`,null,c.inviteOnly?`Invitations sent to ${c.invited.map(nameOf).join(' and ')}.`:c.mode!=='personal'?`Everyone in ${GN()} was notified.`:'');
+  chTab=c.mode==='personal'?'mine':'family';save();chDlg.close();view='challenges';render();toast(`Created ${c.name}.`,null,[c.inviteOnly?`Invitations sent to ${c.invited.map(nameOf).join(' and ')}.`:c.mode!=='personal'?`Everyone in ${GN()} was notified.`:'',tbrSaid(tbrN)].filter(Boolean).join(' '));
 }
 /* battles */
 /* Battles record who started them. The sample battles were started by other members; any other battle without a creator was started by you before this was recorded. */
@@ -4968,6 +4993,7 @@ function renderBattle(){
     if(bCanList(b))acts=`<button class="btn ${me?'btn-ghost':'btn-primary'}" data-act="bAdd" aria-expanded="${bv.adding}">${ic('plus')}Add Books</button>`+acts;
     if((me||mod||bCreator(b)==='me')&&!S.settings.solo)acts+=`<button class="btn btn-ghost" data-act="bInv" aria-expanded="${!!bv.inv}">${ic('users')}Invite People</button>`;
   }
+  if(NEXT&&open&&me){const miss=tbrMissing(list.map(x=>x.id));if(miss.length)acts+=`<button class="btn btn-ghost" data-act="bTbr">${ic('plus')}Add ${miss.length===1?'the Book':`All ${miss.length}`} to To Read</button>`}   // test site only
   acts+=`<button class="btn btn-ghost" data-act="bDup">${ic('copy')}Duplicate</button>`;
   if(bCreator(b)==='me')acts+=`<button class="btn btn-ghost" data-act="bEdit">${ic('pencil')}Edit</button>`;
   if(bCreator(b)==='me'&&st!=='completed')acts+=`<button class="link-btn" data-act="bDel" aria-expanded="${!!bv.del}">Delete</button>`;
@@ -5038,7 +5064,7 @@ function openAwardForm(){chMode='award';chBody.innerHTML=`<div class="dlg-h"><h2
 chDlg.addEventListener('close',()=>{if(view==='challenges'||view==='dashboard'){const y=window.scrollY;render();window.scrollTo(0,y)}});
 document.addEventListener('input',e=>{
   if(e.target.id==='bQ'){bv.q=e.target.value;bOlQueue();const b=S.battles.find(x=>x.id===bv.id);document.getElementById('bRes').innerHTML=bResults(b)}
-  else if(e.target.id==='cfQ'){cf.q=e.target.value;document.getElementById('cfRes').innerHTML=cfResults()}
+  else if(e.target.id==='cfQ'){cf.q=e.target.value;cfOlQueue();document.getElementById('cfRes').innerHTML=cfResults()}
 });
 
 /* ---------- views ---------- */
@@ -5824,7 +5850,7 @@ document.addEventListener('click',e=>{
     case 'openCh':openCh(a.dataset.id);break;
     case 'closeCh':chDlg.close();break;
     case 'chLog':{chDlg.close();const c=currentSel();if(c)openLog(c.id);else{drawNew();logDlg.showModal()}break}
-    case 'chJoin':{const c=S.challenges.find(x=>x.id===a.dataset.id);if(!c.participants.includes('me'))c.participants.push('me');if(S.settings.share)S.activity.push({id:uid(),who:'me',kind:'challenge',text:(c.inviteOnly&&(c.invited||[]).includes('me'))?'accepted a challenge:':'joined',book:c.name,ch:c.id,ts:Date.now(),r:{}});save();if(chDlg.open&&chMode==='ch')renderCh();else{const y=window.scrollY;render();window.scrollTo(0,y)}toast(`Joined ${c.name}.`);break}
+    case 'chJoin':{const c=S.challenges.find(x=>x.id===a.dataset.id);if(!c.participants.includes('me'))c.participants.push('me');if(S.settings.share)S.activity.push({id:uid(),who:'me',kind:'challenge',text:(c.inviteOnly&&(c.invited||[]).includes('me'))?'accepted a challenge:':'joined',book:c.name,ch:c.id,ts:Date.now(),r:{}});const tn=c.type==='list'?tbrAdd(c.titleIds||[]):0;save();if(chDlg.open&&chMode==='ch')renderCh();else{const y=window.scrollY;render();window.scrollTo(0,y)}toast(`Joined ${c.name}.`,null,tbrSaid(tn));break}
     case 'chLeave':{const snap=snapshot(),c=S.challenges.find(x=>x.id===a.dataset.id);c.participants=c.participants.filter(w=>w!=='me');save();renderCh();toast(`Left ${c.name}.`,restoreTo(snap));break}
     case 'chInv':cv.inv=!cv.inv;renderCh();if(cv.inv)setTimeout(()=>chBody.querySelector('[name=invTo]:not([disabled])')?.focus(),30);break;
     case 'chInvGo':{const c=S.challenges.find(x=>x.id===cv.id),to=invPicked();if(!c)break;if(!to.length){document.getElementById('invErr').textContent='Choose at least one person.';break}
@@ -5842,7 +5868,8 @@ document.addEventListener('click',e=>{
     case 'chEdit':openChForm(a.dataset.id);break;
     case 'cfMode':captureCf();cf.mode=a.dataset.v;renderChForm();break;
     case 'cfType':captureCf();cf.type=a.dataset.v;renderChForm();break;
-    case 'cfAdd':captureCf();cf.titleIds.push(a.dataset.id);cf.q='';renderChForm();setTimeout(()=>document.getElementById('cfQ')?.focus(),30);break;
+    case 'cfAddOL':{const x=cf.ol?.items[+a.dataset.i];if(!x)break;captureCf();const t=olTitleFrom(x);if(!cf.titleIds.includes(t.id))cf.titleIds.push(t.id);cf.q='';cf.ol=null;save();renderChForm();setTimeout(()=>document.getElementById('cfQ')?.focus(),30);break}
+    case 'cfAdd':captureCf();cf.titleIds.push(a.dataset.id);cf.q='';cf.ol=null;renderChForm();setTimeout(()=>document.getElementById('cfQ')?.focus(),30);break;
     case 'cfRm':captureCf();cf.titleIds=cf.titleIds.filter(x=>x!==a.dataset.id);renderChForm();break;
     case 'cfSave':saveCf();break;
     case 'openBattle':openBattle(a.dataset.id);break;
@@ -5852,6 +5879,7 @@ document.addEventListener('click',e=>{
     case 'bMod':{const b=S.battles.find(x=>x.id===bv.id);b.moderator='me';save();renderBattle();toast(`You’re moderating ${b.name}.`);break}
     case 'bUnmod':{const b=S.battles.find(x=>x.id===bv.id);b.moderator=null;save();renderBattle();toast('You stepped down as moderator.');break}
     case 'bAdd':bv.adding=!bv.adding;bv.q='';bv.ol=null;renderBattle();if(bv.adding)setTimeout(()=>document.getElementById('bQ')?.focus(),30);break;
+    case 'bTbr':{const b=S.battles.find(x=>x.id===bv.id);if(!b)break;const snap=snapshot(),n=tbrAdd(bList(b).map(x=>x.id));save();renderBattle();render();toast(tbrSaid(n)||'Every book is already in My Books.',n?restoreTo(snap):null);break}
     case 'bPickOL':case 'bPick':{const b=S.battles.find(y=>y.id===bv.id);let t;if(a.dataset.act==='bPickOL'){const x=bv.ol?.items[+a.dataset.i];if(!x)break;t=olTitleFrom(x)}else t=titleById(a.dataset.id);if(!b||!t)break;
       if(bList(b).some(y=>y.id===t.id)){toast(bIsList(b)?'That book is already on the list.':'Someone already picked that book.');break}
       if(bIsList(b)){if(!bCanList(b))break;(b.setList=b.setList||[]).push(t.id);bv.q='';bv.ol=null;bv.tab='books';save();renderBattle();setTimeout(()=>document.getElementById('bQ')?.focus(),30);toast(`Added ${t.title} to the list.`);break}
