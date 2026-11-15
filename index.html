@@ -3076,13 +3076,17 @@ function lovedAuthors(){
    books where they aren't the main author, and duplicate entries. */
 const DISC_FIELDS='key,title,author_name,author_key,first_publish_year,number_of_pages_median,cover_i,ebook_access,lending_edition_s,lending_identifier_s,id_project_gutenberg,id_librivox,language';
 const DISC_JUNK=/\b(collection|collected|complete|works|omnibus|box(ed)? ?set|set of|trilogy|quartet|novels|selected|anthology|study guide|sparknotes|cliffs ?notes|summary|analysis|teacher'?s?|workbook|coloring|calendar|sampler|excerpts?|abridged|graphic novel|adaptation|edition|books? \d+\s*(-|–|&|and|to)\s*\d+)\b/i;
+// A title that reads as another language (El Caballero de los Siete Reinos): Open Library often lists translations as
+// separate books with no language set, so the words themselves are the only clue.
+const DISC_FOREIGN=/^(el|la|los|las|le|les|l['’]|un|una|une|der|die|das|ein|eine|il|lo|gli|i|o|os|as|het|de)\s/i,DISC_FWORD=/\b(de|del|los|las|el|la|le|les|des|du|et|y|und|der|die|das|von|il|di|della|e|o|os|do|da|dos|het|een|och)\b/gi;
+const discForeign=t=>{const x=String(t||'');if(/[¿¡]|[àâçèêëîïôùûœñãõßäöü]/i.test(x)&&!/[a-z]{3,} (the|of|and) /i.test(x))return true;if(/^(the|a|an)\s/i.test(x))return false;return DISC_FOREIGN.test(x)&&(x.match(DISC_FWORD)||[]).length>=2||(x.match(DISC_FWORD)||[]).length>=3};
 async function discAuthor(k){
   const r=await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent('author_key:'+k)}&fields=${DISC_FIELDS}&sort=editions&limit=40&lang=en`,{headers:{Accept:'application/json'},signal:AbortSignal.timeout(20000)});
   if(!r.ok)throw new Error('Open Library '+r.status);
   const seen=new Set(),items=[];
   for(const d of (await r.json()).docs||[]){
     const ak=d.author_key||[],nt=normT(d.title);
-    if(!d.title||!nt||ak[0]!==k||ak.length>3||seen.has(nt)||DISC_JUNK.test(d.title)||/[\/;]/.test(d.title))continue;
+    if(!d.title||!nt||ak[0]!==k||ak.length>3||seen.has(nt)||DISC_JUNK.test(d.title)||/[\/;]/.test(d.title)||discForeign(d.title))continue;
     if(d.language?.length&&!d.language.includes('eng'))continue;
     seen.add(nt);
     items.push({key:d.key,title:d.title,author:(d.author_name||[]).slice(0,2).join(', ')||'Unknown author',authorKeys:ak.slice(0,2),ebook:olEbook(d),...olFree(d),year:d.first_publish_year||'',pages:d.number_of_pages_median||0,coverId:d.cover_i||0});
@@ -3091,8 +3095,8 @@ async function discAuthor(k){
   // new books by this author (first published this year or last) lead the list; Open Library can lag on new releases
   try{const Y=+today().slice(0,4),n=await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent('author_key:'+k+' first_publish_year:['+(Y-1)+' TO '+Y+']')}&fields=${DISC_FIELDS}&sort=new&limit=10&lang=en`,{headers:{Accept:'application/json'},signal:AbortSignal.timeout(20000)});
     if(n.ok){const fresh=[];for(const d of (await n.json()).docs||[]){const ak=d.author_key||[],nt=normT(d.title),y=d.first_publish_year||0;
-        if(!d.title||!nt||ak[0]!==k||ak.length>3||DISC_JUNK.test(d.title)||/[\/;]/.test(d.title)||y<Y-1||y>Y||fresh.some(f=>normT(f.title)===nt))continue;
-        if(d.language?.length&&!d.language.includes('eng'))continue;
+        if(!d.title||!nt||ak[0]!==k||ak.length>3||DISC_JUNK.test(d.title)||/[\/;]/.test(d.title)||y<Y-1||y>Y||fresh.some(f=>normT(f.title)===nt)||discForeign(d.title))continue;
+        if(!d.language?.includes('eng'))continue;   // a new book must be marked English
         fresh.push({key:d.key,title:d.title,author:(d.author_name||[]).slice(0,2).join(', ')||'Unknown author',authorKeys:ak.slice(0,2),ebook:olEbook(d),...olFree(d),year:y,pages:d.number_of_pages_median||0,coverId:d.cover_i||0,isNew:true});if(fresh.length>=2)break}
       if(fresh.length)return fresh.concat(items.filter(i=>!fresh.some(f=>f.key===i.key||normT(f.title)===normT(i.title))))}}catch(e){}
   return items;
@@ -3101,13 +3105,13 @@ async function discAuthor(k){
 async function discLoad(){
   if(discBusy||navigator.onLine===false)return;
   discCache.a=discCache.a||{};discCache.b=discCache.b||{};discCache.w=discCache.w||{};
-  const todo=lovedAuthors().filter(a=>!(discCache.a[a.key]?.v===2&&discCache.a[a.key].ts>Date.now()-DISC_TTL)),todoB=byrSources().filter(x=>!byrFresh(x));
+  const todo=lovedAuthors().filter(a=>!(discCache.a[a.key]?.v===3&&discCache.a[a.key].ts>Date.now()-DISC_TTL)),todoB=byrSources().filter(x=>!byrFresh(x));
   const todoW=()=>awardCands().slice(0,10).filter(c=>!awFresh(c));
   if(!todo.length&&!todoB.length&&!todoW().length)return;
   discBusy=true;const keep=()=>{try{localStorage.setItem(DISC_KEY,JSON.stringify(discCache))}catch(e){}if(view==='discover'||view==='dashboard')coverRedraw()};
   try{for(const a of todo){
     let items;try{items=await discAuthor(a.key)}catch(e){break}
-    discCache.a[a.key]={ts:Date.now(),v:2,items};keep();
+    discCache.a[a.key]={ts:Date.now(),v:3,items};keep();
     await new Promise(r=>setTimeout(r,1000));
   }
   for(let n=0;n<6;n++){const x=byrSources().find(y=>!byrFresh(y));if(!x)break;let items;try{items=await discBecause(titleById(x.id))}catch(e){break}discCache.b[x.id]={ts:Date.now(),v:BYR_V,items};keep()}   // an empty book hands its slot to the next candidate
@@ -3165,7 +3169,7 @@ function ruleAuthor(){
   const mine=new Set(S.books.map(b=>b.titleId));S.copies.forEach(c=>{if(c.owner==='me')mine.add(c.titleId)});
   const names=[...mine].map(id=>normT(titleById(id)?.title)).filter(Boolean);
   const known=n=>names.some(m=>m===n||n.length>=8&&m.length>=8&&(m.startsWith(n)||n.startsWith(m)));
-  const lists=lovedAuthors().map(a=>(discCache.a[a.key]?.items||[]).map(x=>{const t=discMatch(x);return {rule:'author',reason:x.isNew?`New in ${x.year} · ${a.why}`:a.why,x,t,kid:a.kid}})
+  const lists=lovedAuthors().map(a=>(discCache.a[a.key]?.v===3?discCache.a[a.key].items||[]:(discCache.a[a.key]?.items||[]).filter(x=>!x.isNew&&!discForeign(x.title))).map(x=>{const t=discMatch(x);return {rule:'author',reason:x.isNew?`New in ${x.year} · ${a.why}`:a.why,x,t,kid:a.kid}})
     .filter(it=>!(it.t&&mine.has(it.t.id))&&!known(normT(it.x.title))&&!hiddenIt(it)));
   // Take turns between authors so one prolific author doesn't fill the row.
   const out=[],seen=new Set();
