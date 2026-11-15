@@ -1321,7 +1321,7 @@ a.btn{text-decoration:none}
 @media (max-width:400px){.vseg.addb-tabs{display:flex}.vseg.addb-tabs button{flex:1 1 0;min-width:0;justify-content:center;text-align:center;padding:8px 6px;font-size:13px}}   /* three choices fit a small phone */
 .bd-h h2,.bd-h .bd-au{overflow-wrap:anywhere}
 #trashDlg .tr-l{list-style:none;margin:0;padding:0;display:grid;gap:8px}#trashDlg .tr-r{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid var(--border);border-radius:12px}#trashDlg .tr-t{display:grid;gap:2px;min-width:0}#trashDlg .btn:disabled{opacity:.45;cursor:not-allowed}.tr-link{margin-top:6px;justify-self:start}
-#nsDlg .ns-list{max-height:min(46vh,380px);overflow:auto;display:grid;gap:2px;border:1px solid var(--border);border-radius:12px;padding:6px}#nsDlg .ns-row{display:flex;gap:10px;align-items:flex-start;padding:7px 8px;border-radius:8px;cursor:pointer}#nsDlg .ns-row:hover{background:var(--primary-light)}#nsDlg .ns-row input{margin-top:3px;flex:none}#nsDlg .ns-tools{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center}.dc-ns{margin:18px 0 0}.nx-ns{margin-top:8px;align-items:flex-start}.nx-ns input{margin-top:2px}#nsDlg .ns-when{display:flex;flex-direction:row;align-items:center;gap:10px}#nsDlg .ns-when select{width:auto}.ns-chk{align-items:flex-start}.ns-chk input{margin-top:3px}
+#nsDlg .ns-list{max-height:min(46vh,380px);overflow:auto;display:grid;gap:2px;border:1px solid var(--border);border-radius:12px;padding:6px}#nsDlg .ns-row{display:flex;gap:10px;align-items:flex-start;padding:7px 8px;border-radius:8px;cursor:pointer}#nsDlg .ns-row:hover{background:var(--primary-light)}#nsDlg .ns-row input{margin-top:3px;flex:none}#nsDlg .ns-tools{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center}.dc-ns{margin:18px 0 0}.dc-quick{color:var(--primary);font-weight:600;margin-top:2px}.nx-ns{margin-top:8px;align-items:flex-start}.nx-ns input{margin-top:2px}#nsDlg .ns-when{display:flex;flex-direction:row;align-items:center;gap:10px}#nsDlg .ns-when select{width:auto}.ns-chk{align-items:flex-start}.ns-chk input{margin-top:3px}
 #pgvDlg .pgv-sec{display:grid;gap:8px}#pgvDlg .pgv-h{font-size:1rem;margin:0}#pgvDlg .pgv-l{list-style:none;margin:0;padding:0;display:grid;gap:6px}#pgvDlg .pgv-r{padding:8px 10px;border:1px solid var(--border);border-radius:10px;font-size:.92rem}#pgvDlg .pgv-never{font-size:.88rem;padding:10px 12px;border-radius:10px;background:var(--primary-light)}
 #logForm .lg-prog-h{display:flex;align-items:center;justify-content:space-between;gap:10px}#logForm .sw-row{display:grid;gap:8px;margin-top:8px}#logForm .sw-copy[open]{padding:10px 12px;border:1px solid var(--border);border-radius:12px}
 #logForm .new-heading{margin-bottom:0}
@@ -3067,8 +3067,8 @@ function rereads(){
    (ranked with 4-star books). Ties go to the most recent finish. */
 function lovedAuthors(){
   const by={},put=(k,e)=>{const cur=by[k];if(!cur||e.score>cur.score||e.score===cur.score&&e.fin>cur.fin)by[k]=e};
-  S.books.filter(b=>b.status==='finished'&&b.rating>=4&&!noSug(b.titleId)).forEach(b=>{const t=titleById(b.titleId),k=t?.olAuthor?.[0];if(k)put(k,{key:k,score:b.rating,why:`You gave ${ti(t.title)} ${fmtStars(b.rating)}`,fin:b.finished||''})});
-  (S.favs||[]).filter(id=>!noSug(id)).forEach(id=>{const t=titleById(id),k=t?.olAuthor?.[0];if(k)put(k,{key:k,score:6,why:`You loved ${ti(t.title)}`,fin:myReading(id)?.finished||''})});   // a favorite outranks any rating
+  S.books.filter(b=>b.status==='finished'&&b.rating>=4&&!noSug(b.titleId)).forEach(b=>{const t=titleById(b.titleId),k=t?.olAuthor?.[0];if(k)put(k,{key:k,kid:genreKey(t.genre)==="children's",score:b.rating,why:`You gave ${ti(t.title)} ${fmtStars(b.rating)}`,fin:b.finished||''})});
+  (S.favs||[]).filter(id=>!noSug(id)).forEach(id=>{const t=titleById(id),k=t?.olAuthor?.[0];if(k)put(k,{key:k,kid:genreKey(t.genre)==="children's",score:6,why:`You loved ${ti(t.title)}`,fin:myReading(id)?.finished||''})});   // a favorite outranks any rating
   rereads().forEach(r=>{const t=titleById(r.id),k=t?.olAuthor?.[0];if(k)put(k,{key:k,score:4,why:`You’ve read ${ti(t.title)} ${r.times===2?'twice':r.times+' times'}`,fin:r.fin})});
   return Object.values(by).sort((a,b)=>b.score-a.score||b.fin.localeCompare(a.fin)).slice(0,DISC_AUTHORS);
 }
@@ -3077,7 +3077,7 @@ function lovedAuthors(){
 const DISC_FIELDS='key,title,author_name,author_key,first_publish_year,number_of_pages_median,cover_i,ebook_access,lending_edition_s,lending_identifier_s,id_project_gutenberg,id_librivox,language';
 const DISC_JUNK=/\b(collection|collected|complete|works|omnibus|box(ed)? ?set|set of|trilogy|quartet|novels|selected|anthology|study guide|sparknotes|cliffs ?notes|summary|analysis|teacher'?s?|workbook|coloring|calendar|sampler|excerpts?|abridged|graphic novel|adaptation|edition|books? \d+\s*(-|–|&|and|to)\s*\d+)\b/i;
 async function discAuthor(k){
-  const r=await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent('author_key:'+k)}&fields=${DISC_FIELDS}&sort=editions&limit=40&lang=en`,{headers:{Accept:'application/json'}});
+  const r=await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent('author_key:'+k)}&fields=${DISC_FIELDS}&sort=editions&limit=40&lang=en`,{headers:{Accept:'application/json'},signal:AbortSignal.timeout(20000)});
   if(!r.ok)throw new Error('Open Library '+r.status);
   const seen=new Set(),items=[];
   for(const d of (await r.json()).docs||[]){
@@ -3088,19 +3088,26 @@ async function discAuthor(k){
     items.push({key:d.key,title:d.title,author:(d.author_name||[]).slice(0,2).join(', ')||'Unknown author',authorKeys:ak.slice(0,2),ebook:olEbook(d),...olFree(d),year:d.first_publish_year||'',pages:d.number_of_pages_median||0,coverId:d.cover_i||0});
     if(items.length>=24)break;
   }
+  // new books by this author (first published this year or last) lead the list; Open Library can lag on new releases
+  try{const Y=+today().slice(0,4),n=await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent('author_key:'+k+' first_publish_year:['+(Y-1)+' TO '+Y+']')}&fields=${DISC_FIELDS}&sort=new&limit=10&lang=en`,{headers:{Accept:'application/json'},signal:AbortSignal.timeout(20000)});
+    if(n.ok){const fresh=[];for(const d of (await n.json()).docs||[]){const ak=d.author_key||[],nt=normT(d.title),y=d.first_publish_year||0;
+        if(!d.title||!nt||ak[0]!==k||ak.length>3||DISC_JUNK.test(d.title)||/[\/;]/.test(d.title)||y<Y-1||y>Y||fresh.some(f=>normT(f.title)===nt))continue;
+        if(d.language?.length&&!d.language.includes('eng'))continue;
+        fresh.push({key:d.key,title:d.title,author:(d.author_name||[]).slice(0,2).join(', ')||'Unknown author',authorKeys:ak.slice(0,2),ebook:olEbook(d),...olFree(d),year:y,pages:d.number_of_pages_median||0,coverId:d.cover_i||0,isNew:true});if(fresh.length>=2)break}
+      if(fresh.length)return fresh.concat(items.filter(i=>!fresh.some(f=>f.key===i.key||normT(f.title)===normT(i.title))))}}catch(e){}
   return items;
 }
 /* Looks up loved authors one per second, keeping each list for two weeks in this browser. */
 async function discLoad(){
   if(discBusy||navigator.onLine===false)return;
   discCache.a=discCache.a||{};discCache.b=discCache.b||{};discCache.w=discCache.w||{};
-  const todo=lovedAuthors().filter(a=>!(discCache.a[a.key]?.ts>Date.now()-DISC_TTL)),todoB=byrSources().filter(x=>!byrFresh(x));
+  const todo=lovedAuthors().filter(a=>!(discCache.a[a.key]?.v===2&&discCache.a[a.key].ts>Date.now()-DISC_TTL)),todoB=byrSources().filter(x=>!byrFresh(x));
   const todoW=()=>awardCands().slice(0,10).filter(c=>!awFresh(c));
   if(!todo.length&&!todoB.length&&!todoW().length)return;
   discBusy=true;const keep=()=>{try{localStorage.setItem(DISC_KEY,JSON.stringify(discCache))}catch(e){}if(view==='discover'||view==='dashboard')coverRedraw()};
   try{for(const a of todo){
     let items;try{items=await discAuthor(a.key)}catch(e){break}
-    discCache.a[a.key]={ts:Date.now(),items};keep();
+    discCache.a[a.key]={ts:Date.now(),v:2,items};keep();
     await new Promise(r=>setTimeout(r,1000));
   }
   for(let n=0;n<6;n++){const x=byrSources().find(y=>!byrFresh(y));if(!x)break;let items;try{items=await discBecause(titleById(x.id))}catch(e){break}discCache.b[x.id]={ts:Date.now(),v:BYR_V,items};keep()}   // an empty book hands its slot to the next candidate
@@ -3120,7 +3127,7 @@ function enEdition(key){
 async function enFill(){
   if(enBusy||navigator.onLine===false)return;enBusy=true;
   try{while(enTodo.size){const key=enTodo.values().next().value;enTodo.delete(key);
-    let r;try{r=await fetch(`https://openlibrary.org${key}/editions.json?limit=100`,{headers:{Accept:'application/json'}})}catch(e){break}
+    let r;try{r=await fetch(`https://openlibrary.org${key}/editions.json?limit=100`,{headers:{Accept:'application/json'},signal:AbortSignal.timeout(20000)})}catch(e){break}
     if(!r.ok)break;
     const e=((await r.json()).entries||[]).find(x=>x.ocaid&&(x.languages||[]).some(l=>l.key==='/languages/eng'));
     discCache.e[key]=e?{ts:Date.now(),ed:e.key.split('/').pop(),ia:e.ocaid}:{ts:Date.now()};
@@ -3158,7 +3165,7 @@ function ruleAuthor(){
   const mine=new Set(S.books.map(b=>b.titleId));S.copies.forEach(c=>{if(c.owner==='me')mine.add(c.titleId)});
   const names=[...mine].map(id=>normT(titleById(id)?.title)).filter(Boolean);
   const known=n=>names.some(m=>m===n||n.length>=8&&m.length>=8&&(m.startsWith(n)||n.startsWith(m)));
-  const lists=lovedAuthors().map(a=>(discCache.a[a.key]?.items||[]).map(x=>{const t=discMatch(x);return {rule:'author',reason:a.why,x,t}})
+  const lists=lovedAuthors().map(a=>(discCache.a[a.key]?.items||[]).map(x=>{const t=discMatch(x);return {rule:'author',reason:x.isNew?`New in ${x.year} · ${a.why}`:a.why,x,t,kid:a.kid}})
     .filter(it=>!(it.t&&mine.has(it.t.id))&&!known(normT(it.x.title))&&!hiddenIt(it)));
   // Take turns between authors so one prolific author doesn't fill the row.
   const out=[],seen=new Set();
@@ -3175,7 +3182,7 @@ function byrCands(){
     .forEach(b=>{if(seen.has(b.titleId)||out.length>=6)return;seen.add(b.titleId);const t=titleById(b.titleId);out.push({id:t.id,why:isFav(t.id)?`Because you loved ${ti(t.title)}`:`Because you read ${ti(t.title)}`})});
   return out}
 // Up to six candidates in order (favorites first, then 4+); the first three that gave picks, or haven't been looked up yet
-const BYR_V=2;   // raise when the matching changes, so saved picks are looked up again
+const BYR_V=3;   // raise when the matching changes, so saved picks are looked up again
 const byrFresh=x=>{const c=discCache.b?.[x.id];return c&&c.v===BYR_V&&c.ts>Date.now()-(c.items?.length?DISC_TTL:864e5)};   // no picks: try again after a day
 // Labels too broad to mean two books are alike (Fantasy + Action & Adventure matched A Game of Thrones to Harry Potter).
 // They only count when paired with a specific label (High Fantasy, Wolves, Children's poetry).
@@ -3184,7 +3191,7 @@ const BYR_KID=/juvenile|children|picture book|young adult|ya\b/i;
 function byrSources(){return byrCands().filter(x=>!byrFresh(x)||discCache.b[x.id].items.length).slice(0,3)}
 const byrItems=x=>{const c=discCache.b?.[x.id];return c&&c.v===BYR_V?c.items||[]:[]};   // picks from the old matching aren't shown
 async function discBecause(t){if(!t)return [];
-  const j=async u=>{const r=await fetch(u,{headers:{Accept:'application/json'}});if(!r.ok)throw new Error('Open Library '+r.status);return r.json()};
+  const j=async u=>{const r=await fetch(u,{headers:{Accept:'application/json'},signal:AbortSignal.timeout(20000)});if(!r.ok)throw new Error('Open Library '+r.status);return r.json()};
   const s=await j(`https://openlibrary.org/search.json?${t.olKey?'q='+encodeURIComponent('key:'+t.olKey):'title='+encodeURIComponent(srBare(t.title))+'&author='+encodeURIComponent(lastName(t.author))}&fields=key,subject,author_key&limit=1`);
   const w=s.docs?.[0];if(!w)return [];
   const subs=(w.subject||[]).map(x=>x.trim()).filter(x=>x.length<40&&x.length>2&&!BYR_GENERIC.test(x)&&!/^[A-Z /&]+$/.test(x)&&!/[áéíóúñ"]/i.test(x)&&!/^(integrity|courage|honesty|loyalty|conduct of life|life|large print|open_syllabus_project|english)$/i.test(x)).slice(0,10),mine=new Set(w.author_key||[]);
@@ -3207,7 +3214,7 @@ async function discBecause(t){if(!t)return [];
   if(pool.length<3)pool.push(...all.filter(v=>v.n<2&&v.s>0).sort(pop));                 // one match on two specific labels
   if(pool.length<4)pool.push(...all.filter(v=>v.n<2&&!v.s).sort(pop).slice(0,4-pool.length));   // last, a few genre matches so the row isn't empty
   const per={};return pool.filter(({d})=>{const a=(d.author_key||[''])[0];per[a]=(per[a]||0)+1;return per[a]<=2}).slice(0,12)
-    .map(({d})=>({key:d.key,title:d.title,author:(d.author_name||[]).slice(0,2).join(', ')||'Unknown author',authorKeys:(d.author_key||[]).slice(0,2),ebook:olEbook(d),...olFree(d),year:d.first_publish_year||'',pages:d.number_of_pages_median||0,coverId:d.cover_i||0}))}
+    .map(({d})=>({key:d.key,title:d.title,author:(d.author_name||[]).slice(0,2).join(', ')||'Unknown author',authorKeys:(d.author_key||[]).slice(0,2),ebook:olEbook(d),...olFree(d),year:d.first_publish_year||'',pages:d.number_of_pages_median||0,coverId:d.cover_i||0,kid:!adult}))}
 function ruleBecause(){
   const mine=new Set(S.books.map(b=>b.titleId));S.copies.forEach(c=>{if(c.owner==='me')mine.add(c.titleId)});
   const names=[...mine].map(id=>normT(titleById(id)?.title)).filter(Boolean),known=n=>names.some(m=>m===n||n.length>=8&&m.length>=8&&(m.startsWith(n)||n.startsWith(m)));
@@ -3253,11 +3260,11 @@ function awardCands(){const mine=new Set(S.books.map(b=>b.titleId));S.copies.for
   return out}
 const awFresh=c=>{const w=discCache.w?.[c.slug];return w&&w.ts>Date.now()-(w.item?DISC_TTL*4:DISC_TTL)};
 async function discAward(c){
-  const r=await fetch(`https://openlibrary.org/search.json?title=${encodeURIComponent(c.title.replace(/[:(].*$/,'').trim())}&author=${encodeURIComponent(lastName(c.author))}&fields=${DISC_FIELDS}&limit=5&lang=en`,{headers:{Accept:'application/json'}});
+  const r=await fetch(`https://openlibrary.org/search.json?title=${encodeURIComponent(c.title.replace(/[:(].*$/,'').trim())}&author=${encodeURIComponent(lastName(c.author))}&fields=${DISC_FIELDS}&limit=5&lang=en`,{headers:{Accept:'application/json'},signal:AbortSignal.timeout(20000)});
   if(!r.ok)throw new Error('Open Library '+r.status);const docs=(await r.json()).docs||[],nt=normT(c.title),d=docs.find(x=>normT(x.title)===nt)||docs.find(x=>normT(x.title).startsWith(nt.slice(0,12)))||null;if(!d)return null;
   return {key:d.key,title:c.title,author:c.author,authorKeys:(d.author_key||[]).slice(0,2),ebook:olEbook(d),...olFree(d),year:d.first_publish_year||'',pages:d.number_of_pages_median||0,coverId:d.cover_i||0}}
 function ruleAward(){const taken=new Set([...ruleAuthor(),...ruleBecause()].map(discKey)),out=[];
-  for(const c of awardCands()){const x=discCache.w?.[c.slug]?.item;if(!x)continue;const it={rule:'award',reason:`${AWARD_LISTS[c.list]}, ${c.year}`,x,t:discMatch(x)};
+  for(const c of awardCands()){const x=discCache.w?.[c.slug]?.item;if(!x)continue;const it={rule:'award',reason:`${AWARD_LISTS[c.list]}, ${c.year}`,x,t:discMatch(x),kid:['newbery','caldecott','geisel'].includes(c.list)};
     if(it.t&&myReading(it.t.id)||hiddenIt(it)||taken.has(discKey(it)))continue;out.push(it);if(out.length>=6)break}
   return out}
 /* Choosing many at once: every book I've started or finished, filtered by genre, with a checkbox each. */
@@ -3337,6 +3344,13 @@ function wantActs(t,r,big){
   if(!opts)return {btn:`<button class="btn btn-primary sm" data-act="bdLog" data-id="${r.id}">Start Reading</button>`,line:'<div></div>'};
   return {btn:getOne(opts[0],'btn btn-primary sm',true),line:`<div class="dc-get"><button class="dc-get-a dc-start" data-act="bdLog" data-id="${r.id}">${ic('play')}Start Reading</button></div>`};
 }
+/* Quick read (James, Nov 15): a short line under the reason on any Discover card. A book counts when it's under 200
+   pages, or under 60% of the length this reader usually finishes when that's shorter, so it stays meaningful for
+   someone who mostly reads short books. Never on Children's books, picture-book lengths, or audiobooks. */
+function quickCut(){const p=S.books.filter(b=>b.status==='finished'&&b.format!=='audio'&&!isPct(b)&&b.total>0&&genreKey(titleById(b.titleId)?.genre)!=="children's").map(b=>b.total).sort((a,b)=>a-b);
+  return p.length>=5?Math.min(200,Math.round(p[Math.floor(p.length/2)]*.6)):200}
+function quickRead(t,x,kid){const pages=+(t?.pages||x?.pages||0);if(kid||x?.kid||pages<80||genreKey(t?.genre)==="children's")return '';
+  const r=t&&myReading(t.id);if(r&&r.format==='audio')return '';return pages<quickCut()?`Quick read · ${pages} pages`:''}
 /* Lean card: Not for Me (top right), cover, title, author, reason, best way to get it, one button. */
 function dcard(it){
   const t=it.t,x=it.x,k=discKey(it);discIdx[k]=it;
@@ -3346,7 +3360,7 @@ function dcard(it){
   const open=t?`data-act="openTitle" data-id="${t.id}" data-tab="about"`:`data-act="discOpen" data-k="${esc(k)}"`;
   const nfm=it.rule==='toread'?'':it.rule==='rec'?`<button class="dc-nfm" data-act="dismissRec" data-id="${t.id}" aria-label="Not for Me: ${esc(look.title)}">Not for Me</button>`:`<button class="dc-nfm" data-act="discHide" data-k="${esc(k)}" aria-label="Not for Me: ${esc(look.title)}">Not for Me</button>`;
   return `<div class="dc-card"><div class="dc-top"><button class="lc-open" ${open}>${libCover(look)}<span class="lc-t" title="${esc(dispT(look.title))}">${esc(dispT(look.title))}</span><span class="bk-a">${esc(look.author)}</span></button>
-  <div class="dc-why">${it.reason}</div>${nfm}</div>${wa?wa.line:getBest(t,x)}<div class="dc-acts">${main}</div></div>`;
+  <div class="dc-why">${it.reason}</div>${(q=>q?`<div class="dc-quick xs">${q}</div>`:'')(quickRead(t,x,it.kid))}${nfm}</div>${wa?wa.line:getBest(t,x)}<div class="dc-acts">${main}</div></div>`;
 }
 /* Compact row (finish window, and Your Next Read on phones): small cover, title and reason, one small button. */
 function drow(it){
