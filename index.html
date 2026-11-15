@@ -3103,7 +3103,7 @@ async function discLoad(){
     discCache.a[a.key]={ts:Date.now(),items};keep();
     await new Promise(r=>setTimeout(r,1000));
   }
-  for(let n=0;n<6;n++){const x=byrSources().find(y=>!byrFresh(y));if(!x)break;let items;try{items=await discBecause(titleById(x.id))}catch(e){break}discCache.b[x.id]={ts:Date.now(),items};keep()}   // an empty book hands its slot to the next candidate
+  for(let n=0;n<6;n++){const x=byrSources().find(y=>!byrFresh(y));if(!x)break;let items;try{items=await discBecause(titleById(x.id))}catch(e){break}discCache.b[x.id]={ts:Date.now(),v:BYR_V,items};keep()}   // an empty book hands its slot to the next candidate
   for(const c of todoW()){let item;try{item=await discAward(c)}catch(e){break}discCache.w[c.slug]={ts:Date.now(),item};keep();await new Promise(r=>setTimeout(r,1000))}   // award winners: covers and where to get them, from Open Library
   if(view==='discover'&&!document.querySelector('dialog[open]'))render()
   }finally{discBusy=false}
@@ -3175,28 +3175,44 @@ function byrCands(){
     .forEach(b=>{if(seen.has(b.titleId)||out.length>=6)return;seen.add(b.titleId);const t=titleById(b.titleId);out.push({id:t.id,why:isFav(t.id)?`Because you loved ${ti(t.title)}`:`Because you read ${ti(t.title)}`})});
   return out}
 // Up to six candidates in order (favorites first, then 4+); the first three that gave picks, or haven't been looked up yet
-const byrFresh=x=>{const c=discCache.b?.[x.id];return c&&c.ts>Date.now()-(c.items?.length?DISC_TTL:864e5)};   // no picks: try again after a day
+const BYR_V=2;   // raise when the matching changes, so saved picks are looked up again
+const byrFresh=x=>{const c=discCache.b?.[x.id];return c&&c.v===BYR_V&&c.ts>Date.now()-(c.items?.length?DISC_TTL:864e5)};   // no picks: try again after a day
+// Labels too broad to mean two books are alike (Fantasy + Action & Adventure matched A Game of Thrones to Harry Potter).
+// They only count when paired with a specific label (High Fantasy, Wolves, Children's poetry).
+const BYR_BROAD=/^(fantasy( fiction)?|fiction, .*|action (&|and) adventure|adventure( stories| fiction)?|adventure and adventurers.*|magic|wizards?|science fiction|mystery( fiction)?|detective and mystery stories|romance|love( stories)?|humor(ous stories)?|friendship.*|famil(y|ies).*|good and evil.*|coming of age|classics?|thrillers?|suspense|horror( stories)?|death|war|history|religion|animals.*|schools?.*|adventure)$/i;
+const BYR_KID=/juvenile|children|picture book|young adult|ya\b/i;
 function byrSources(){return byrCands().filter(x=>!byrFresh(x)||discCache.b[x.id].items.length).slice(0,3)}
+const byrItems=x=>{const c=discCache.b?.[x.id];return c&&c.v===BYR_V?c.items||[]:[]};   // picks from the old matching aren't shown
 async function discBecause(t){if(!t)return [];
   const j=async u=>{const r=await fetch(u,{headers:{Accept:'application/json'}});if(!r.ok)throw new Error('Open Library '+r.status);return r.json()};
   const s=await j(`https://openlibrary.org/search.json?${t.olKey?'q='+encodeURIComponent('key:'+t.olKey):'title='+encodeURIComponent(srBare(t.title))+'&author='+encodeURIComponent(lastName(t.author))}&fields=key,subject,author_key&limit=1`);
   const w=s.docs?.[0];if(!w)return [];
-  const subs=(w.subject||[]).map(x=>x.trim()).filter(x=>x.length<40&&!BYR_GENERIC.test(x)&&!/^[A-Z /&]+$/.test(x)&&!/[áéíóúñ]/i.test(x)).slice(0,8),mine=new Set(w.author_key||[]);
-  const pairs=[];for(let i=0;i<subs.length;i++)for(let k=i+1;k<subs.length;k++)pairs.push([subs[i],subs[k]]);
+  const subs=(w.subject||[]).map(x=>x.trim()).filter(x=>x.length<40&&x.length>2&&!BYR_GENERIC.test(x)&&!/^[A-Z /&]+$/.test(x)&&!/[áéíóúñ"]/i.test(x)&&!/^(integrity|courage|honesty|loyalty|conduct of life|life|large print|open_syllabus_project|english)$/i.test(x)).slice(0,10),mine=new Set(w.author_key||[]);
+  const spec=subs.filter(x=>!BYR_BROAD.test(x)),broad=subs.filter(x=>BYR_BROAD.test(x)),pairs=[];
+  const gen=[],sp2=[];broad.slice(0,2).forEach(b=>spec.forEach(a=>gen.push([a,b,0])));                   // a specific label with the book's genre (High Fantasy + Fantasy)
+  for(let i=0;i<spec.length;i++)for(let k=i+1;k<spec.length;k++)sp2.push([spec[i],spec[k],1]);          // two specific labels
+  pairs.push(...gen.slice(0,4),...sp2.slice(0,4));
+  if(!spec.length)for(let i=0;i<broad.length;i++)for(let k=i+1;k<broad.length;k++)pairs.push([broad[i],broad[k],1]);   // nothing specific: as before
+  // a book for adults doesn't suggest children's books, and a children's book only suggests children's books
+  const adult=!(w.subject||[]).some(x=>BYR_KID.test(x)),notKid=adult?' NOT subject:"Juvenile fiction" NOT subject:"Juvenile literature" NOT subject:"Children\'s fiction"':' AND (subject:"Juvenile fiction" OR subject:"Juvenile literature" OR subject:"Children\'s fiction")';
   const tally=new Map();
-  for(const pr of pairs.slice(0,6)){await new Promise(r=>setTimeout(r,800));
-    const r=await j(`https://openlibrary.org/search.json?q=${encodeURIComponent(pr.map(x=>`subject:"${x.replace(/"/g,'')}"`).join(' AND '))}&fields=${DISC_FIELDS},readinglog_count&sort=readinglog&limit=20&lang=en`);
+  for(const pr of pairs.slice(0,8)){await new Promise(r=>setTimeout(r,800));
+    const r=await j(`https://openlibrary.org/search.json?q=${encodeURIComponent(pr.slice(0,2).map(x=>`subject:"${x.replace(/"/g,'')}"`).join(' AND ')+notKid)}&fields=${DISC_FIELDS},readinglog_count&sort=readinglog&limit=20&lang=en`);
     for(const d of r.docs||[]){const ak=d.author_key||[];
       if(!d.title||ak.some(k=>mine.has(k))||DISC_JUNK.test(d.title)||/[\/;]/.test(d.title)||(d.first_publish_year||0)<1900||(d.readinglog_count||0)<50)continue;
       if(d.language?.length&&!d.language.includes('eng'))continue;
-      const v=tally.get(d.key)||{d,n:0};v.n++;tally.set(d.key,v)}}
-  const per={};return [...tally.values()].sort((a,b)=>b.n-a.n||(b.d.readinglog_count||0)-(a.d.readinglog_count||0)).filter(({d})=>{const a=(d.author_key||[''])[0];per[a]=(per[a]||0)+1;return per[a]<=2}).slice(0,12)
+      const v=tally.get(d.key)||{d,n:0,s:0};v.n++;v.s+=pr[2];tally.set(d.key,v)}}
+  // books that matched on more than one pair of labels come first; a single match only counts when both labels were specific
+  const pop=(a,b)=>(b.d.readinglog_count||0)-(a.d.readinglog_count||0),all=[...tally.values()],pool=all.filter(v=>v.n>=2).sort((a,b)=>b.n-a.n||pop(a,b));
+  if(pool.length<3)pool.push(...all.filter(v=>v.n<2&&v.s>0).sort(pop));                 // one match on two specific labels
+  if(pool.length<4)pool.push(...all.filter(v=>v.n<2&&!v.s).sort(pop).slice(0,4-pool.length));   // last, a few genre matches so the row isn't empty
+  const per={};return pool.filter(({d})=>{const a=(d.author_key||[''])[0];per[a]=(per[a]||0)+1;return per[a]<=2}).slice(0,12)
     .map(({d})=>({key:d.key,title:d.title,author:(d.author_name||[]).slice(0,2).join(', ')||'Unknown author',authorKeys:(d.author_key||[]).slice(0,2),ebook:olEbook(d),...olFree(d),year:d.first_publish_year||'',pages:d.number_of_pages_median||0,coverId:d.cover_i||0}))}
 function ruleBecause(){
   const mine=new Set(S.books.map(b=>b.titleId));S.copies.forEach(c=>{if(c.owner==='me')mine.add(c.titleId)});
   const names=[...mine].map(id=>normT(titleById(id)?.title)).filter(Boolean),known=n=>names.some(m=>m===n||n.length>=8&&m.length>=8&&(m.startsWith(n)||n.startsWith(m)));
   const byAuthor=new Set(ruleAuthor().map(discKey));
-  const lists=byrSources().map(x=>(discCache.b?.[x.id]?.items||[]).map(it=>({rule:'because',reason:x.why,x:it,t:discMatch(it)})).filter(it=>!(it.t&&mine.has(it.t.id))&&!known(normT(it.x.title))&&!hiddenIt(it)&&!byAuthor.has(discKey(it))));
+  const lists=byrSources().map(x=>byrItems(x).map(it=>({rule:'because',reason:x.why,x:it,t:discMatch(it)})).filter(it=>!(it.t&&mine.has(it.t.id))&&!known(normT(it.x.title))&&!hiddenIt(it)&&!byAuthor.has(discKey(it))));
   const out=[],seen=new Set(),au=new Set(),per=new Map(),cap=lists.filter(l=>l.length).length>1?3:6;
   const auK=it=>(it.x.authorKeys?.[0])||lastName((it.x.author||'').split(',')[0]).toLowerCase();
   for(let i=0;out.length<6&&lists.some(l=>l[i]);i++)lists.forEach((l,j)=>{const it=l[i];if(!it||out.length>=6||seen.has(discKey(it))||au.has(auK(it))||(per.get(j)||0)>=cap)return;
