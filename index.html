@@ -213,6 +213,7 @@ main{max-width:1240px;margin:0 auto;padding:20px 20px 40px}
 .react:disabled{cursor:default;opacity:.8}
 .react .em{font-size:14px}
 .react{min-width:44px;justify-content:center}
+.link-btn.act-rm{margin-left:auto;font-size:12px;padding:3px 6px;color:var(--text-2);font-weight:400}.link-btn.act-rm:hover{color:var(--primary)}
 .cover-btn{border:0;padding:0;background:none;text-align:left;border-radius:7px;align-self:start}
 .t-btn{border:0;padding:0;background:none;text-align:left;font:inherit;color:inherit}
 .t-btn:hover .bk-t{color:var(--primary);text-decoration:underline;text-underline-offset:3px}
@@ -1716,7 +1717,7 @@ function showSaveFailure(){
   if(saveConflict){box.innerHTML='<div><b>Another tab saved changes to the same information.</b> Your changes are still here, and the other tab’s saved data is safe. Download your unsaved copy before loading the latest saved data.</div><button type="button" class="btn btn-ghost sm" data-act="downloadConflict">Download My Unsaved Copy</button><button type="button" class="btn btn-ghost sm" data-act="loadLatest" '+(conflictDownloaded?'':'disabled')+'>Load Latest Saved Data</button>';host.prepend(box);return;}
   box.innerHTML='<div><b>Changes haven’t been saved.</b> This browser could not save your data. Your changes are only in this open page. Keep it open and try again before refreshing or closing.</div><button type="button" class="btn btn-ghost sm" data-act="retrySave">Try Saving Again</button>';host.prepend(box);
 }
-function save(){try{
+function save(){try{actPrune()}catch(e){}try{
   const raw=localStorage.getItem(KEY);let next=S;
   if(raw!==savedRaw){try{if(!raw)throw new Error('Saved data was removed');const remote=JSON.parse(raw);next=mergeSaved(savedBase,JSON.parse(JSON.stringify(S)),remote);assertLoanMerge(remote,next);assertTimerMerge(remote,next);}catch(e){saveConflict=true;conflictDownloaded=false;throw e;}}
   S=next;try{diffEvents()}catch(e){}const encoded=JSON.stringify(S);localStorage.setItem(KEY,encoded);savedRaw=encoded;savedBase=JSON.parse(encoded);saveFailed=false;saveConflict=false;conflictDownloaded=false;document.querySelectorAll('.save-warning').forEach(e=>e.remove());return true;
@@ -2115,14 +2116,14 @@ function activityCard(){
   const hide=S.settings.hideAct||[];
   const all=S.activity.filter(a=>(a.who!=='me'||S.settings.share)&&(!a.ch||canSeeCh(S.challenges.find(c=>c.id===a.ch)||{}))&&!hide.includes(ACT_CAT[a.kind]||'reading')).sort((a,b)=>b.ts-a.ts);
   const out=[],grp={};
-  all.forEach(a=>{if(a.kind==='session'){const k=a.who+'|'+new Date(a.ts).toDateString();if(grp[k]){grp[k].n++;if(grp[k].book!==a.book)grp[k].book='';return}const x={...a,n:1};grp[k]=x;out.push(x)}else out.push(a)});
+  all.forEach(a=>{if(a.kind==='session'){const k=a.who+'|'+new Date(a.ts).toDateString();if(grp[k]){grp[k].n++;grp[k].ids.push(a.id);if(grp[k].book!==a.book)grp[k].book='';return}const x={...a,n:1,ids:[a.id]};grp[k]=x;out.push(x)}else out.push(a)});
   const items=out.slice(0,actLimit);
   const body=items.length?items.map(a=>{
     const p=person(a.who);const mine=a.who==='me';
     const txt=a.n>1?`logged ${a.n} reading sessions${new Date(a.ts).toDateString()===new Date().toDateString()?' today':''}`:a.text;
     const counts=a.noReact?'':REACTS.map(([k,e,l])=>{const n=Object.values(a.r).filter(v=>v===k).length;const on=a.r.me===k;
       return `<button class="react" ${mine?'disabled':''} aria-pressed="${on}" data-act="react" data-id="${a.id}" data-r="${k}" title="${l}" aria-label="${l}${n?`, ${n}`:''}"><span class="em" aria-hidden="true">${e}</span>${n?n:''}</button>`}).join('');
-    return `<div class="act"><div class="act-top"><span class="avatar" style="background:${p.photo?`url('${p.photo}') center/cover no-repeat, ${p.color}`:p.color}">${p.photo?'':p.init}</span><div class="act-txt"><b>${esc(p.name)}</b> ${esc(txt)}${a.book?` <em>${esc(a.book)}</em>`:''}${a.extra&&a.n!==2&&!(a.n>1)?` <span class="muted">(${esc(a.extra)})</span>`:''}</div><span class="act-when">${ago(a.ts)}</span></div><div class="reacts">${counts}</div></div>`;
+    return `<div class="act"><div class="act-top"><span class="avatar" style="background:${p.photo?`url('${p.photo}') center/cover no-repeat, ${p.color}`:p.color}">${p.photo?'':p.init}</span><div class="act-txt"><b>${esc(p.name)}</b> ${esc(txt)}${a.book?` <em>${esc(a.book)}</em>`:''}${a.extra&&a.n!==2&&!(a.n>1)?` <span class="muted">(${esc(a.extra)})</span>`:''}</div><span class="act-when">${ago(a.ts)}</span></div><div class="reacts">${counts}${mine&&!a.fromGroup?`<button type="button" class="link-btn act-rm" data-act="actRemove" data-ids="${(a.ids||[a.id]).join(',')}" aria-label="Remove this post from Group Activity">Remove</button>`:''}</div></div>`;
   }).join(''):`<div class="empty">${ic('users')}<h3>${hide.length?'Nothing to Show':'No Group Activity Yet'}</h3><p>${hide.length?'You’ve hidden some kinds of activity. Choose What Shows to bring them back.':'Group members who share their reading will show up here.'}</p></div>`;
   const filt=actOpen?`<div class="act-f"><div class="xs muted">Show activity about:</div><div class="chips">${ACT_LBL.map(([k,l])=>`<button class="tab sm" aria-pressed="${!hide.includes(k)}" data-act="actCat" data-v="${k}">${l}</button>`).join('')}</div></div>`:'';
   const note=S.settings.share?'':`<div class="privacy-note"><span>${ic('lock')} Your activity is private, so your group doesn’t see it here.</span><button data-act="share">Share with My Groups</button></div>`;
@@ -3063,6 +3064,16 @@ const fmtMonY=d=>`${MONF[+d.slice(5,7)-1]} ${d.slice(0,4)}`;
    someone else, read long ago, read for a specific purpose). Discover ignores them when working out
    what the reader likes (More by This Author, Because You Read, Award Winners). They count everywhere else. */
 const noSug=id=>(S.noSug||[]).includes(id);
+/* Keep a book private: nothing about it is posted to Group Activity. Removed posts leave a short-lived marker (S.actGone) so every device, and the group's copy, drops them too. */
+const noPost=id=>!!(S.noPost&&S.noPost.includes(id));
+function noPostSet(id,on){const had=noPost(id);if(on&&!had)(S.noPost=S.noPost||[]).push(id);else if(!on&&had)S.noPost=S.noPost.filter(x=>x!==id)}
+const ACT_NOBOOK=['award','challenge','completed','battle','invite','member'];
+function actPrune(){if(!Array.isArray(S.activity))return;const np=S.noPost||[],cut=Date.now()-90*864e5;
+  if(S.actGone&&S.actGone.length)S.actGone=S.actGone.filter(g=>g.ts>cut);
+  if(!np.length&&!(S.actGone&&S.actGone.length))return;
+  const gone=new Set((S.actGone||[]).map(g=>g.id)),names=new Set(np.map(id=>titleById(id)?.title).filter(Boolean));
+  S.activity=S.activity.filter(a=>{if(a.who!=='me'||a.fromGroup)return true;if(gone.has(a.id))return false;
+    if((a.titleId&&np.includes(a.titleId))||(!a.titleId&&a.book&&names.has(a.book)&&!ACT_NOBOOK.includes(a.kind))){(S.actGone=S.actGone||[]).push({id:a.id,ts:Date.now()});return false}return true})}
 function noSugSet(id,on){const had=noSug(id);if(on&&!had)(S.noSug=S.noSug||[]).push(id);else if(!on&&had)S.noSug=S.noSug.filter(x=>x!==id)}
 function rereads(){
   const n={},rated=new Set(S.books.filter(b=>b.status==='finished'&&b.rating).map(b=>b.titleId));
@@ -5363,6 +5374,7 @@ function drawLog(b,focus,preMin,moveTo){
     <div class="f lg-when"><div class="f2 cu-dates"><label class="f cu-from" hidden>From<input class="inp" type="date" name="from" max="${today()}"></label><label class="f"><span class="cu-to">Date</span><input class="inp" type="date" name="date" value="${today()}" max="${today()}"></label></div>
       <label class="chk"><input type="checkbox" name="cu"> Covers more than one day</label><span class="xs muted cu-note" hidden>Counts toward totals and challenges, but not streaks or daily goals.</span></div>
     <label class="f"><span>Add a Note <span class="sub">(optional, only you see it)</span></span><textarea class="inp lg-note" name="note" rows="1" maxlength="200" data-count="200" aria-describedby="logNoteCount" placeholder=""></textarea><span class="lg-cnt" hidden>${charCount('logNoteCount',0,200)}</span></label>
+    ${S.settings.share?`<label class="chk small ns-chk lg-np"><input type="checkbox" name="noPost" ${noPost(b.titleId)?'checked':''}> <span>Don’t post activity about this book <span class="sub">(your group won’t see it)</span></span></label>`:''}
     <label class="chk small ns-chk lg-ns" hidden><input type="checkbox" name="noSug" ${noSug(b.titleId)?'checked':''}> <span>Leave out of my suggestions <span class="sub">(for books that don’t reflect what you like to read; it still counts everywhere else)</span></span></label>
     <input type="checkbox" name="finished" hidden tabindex="-1" aria-hidden="true">
     <div class="err" id="logErr" role="alert"></div><div class="log-ask" id="logAsk" hidden></div>
@@ -5555,6 +5567,7 @@ logForm.addEventListener('submit',e=>{
   const started=wasWant&&b.status==='reading';
   if(started){selBook=b.id;if((S.upNext||[]).includes(b.id))b.fromQueue=true;if(b.wantSince&&daysBetween(b.wantSince,f.date)>=365)b.rescued=f.date}
   if(started){const re=S.books.some(x=>x!==b&&x.titleId===b.titleId&&x.status==='finished');postBook(re?'reread':'started',re?'started rereading':'started a new book',b)}
+  {const c=logForm.querySelector('[name=noPost]');if(c)noPostSet(b.titleId,c.checked)}
   if(finished){const c=logForm.querySelector('[name=noSug]');if(c)noSugSet(b.titleId,c.checked)}   // whether or not activity is shared
   if(S.settings.share){
     if(finished&&!wasFinished)S.activity.push({id:uid(),who:'me',kind:'finished',text:'finished',book:b.title,titleId:b.titleId,ts:Date.now(),r:{}});
@@ -5639,6 +5652,7 @@ function openEdit(id){
     ${hasSessions?'<p class="xs muted">Reading format is fixed because this reading has logged sessions. This protects the page or audio positions in your history.</p>':''}
     ${seriesFields(b)}
     ${statusPicker(b)}
+    ${S.settings.share?`<label class="chk small ns-chk"><input type="checkbox" name="noPost" ${noPost(b.titleId)?'checked':''}> <span>Don’t post activity about this book <span class="sub">(your group won’t see you start, log, or finish it; earlier posts about it are removed)</span></span></label>`:''}
     <label class="chk small ns-chk"><input type="checkbox" name="noSug" ${noSug(b.titleId)?'checked':''}> <span>Leave out of my suggestions <span class="sub">(for books that don’t reflect what you like to read; it still counts everywhere else)</span></span></label>
     <div class="err" id="editErr" role="alert"></div>
     ${rmBox('rmReading',S.books.filter(x=>x.titleId===b.titleId).length>1?'Removes this read-through, its reading sessions, and its rating. Your other read-throughs of this book stay.':'Removes this book from My Books with its reading sessions and rating. Copies you own stay; remove them under Copies.')}
@@ -5687,7 +5701,7 @@ editForm.addEventListener('submit',e=>{
   }
   if(b.status==='finished'){if(hasLen(b))b.pos=b.total;if(f.finished){b.finished=f.finished;delete b.readIt;delete b.markedOn}else{delete b.finished;b.readIt=true;b.markedOn=b.markedOn||today()}}
   saveReadingEdition(b,readEdition(editForm,'editReading'));
-  noSugSet(b.titleId,f.noSug==='on');
+  noSugSet(b.titleId,f.noSug==='on');if(editForm.querySelector('[name=noPost]'))noPostSet(b.titleId,f.noPost==='on');
   const tt=titleById(b.titleId);if(tt){updateBookIdentity(tt,b.title,b.author);if(['print','ebook'].includes(b.format)&&hasLen(b)&&!isPct(b))tt.pages=b.total;const sn=(f.series||'').trim();tt.series=sn||undefined;tt.seriesNo=sn&&String(f.seriesNo||'').trim()!==''&&!isNaN(+f.seriesNo)?+f.seriesNo:undefined;if(sn&&/^\d+$/.test(String(f.seriesLen||'').trim()))(S.seriesLen=S.seriesLen||{})[sn]=+f.seriesLen}
   {const w=[...editForm.querySelectorAll('[name=readWith]:checked')].map(x=>x.value),added=w.filter(x=>!(b.with||[]).includes(x));
    if(editForm.querySelector('[name=readWith]')){if(w.length)b.with=w;else delete b.with}
@@ -6244,6 +6258,9 @@ document.addEventListener('click',e=>{
       if(S.settings.share)S.activity.push({id:uid(),who:'me',kind:'finished',text:'finished',book:b.title,titleId:b.titleId,ts:Date.now(),r:{}});
       S.trophies.push({id:uid(),name:'Finished!',desc:b.title,date:today(),tier:'badge',icon:'check',hue:'green'});
       save();render();if(!openNextDlg(b,restoreTo(snap)))toast(`Finished ${b.title}. Nice work!`,restoreTo(snap));break}
+    case 'actRemove':{const ids=(a.dataset.ids||'').split(','),its=S.activity.filter(x=>x.who==='me'&&!x.fromGroup&&ids.includes(x.id));if(!its.length)break;
+      S.activity=S.activity.filter(x=>!its.includes(x));S.actGone=(S.actGone||[]).concat(its.map(x=>({id:x.id,ts:Date.now()})));save();render();
+      toast(its.length>1?'Posts Removed from Group Activity':'Post Removed from Group Activity',()=>{its.forEach(x=>S.activity.push({...x,id:uid(),r:{}}));save();render();return true},'Your group no longer sees '+(its.length>1?'them':'it')+'. Your reading isn’t changed.');break}
     case 'react':{const it=S.activity.find(x=>x.id===a.dataset.id);if(it.r.me===a.dataset.r)delete it.r.me;else it.r.me=a.dataset.r;save();render();break}
     case 'share':S.settings.share=!S.settings.share;save();render();if(!document.getElementById('meMenu').hidden||a.closest('.menu'))document.getElementById('meMenu').hidden=false;toast(S.settings.share?'Your activity is now shared with your groups.':'Your activity is now private.');break;
     case 'theme':S.settings.theme=a.dataset.v;save();renderHeader();document.getElementById('meMenu').hidden=false;break;
