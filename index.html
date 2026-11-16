@@ -2619,6 +2619,9 @@ const PER={year:d=>d.slice(0,4),month:d=>d.slice(0,7),week:d=>weekOf(d)};
 const perLabel=(g,k)=>k==='~'?'Date Unknown':g==='year'?k:g==='month'?`${MONF[+k.slice(5,7)-1]} ${k.slice(0,4)}`:`Week of ${fmtDateY(k)}`;
 function periodGroups(list,g){const groups={};list.forEach(t=>{const d=finDate(t),k=d?PER[g](d):'~';(groups[k]=groups[k]||[]).push(t)});return Object.keys(groups).sort((a,b)=>a==='~'?1:b==='~'?-1:b.localeCompare(a)).map(k=>[k,groups[k]])}
 const nFilters=()=>Object.keys(LIB0).filter(k=>lib.f[k]!==LIB0[k]&&(k!=='owner'||lib.tab==='family')).length;   // Owner applies to the group library only
+// Own but Not Started: I own a copy and haven't begun any reading of it. Being on To Read or in the Reading Queue
+// doesn't count as starting (before Nov 16 those books dropped out of this filter).
+const ownNotStarted=t=>copiesOf(t.id).some(c=>c.owner==='me')&&!S.books.some(b=>b.titleId===t.id&&b.status!=='want');
 function mbStatus(t){const r=myReading(t.id);if(r)return r.status;return copiesOf(t.id).some(c=>c.owner==='me')?'owned':null}
 function baseList(){
   if(lib.tab==='family')return S.titles.filter(t=>sharedCopiesOf(t.id).length);
@@ -2627,7 +2630,7 @@ function baseList(){
 }
 function libTitles(){
   let list=baseList();
-  if(lib.tab==='mybooks'&&lib.mb!=='all')list=list.filter(t=>lib.mb==='fav'?isFav(t.id):lib.mb==='own'?copiesOf(t.id).some(c=>c.owner==='me'):mbStatus(t)===lib.mb);   // Owned: every book I own a copy of, whatever its status
+  if(lib.tab==='mybooks'&&lib.mb!=='all')list=list.filter(t=>lib.mb==='fav'?isFav(t.id):lib.mb==='own'?copiesOf(t.id).some(c=>c.owner==='me'):lib.mb==='owned'?ownNotStarted(t):mbStatus(t)===lib.mb);   // Owned: every book I own a copy of, whatever its status
   const q=lib.q.trim().toLowerCase(),f=lib.f;
   list=list.filter(t=>{
     const cs=lib.tab==='family'?sharedCopiesOf(t.id):copiesOf(t.id);
@@ -2649,7 +2652,7 @@ const MB=[['all','All'],['reading','Currently Reading'],['paused','Paused'],['wa
 const MB_ORDER=['reading','paused','want','owned','finished','dnf'],MB_LABEL={reading:'Currently Reading',paused:'Paused',want:'To Read',owned:'Own but Not Started',finished:'Finished',dnf:'Did Not Finish'};
 /* Own (every book I own a copy of, whatever its status) sits just before Own but Not Started (James, Nov 10). */
 const ownChip=base=>{const n=base.filter(t=>copiesOf(t.id).some(c=>c.owner==='me')).length;return n||lib.mb==='own'?`<button class="tab sm" aria-pressed="${lib.mb==='own'}" data-act="mbChip" data-v="own">Own <span class="cnt">${n}</span></button>`:''};
-function mbChips(){const base=baseList();return `<div class="chips mb-chips" role="group" aria-label="Filter by status">${MB.map(([k,l])=>{const n=k==='all'?base.length:base.filter(t=>mbStatus(t)===k).length;return (k==='owned'?ownChip(base):'')+`<button class="tab sm" aria-pressed="${lib.mb===k}" data-act="mbChip" data-v="${k}">${l} <span class="cnt">${n}</span></button>`}).join('')}${(()=>{const n=base.filter(t=>isFav(t.id)).length;return n||lib.mb==='fav'?`<button class="tab sm" aria-pressed="${lib.mb==='fav'}" data-act="mbChip" data-v="fav"><span aria-hidden="true">♥ </span>Favorites <span class="cnt">${n}</span></button>`:''})()}${(()=>{const n=mySeries().length;return n?`<button class="tab sm" aria-pressed="${lib.mb==='series'}" data-act="mbChip" data-v="series">Series <span class="cnt">${n}</span></button>`:''})()}</div>`}
+function mbChips(){const base=baseList();return `<div class="chips mb-chips" role="group" aria-label="Filter by status">${MB.map(([k,l])=>{const n=k==='all'?base.length:k==='owned'?base.filter(ownNotStarted).length:base.filter(t=>mbStatus(t)===k).length;return (k==='owned'?ownChip(base):'')+`<button class="tab sm" aria-pressed="${lib.mb===k}" data-act="mbChip" data-v="${k}">${l} <span class="cnt">${n}</span></button>`}).join('')}${(()=>{const n=base.filter(t=>isFav(t.id)).length;return n||lib.mb==='fav'?`<button class="tab sm" aria-pressed="${lib.mb==='fav'}" data-act="mbChip" data-v="fav"><span aria-hidden="true">♥ </span>Favorites <span class="cnt">${n}</span></button>`:''})()}${(()=>{const n=mySeries().length;return n?`<button class="tab sm" aria-pressed="${lib.mb==='series'}" data-act="mbChip" data-v="series">Series <span class="cnt">${n}</span></button>`:''})()}</div>`}
 /* Series (My Books → Series): every series with at least one of my books, in order, with how many I've finished,
    each book's status, and the next one to read. Books the group owns in the series are included; numbers no one
    has added show as a gap up to the known length (Books in the Series). */
@@ -3290,7 +3293,7 @@ function nsSave(){const snap=snapshot(),before=(S.noSug||[]).length;S.noSug=[...
   toast(n?`${n===1?'1 book is':`${n} books are`} left out of your suggestions.`:'No books are left out of your suggestions.',n!==before?restoreTo(snap):null)}
 /* Already on Your Shelf: books I own a copy of and haven't started, longest on the shelf first. */
 function ruleShelf(){
-  return S.titles.filter(t=>mbStatus(t)==='owned'&&!hiddenT(t)).sort((a,b)=>(a.added||0)-(b.added||0)).slice(0,6)
+  return S.titles.filter(t=>ownNotStarted(t)&&!hiddenT(t)).sort((a,b)=>(a.added||0)-(b.added||0)).slice(0,6)
     .map(t=>({rule:'toread',reason:t.added?`On your shelf since ${fmtMonY(new Date(t.added).toISOString().slice(0,10))}`:'On your shelf, not started yet',t}))}
 function ruleSeries(){
   const fin=new Set(S.books.filter(b=>b.status==='finished').map(b=>b.titleId)),busy=new Set(S.books.filter(b=>b.status==='reading'||b.status==='paused').map(b=>b.titleId));
@@ -3306,7 +3309,8 @@ const wantList=()=>S.books.filter(b=>b.status==='want'&&titleById(b.titleId));
 /* Longest-waiting first. Books added before To Read dates were saved have no date, so they come first. */
 function ruleToRead(){
   const q=new Set(S.upNext||[]),added=b=>titleById(b.titleId)?.added||0;
-  return wantList().filter(b=>!q.has(b.id)&&!hiddenT(titleById(b.titleId))).sort((a,b)=>(a.wantSince||'').localeCompare(b.wantSince||'')||added(a)-added(b)).slice(0,6)
+  const onShelf=new Set(ruleShelf().map(i=>i.t.id));   // shown in Already on Your Shelf: not repeated here
+  return wantList().filter(b=>!q.has(b.id)&&!onShelf.has(b.titleId)&&!hiddenT(titleById(b.titleId))).sort((a,b)=>(a.wantSince||'').localeCompare(b.wantSince||'')||added(a)-added(b)).slice(0,6)
     .map(b=>({rule:'toread',reason:b.wantSince?`On your To Read since ${fmtMonY(b.wantSince)}`:'On your To Read',t:titleById(b.titleId)}));
 }
 /* Get This Book options in order: Borrow from a member, Read Free Online, Borrow Free on Open Library, Find at
