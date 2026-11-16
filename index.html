@@ -2622,6 +2622,9 @@ const nFilters=()=>Object.keys(LIB0).filter(k=>lib.f[k]!==LIB0[k]&&(k!=='owner'|
 // Own but Not Started: I own a copy and haven't begun any reading of it. Being on To Read or in the Reading Queue
 // doesn't count as starting (before Nov 16 those books dropped out of this filter).
 const ownNotStarted=t=>copiesOf(t.id).some(c=>c.owner==='me')&&!S.books.some(b=>b.titleId===t.id&&b.status!=='want');
+// Finished: any book I've finished at least once, even if I'm rereading it now or put it back on To Read (before
+// Nov 16 a reread hid the book from Finished, because each book showed under one status only).
+const everFinished=t=>S.books.some(b=>b.titleId===t.id&&b.status==='finished');
 function mbStatus(t){const r=myReading(t.id);if(r)return r.status;return copiesOf(t.id).some(c=>c.owner==='me')?'owned':null}
 function baseList(){
   if(lib.tab==='family')return S.titles.filter(t=>sharedCopiesOf(t.id).length);
@@ -2630,7 +2633,7 @@ function baseList(){
 }
 function libTitles(){
   let list=baseList();
-  if(lib.tab==='mybooks'&&lib.mb!=='all')list=list.filter(t=>lib.mb==='fav'?isFav(t.id):lib.mb==='own'?copiesOf(t.id).some(c=>c.owner==='me'):lib.mb==='owned'?ownNotStarted(t):mbStatus(t)===lib.mb);   // Owned: every book I own a copy of, whatever its status
+  if(lib.tab==='mybooks'&&lib.mb!=='all')list=list.filter(t=>lib.mb==='fav'?isFav(t.id):lib.mb==='own'?copiesOf(t.id).some(c=>c.owner==='me'):lib.mb==='owned'?ownNotStarted(t):lib.mb==='finished'?everFinished(t):mbStatus(t)===lib.mb);   // Owned: every book I own a copy of, whatever its status
   const q=lib.q.trim().toLowerCase(),f=lib.f;
   list=list.filter(t=>{
     const cs=lib.tab==='family'?sharedCopiesOf(t.id):copiesOf(t.id);
@@ -2652,7 +2655,7 @@ const MB=[['all','All'],['reading','Currently Reading'],['paused','Paused'],['wa
 const MB_ORDER=['reading','paused','want','owned','finished','dnf'],MB_LABEL={reading:'Currently Reading',paused:'Paused',want:'To Read',owned:'Own but Not Started',finished:'Finished',dnf:'Did Not Finish'};
 /* Own (every book I own a copy of, whatever its status) sits just before Own but Not Started (James, Nov 10). */
 const ownChip=base=>{const n=base.filter(t=>copiesOf(t.id).some(c=>c.owner==='me')).length;return n||lib.mb==='own'?`<button class="tab sm" aria-pressed="${lib.mb==='own'}" data-act="mbChip" data-v="own">Own <span class="cnt">${n}</span></button>`:''};
-function mbChips(){const base=baseList();return `<div class="chips mb-chips" role="group" aria-label="Filter by status">${MB.map(([k,l])=>{const n=k==='all'?base.length:k==='owned'?base.filter(ownNotStarted).length:base.filter(t=>mbStatus(t)===k).length;return (k==='owned'?ownChip(base):'')+`<button class="tab sm" aria-pressed="${lib.mb===k}" data-act="mbChip" data-v="${k}">${l} <span class="cnt">${n}</span></button>`}).join('')}${(()=>{const n=base.filter(t=>isFav(t.id)).length;return n||lib.mb==='fav'?`<button class="tab sm" aria-pressed="${lib.mb==='fav'}" data-act="mbChip" data-v="fav"><span aria-hidden="true">♥ </span>Favorites <span class="cnt">${n}</span></button>`:''})()}${(()=>{const n=mySeries().length;return n?`<button class="tab sm" aria-pressed="${lib.mb==='series'}" data-act="mbChip" data-v="series">Series <span class="cnt">${n}</span></button>`:''})()}</div>`}
+function mbChips(){const base=baseList();return `<div class="chips mb-chips" role="group" aria-label="Filter by status">${MB.map(([k,l])=>{const n=k==='all'?base.length:k==='owned'?base.filter(ownNotStarted).length:k==='finished'?base.filter(everFinished).length:base.filter(t=>mbStatus(t)===k).length;return (k==='owned'?ownChip(base):'')+`<button class="tab sm" aria-pressed="${lib.mb===k}" data-act="mbChip" data-v="${k}">${l} <span class="cnt">${n}</span></button>`}).join('')}${(()=>{const n=base.filter(t=>isFav(t.id)).length;return n||lib.mb==='fav'?`<button class="tab sm" aria-pressed="${lib.mb==='fav'}" data-act="mbChip" data-v="fav"><span aria-hidden="true">♥ </span>Favorites <span class="cnt">${n}</span></button>`:''})()}${(()=>{const n=mySeries().length;return n?`<button class="tab sm" aria-pressed="${lib.mb==='series'}" data-act="mbChip" data-v="series">Series <span class="cnt">${n}</span></button>`:''})()}</div>`}
 /* Series (My Books → Series): every series with at least one of my books, in order, with how many I've finished,
    each book's status, and the next one to read. Books the group owns in the series are included; numbers no one
    has added show as a gap up to the known length (Books in the Series). */
@@ -2763,7 +2766,7 @@ function mySeries(){
   return Object.keys(by).filter(sn=>by[sn].some(t=>mine.has(t.id))).map(sn=>{
     const ts=by[sn].sort((a,b)=>a.seriesNo-b.seriesNo||sortKey(a.title).localeCompare(sortKey(b.title)));
     const st=t=>myReading(t.id)?.status||(copiesOf(t.id).some(c=>c.owner==='me')?'owned':'none');
-    const done=ts.filter(t=>st(t)==='finished').length,len=Math.max(S.seriesLen?.[sn]||0,Math.ceil(ts[ts.length-1].seriesNo),ts.length);
+    const done=ts.filter(everFinished).length,len=Math.max(S.seriesLen?.[sn]||0,Math.ceil(ts[ts.length-1].seriesNo),ts.length);
     const cur=ts.find(t=>st(t)==='reading'||st(t)==='paused'),next=cur||ts.find(t=>!['finished','dnf'].includes(st(t))&&!hiddenT(t));
     return {sn,ts,st,done,len,cur,next,complete:done>=len}});
 }
