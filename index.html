@@ -339,6 +339,7 @@ textarea.inp{resize:none;min-height:0;overflow-y:hidden;max-height:240px}#bdNote
 .more-n{font-size:12px;color:var(--text-2);padding:0 6px}
 .b-row{display:flex;align-items:center;gap:10px;padding:8px 0;flex-wrap:wrap}.b-row+.b-row{border-top:1px solid var(--border)}
 .b-n{width:20px;text-align:center;color:var(--text-2);font-size:13px}
+.up-open{display:flex;flex-direction:column;align-items:flex-start;gap:1px;border:0;background:none;padding:2px 0;text-align:left;color:inherit;cursor:pointer;max-width:100%}.up-open:hover b{color:var(--primary);text-decoration:underline;text-underline-offset:3px}.b-row .cover-btn{flex:none}
 .b-row .cover{width:34px;padding:3px;flex:none}.b-row .cover .ct{font-size:5px}.b-row .cover .ca,.b-row .cover .fmt{display:none}
 .tw-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:10px;flex-wrap:wrap}
 .tw-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
@@ -4613,9 +4614,9 @@ const upList=()=>(S.upNext||[]).map(id=>book(id)).filter(b=>b&&b.status==='want'
 function upNextPanel(){
   const L=upList();
   return `<section class="card upn"><div class="card-h"><span class="ico o">${ic('play')}</span><h2>Reading Queue</h2><span class="count">${L.length?`${L.length} of 10`:''}</span></div>
-  ${L.length?L.map((b,i)=>`<div class="b-row"><span class="b-n">${i+1}</span>${libCover(titleById(b.titleId)||b)}<div class="cp-main"><div class="small"><b>${esc(b.title)}</b></div><div class="xs muted">${esc(b.author)}</div></div>
+  ${L.length?L.map((b,i)=>{const tt=b.titleId&&titleById(b.titleId),op=tt?`data-act="openTitle" data-id="${tt.id}"`:`data-act="editBook" data-book="${b.id}"`;return `<div class="b-row"><span class="b-n">${i+1}</span><button type="button" class="cover-btn" ${op} tabindex="-1" aria-hidden="true">${libCover(tt||b)}</button><div class="cp-main"><button type="button" class="up-open" ${op}><span class="small"><b>${esc(b.title)}</b></span><span class="xs muted">${esc(b.author)}</span></button></div>
     <span class="up-acts"><button class="icon-btn" data-act="upMove" data-id="${b.id}" data-v="-1" ${i===0?'disabled':''} aria-label="Move up">${ic('chevUp')}</button><button class="icon-btn" data-act="upMove" data-id="${b.id}" data-v="1" ${i===L.length-1?'disabled':''} aria-label="Move down">${ic('chev')}</button>
-    <button class="btn btn-ghost sm" data-act="bdLog" data-id="${b.id}">${ic('play')}Start Reading</button><button class="link-btn sm" data-act="upRm" data-id="${b.id}">Remove</button></span></div>`).join('')
+    <button class="btn btn-ghost sm" data-act="bdLog" data-id="${b.id}">${ic('play')}Start Reading</button><button class="link-btn sm" data-act="upRm" data-id="${b.id}">Remove</button></span></div>`}).join('')
   :`<p class="small muted" style="margin:0">Line up the next few books you want to read. Tap Add to Reading Queue on any To Read book below.</p>`}</section>`;
 }
 
