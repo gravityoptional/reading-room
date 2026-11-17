@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Reading Room — Editorial Prototype</title>
+<title>Reading Ember — Editorial Prototype</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&display=swap" rel="stylesheet">
@@ -916,7 +916,8 @@ main section.card .card-h .ico{display:none}
 .req-st{font-size:12px;color:var(--text-2)}.req-st.ok{color:var(--primary);font-weight:600}
 .req-msg{display:block;margin-top:3px;font-style:italic;color:var(--text-2)}.notif p.req-msg{margin:2px 0 0;font-size:13px}
 .beta-tag{background:#EAB308!important;color:#1F2937!important}
-.next-tag{font:600 11px/1 Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:var(--accent,#F97316);border-radius:999px;padding:4px 8px;vertical-align:middle}
+.next-tag{font:700 14px/1 Inter,system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#fff;background:var(--accent,#F97316);border-radius:999px;padding:6px 12px;vertical-align:middle}
+@media(max-width:480px){.next-tag{font-size:12px;padding:5px 9px}.is-beta .grp-btn #grpName{display:none}.is-beta .grp-btn{flex:none}}
 .req-back{font-size:13px;color:var(--text);font-style:italic}
 .notif-req .req-compose{margin-top:8px}.req-reply{flex-basis:100%}
 .req-mine{flex-basis:100%;overflow-wrap:anywhere;min-width:0}
@@ -1345,7 +1346,8 @@ a.btn{text-decoration:none}
 @media(max-width:359px){
   .top-in{padding:10px;gap:6px}
   .brand{font-size:17px;gap:5px}
-  .next-tag{font-size:8px;padding:3px 5px}
+  .next-tag{font-size:11px;padding:4px 7px;letter-spacing:.05em}
+  .is-beta .brand{font-size:16px}
   .top-right{gap:3px}
   .top-right .icon-btn{padding:5px}
   .grp-btn{padding:5px;width:30px}
@@ -1378,7 +1380,7 @@ a.btn{text-decoration:none}
 <body>
 <header class="top">
   <div class="top-in">
-    <button class="brand" data-go="dashboard" aria-label="Reading Room home">Reading Room</button>
+    <button class="brand" data-go="dashboard" aria-label="Reading Ember home">Reading Ember</button>
     <nav class="nav" aria-label="Main">
       <button data-go="dashboard"><span data-i="home"></span>Dashboard</button>
       <button data-go="library"><span data-i="library"></span>Library</button>
@@ -1554,7 +1556,8 @@ function seed(){
    prototype on Nov 4, 2026: the first time Alpha opens in a browser that has the test bed's data, it carries that
    data over once, keeping the old main data as a "-before-alpha" backup. */
 const BETA=true,NEXT=BETA;   // Nov 9, 2026: Alpha retired; the one test copy (site address, and /beta/ forwards to it) keeps Beta's label and saved data
-document.title=document.title.replace('Reading Room',BETA?'Reading Room Beta':'Reading Room Alpha');
+document.title=document.title.replace('Reading Ember',BETA?'Reading Ember Beta':'Reading Ember Alpha');
+if(BETA)document.documentElement.classList.add('is-beta');
 document.querySelector('.brand').insertAdjacentHTML('beforeend',BETA?' <span class="next-tag beta-tag">Beta</span>':' <span class="next-tag">Alpha</span>');
 if(!BETA){try{const ls=localStorage;if(!ls.getItem('rr-alpha-carried')){if(ls.getItem('rr-next-v1'))[['rr-next-v1','rr-editorial-proto-v1'],['rr_next_hero_v1','rr_editorial_hero_v1'],['rr_next_drafts_v1','rr_drafts_v1'],['rr-next-disc-v1','rr-disc-v1']].forEach(([from,to])=>{const v=ls.getItem(from);if(v==null)return;try{const old=ls.getItem(to);if(old!=null)ls.setItem(to+'-before-alpha',old)}catch(e){}try{ls.setItem(to,v)}catch(e){}});ls.setItem('rr-alpha-carried','1')}}catch(e){}}
 const KEY=NEXT?'rr-next-v1':'rr-editorial-proto-v1';
@@ -1985,7 +1988,7 @@ function bookStats(b){
   const started=b.started||ss.map(s=>s.date).sort()[0]||null;
   return {left,per,toGo,finish,started};
 }
-/* Opens a reading book's details on My Reading; books without a Reading Room title open Edit instead. */
+/* Opens a reading book's details on My Reading; books without a Reading Ember title open Edit instead. */
 const openRead=b=>b.titleId&&titleById(b.titleId)?`data-act="openTitle" data-id="${b.titleId}" data-tab="mine"`:`data-act="editBook" data-book="${b.id}"`;
 function detailPanel(b,list){
   const audio=b.format==='audio',st=bookStats(b),ms=milestone(b),n=list.length;
@@ -2147,7 +2150,7 @@ function tourSteps(mode){
   const solo=!!S.settings.solo,admin=!!S.me.admin,G=esc(GN());
   const noBooks=()=>!S.books.some(b=>b.status==='reading'||b.status==='paused');
   const finish={id:'finish',page:'history',sel:'[data-tour=account]',title:'You’re Ready!',
-    text:()=>`Every page counts. A few minutes today is how a reading habit starts, and Reading Room will keep track of the rest. Find this tour anytime under Take the Tour in your account menu.${solo?' Reading with family or a book club? You can join or start a group anytime.':''}`,
+    text:()=>`Every page counts. A few minutes today is how a reading habit starts, and Reading Ember will keep track of the rest. Find this tour anytime under Take the Tour in your account menu.${solo?' Reading with family or a book club? You can join or start a group anytime.':''}`,
     final:()=>S.books.length?{act:'tourLog',label:'Log Your Reading'}:{act:'tourFind',label:'Add Your First Book'}};
   if(mode==='group')return [
     {id:'gwelcome',page:'dashboard',title:`Welcome to ${G}`,text:()=>(window.RR_INVITER?`${esc(RR_INVITER)} invited you. `:'')+'You’re reading with a group now. Here’s what’s new, in a few quick stops. Your reading stays yours and counts in every group you join.'},
@@ -2156,7 +2159,7 @@ function tourSteps(mode){
     {id:'gch',page:'challenges',sel:'[data-tour=ch-family]',title:'Group Challenges and Battle of the Books',text:()=>'Join a challenge your group started, or organize a Battle of the Books, where everyone adds books to a shared list, reads them all, and then meets for an in-person quiz.'},
     {id:'gpriv',page:'dashboard',sel:'[data-tour=account]',title:'Your Privacy',text:()=>'Choose what your group sees. You can change this anytime in your account menu.',extra:privacyExtra,final:()=>({act:'tourEnd',label:'Done'})}];
   return [
-    {id:'welcome',page:'dashboard',title:solo?'Welcome to Reading Room':`Welcome to ${G}`,text:()=>`${!solo&&window.RR_INVITER?`${esc(RR_INVITER)} invited you. `:''}A quick look around, about a minute. Leave anytime with Skip${matchMedia('(pointer: fine)').matches?' or Esc':''}.`},
+    {id:'welcome',page:'dashboard',title:solo?'Welcome to Reading Ember':`Welcome to ${G}`,text:()=>`${!solo&&window.RR_INVITER?`${esc(RR_INVITER)} invited you. `:''}A quick look around, about a minute. Leave anytime with Skip${matchMedia('(pointer: fine)').matches?' or Esc':''}.`},
     {id:'privacy',cond:!solo,page:'dashboard',sel:'[data-tour=account]',title:'First, Your Privacy',text:()=>'You’re joining people who can see each other’s reading. New accounts start private; choose what your group sees. You can change this anytime in your account menu.',extra:privacyExtra},
     {id:'goal',page:'dashboard',sel:'[data-tour=goal]',title:'Today’s Goal and Streak',text:()=>'The ring fills as you read toward today’s goal. Your streak counts reading days, and rest days keep it going. Use Edit Goal to choose minutes, pages, or both, and how many rest days you get each week.'},
     {id:'log',page:'dashboard',sel:'[data-tour=log]',title:'Log Reading and the Timer',text:()=>'Log Reading records pages or minutes in a few seconds. Start Timer counts the minutes while you read, then logs them for you.'},
@@ -2256,7 +2259,7 @@ function maybeOfferTour(){
 function showTourOffer(mode){
   hideTourOffer();const d=document.createElement('div');d.id='tourOffer';d.className='tour-offer card';d.setAttribute('role','region');d.setAttribute('aria-label','Tour');
   d.innerHTML=mode==='group'?`<div class="small"><b>Welcome to ${esc(GN())}</b><span class="muted" style="display:block">Take a quick look at what’s new with a group? A few quick stops.</span></div><div class="tour-btns"><button class="btn btn-primary sm" data-act="tourGo" data-v="group">Show Me</button><button class="btn btn-ghost sm" data-act="tourLater" data-v="group">Not Now</button></div>`
-    :`<div class="small"><b>New here?</b><span class="muted" style="display:block">Take a one-minute tour of Reading Room.</span></div><div class="tour-btns"><button class="btn btn-primary sm" data-act="tourGo" data-v="full">Start Tour</button><button class="btn btn-ghost sm" data-act="tourLater" data-v="full">Not Now</button></div>`;
+    :`<div class="small"><b>New here?</b><span class="muted" style="display:block">Take a one-minute tour of Reading Ember.</span></div><div class="tour-btns"><button class="btn btn-primary sm" data-act="tourGo" data-v="full">Start Tour</button><button class="btn btn-ghost sm" data-act="tourLater" data-v="full">Not Now</button></div>`;
   document.body.appendChild(d);
 }
 function hideTourOffer(){document.getElementById('tourOffer')?.remove()}
@@ -3046,7 +3049,7 @@ function refreshLib(){
 }
 
 /* ---------- discover ----------
-   Discover suggests books from outside Reading Room, says why each one is there, and says where to get it.
+   Discover suggests books from outside Reading Ember, says why each one is there, and says where to get it.
    Release 1: More by This Author (from Open Library, using saved author keys), the Free to Read Online label,
    Choose From What You Have (Continue a Series, From Your To Read, Surprise Me), and Recommendations. */
 const DISC_KEY=NEXT?'rr-next-disc-v1':'rr-disc-v1',DISC_TTL=14*864e5,DISC_AUTHORS=8;
@@ -3161,7 +3164,7 @@ async function enFill(){
 function discRefresh(){clearTimeout(discTimer);discTimer=setTimeout(discLoad,1500)}
 const discKey=it=>it.t?(it.t.olKey||'t:'+it.t.id):it.x.key;
 const discHidden=k=>(S.discHide||[]).includes(k);
-/* A book counts as hidden whichever way it was hidden: by its Open Library key or by its Reading Room title. */
+/* A book counts as hidden whichever way it was hidden: by its Open Library key or by its Reading Ember title. */
 const hiddenT=t=>!!t&&(discHidden('t:'+t.id)||!!t.olKey&&discHidden(t.olKey));
 const hiddenIt=it=>it.t?hiddenT(it.t):discHidden(it.x.key);
 /* Already Read It: remembers you've read a book (no date) so it stays out of suggestions and counts toward
@@ -3177,7 +3180,7 @@ const finUnknown=b=>finDateFor===b.id?`<span class="fin-date"><input type="date"
 const quickReadUndo=new Map();
 function undoableQuickRead(tid){const q=quickReadUndo.get(tid),b=q&&book(q.id);return b&&JSON.stringify(b)===q.original&&!S.sessions.some(x=>x.bookId===b.id)?b:null;}
 const readIt=id=>S.books.some(b=>b.titleId===id&&b.readIt&&b.status==='finished'&&!b.finished);
-/* Open Library results that match a book already in Reading Room use that book, so its copies show. */
+/* Open Library results that match a book already in Reading Ember use that book, so its copies show. */
 function discMatch(x){
   const n=normT(x.title),ln=lastName(x.author.split(',')[0]).toLowerCase();
   return S.titles.find(t=>t.olKey&&t.olKey===x.key)||S.titles.find(t=>normT(t.title)===n&&lastName(t.author).toLowerCase()===ln);
@@ -3490,7 +3493,7 @@ function renderNextDlg(){
   ${nxShare()}${body}
   <div class="nx-f"><button class="link-btn" data-go="discover">See More in Discover</button><button class="btn btn-primary" data-act="nextClose" autofocus>Done</button></div>`;
 }
-/* Books opened from Discover that aren't in Reading Room get a title so their details can show; it's dropped
+/* Books opened from Discover that aren't in Reading Ember get a title so their details can show; it's dropped
    again on close unless something now uses it (To Read, a copy, a note, Already Read It...). */
 function pruneDisc(){
   const {titles,...rest}=S,txt=JSON.stringify(rest),n=S.titles.length;
@@ -3608,7 +3611,7 @@ const descWaiting=t=>!descOf(t)&&(!!t.olKey&&t.desc===undefined&&!(t.descTried>D
    book's details open, and never saved (Google's terms). Shown unaltered apart from formatting, with the
    "powered by Google" image and a prominent link to the book's Google Books page. */
 const gbDesc={};let gbBusy=null;
-/* Reading Room's Google Books API key. It's visible in the page by design (browser keys always are); Google only
+/* Reading Ember's Google Books API key. It's visible in the page by design (browser keys always are); Google only
    accepts it from gravityoptional.github.io and only for the Books API. country: Google needs it to answer. */
 const GB_KEY='AIzaSyAd_Iod-Yx6TgTKYHKcW-16tk36UnALHdE',GB_COUNTRY='US';
 function gbSafe(raw){
@@ -4101,7 +4104,7 @@ titleForm.addEventListener('submit',e=>{
   const title=v('tTitle'),author=v('tAuthor')||'Unknown author',pages=v('tPages'),isbn=v('tIsbn').replace(/[-\s]/g,'').toUpperCase(),sn=v('tSeries'),no=v('tSeriesNo'),len=v('tSeriesLen');
   if(!title)return er('Enter a title.');
   if(bookIdentityTaken(t.id,title,author)){const o=S.titles.find(x=>x.id!==t.id&&olKey(x.title)===olKey(title)&&olKey(x.author)===olKey(author));
-    er('Another book in Reading Room already has this title and author.');
+    er('Another book in Reading Ember already has this title and author.');
     if(o&&inMyBooks(t.id))document.getElementById('teErr').insertAdjacentHTML('beforeend',` <button type="button" class="link-btn sm" data-act="rwbUse" data-id="${t.id}" data-to="${esc(o.id)}" style="padding:0 2px">Move My Reading to That Book</button>`);return}
   if(pages&&!(/^\d+$/.test(pages)&&+pages>0))return er('Enter the number of pages as a whole number, or leave it blank.');
   const mine=S.books.filter(b=>b.titleId===t.id);
@@ -4139,7 +4142,7 @@ function adResults(){
   const raw=ad.q.trim(),q=raw.toLowerCase(),isbn=raw.replace(/[-\s]/g,'');
   if(!q)return `<p class="xs muted" style="margin:0">Type a title, author, or ISBN. Choose a book, then set its reading status and whether you own a copy.</p>`;
   const res=S.titles.filter(t=>(t.title+' '+t.author).toLowerCase().includes(q)||t.isbn&&t.isbn===isbn);
-  const local=res.length?`<div class="pick-h">In Reading Room</div><div class="pick-list">${res.map(adLocalRow).join('')}</div>`:'';
+  const local=res.length?`<div class="pick-h">In Reading Ember</div><div class="pick-list">${res.map(adLocalRow).join('')}</div>`:'';
   return local+olSection(res);
 }
 function adLocalRow(t){const r=myReading(t.id),own=copiesOf(t.id).some(c=>c.owner==='me'),added=ad.added?.has(t.id);
@@ -4367,7 +4370,7 @@ async function coverFill(){
     }
   }finally{coverBusy=false}
 }
-/* Turns an Open Library result into a Reading Room title, reusing the existing one if it's already here. */
+/* Turns an Open Library result into a Reading Ember title, reusing the existing one if it's already here. */
 function olTitle(i){return olTitleFrom(ad.ol.items[i])}
 function olTitleFrom(x){
   const ex=olExisting(x);if(ex){if(!ex.olAt&&(!ex.olKey||ex.olKey===x.key))olSave(ex,x);return ex}
@@ -4854,7 +4857,7 @@ function challengesView(){
   if(chTab==='mine')body=mine.length?`<div class="ch-grid">${mine.map(chCard).join('')}</div>${hidLink}`:hidLink+`<div class="empty">${ic('target')}<h3>No Challenges Yet</h3><p>Create a personal challenge or join one your group started.</p><button class="btn btn-primary" data-act="chNew">${ic('plus')}Create Challenge</button></div>`;
   else if(chTab==='family')body=fam.length?`<div class="ch-grid">${fam.map(chCard).join('')}</div>${hidLink}`:hidLink+`<div class="empty">${ic('users')}<h3>No Group Challenges Yet</h3><p>Start one and invite your group to join.</p><button class="btn btn-primary" data-act="chNew" data-mode="coop">${ic('plus')}Create Challenge</button></div>`;
   else if(chTab==='battle'){const order={active:0,upcoming:1,completed:2};const all=[...S.battles].sort((a,b)=>order[bStatus(a)]-order[bStatus(b)]||b.event.localeCompare(a.event)),nh=all.filter(b=>hiddenB().includes(b.id)).length,bs=showHiddenB?all:all.filter(b=>!hiddenB().includes(b.id));
-    body=`<div class="tw-head"><span class="small muted">The battle happens in person. Reading Room keeps the shared list and everyone’s progress.</span><button class="btn btn-ghost" data-act="bNew">${ic('plus')}Start a Battle</button></div>${bs.length?`<div class="b-list">${bs.map(battleCard).join('')}</div>`:`<div class="empty">${ic('library')}<h3>No Battles Yet</h3><p>Start one to build a shared reading list.</p></div>`}${nh?`<button class="link-btn sm b-hidden-t" data-act="bShowHidden" style="margin-top:12px">${showHiddenB?'Hide':'Show'} ${nh} Hidden Battle${nh===1?'':'s'}</button>`:''}`}
+    body=`<div class="tw-head"><span class="small muted">The battle happens in person. Reading Ember keeps the shared list and everyone’s progress.</span><button class="btn btn-ghost" data-act="bNew">${ic('plus')}Start a Battle</button></div>${bs.length?`<div class="b-list">${bs.map(battleCard).join('')}</div>`:`<div class="empty">${ic('library')}<h3>No Battles Yet</h3><p>Start one to build a shared reading list.</p></div>`}${nh?`<button class="link-btn sm b-hidden-t" data-act="bShowHidden" style="margin-top:12px">${showHiddenB?'Hide':'Show'} ${nh} Hidden Battle${nh===1?'':'s'}</button>`:''}`}
   else body=trophyWall();
   return `<div class="lib"><div class="lib-h"><div><h1 class="page-h">Challenges</h1><p class="muted" style="margin:2px 0 0">Personal and group reading challenges to keep you motivated.</p></div><button class="btn btn-primary" data-act="chNew">${ic('plus')}Create Challenge</button></div>
   <div class="tabs" role="tablist" aria-label="Challenge sections" data-tour="challenge-tabs">${tabs.map(([k,l,n])=>`<button class="tab" role="tab" id="tab-ch-${k}" aria-controls="chPanel" tabindex="${chTab===k?0:-1}" data-tour="ch-${k}" aria-selected="${chTab===k}" data-act="chTab" data-v="${k}">${l} <span class="cnt">${n}</span></button>`).join('')}</div>
@@ -5741,9 +5744,9 @@ function dataDownload(quiet){
 let dataPick=null;
 function dataChoose(){const inp=document.createElement('input');inp.type='file';inp.accept='.json,application/json';inp.hidden=true;document.body.appendChild(inp);
   inp.addEventListener('change',async()=>{const f=inp.files[0];inp.remove();if(!f)return;
-    let obj;try{obj=JSON.parse(await f.text())}catch(e){toast('That file isn’t a Reading Room data file.',null,'Choose a .json file made by Download My Data.');return}
+    let obj;try{obj=JSON.parse(await f.text())}catch(e){toast('That file isn’t a Reading Ember data file.',null,'Choose a .json file made by Download My Data.');return}
     const data=obj&&obj.app==='reading-room'&&obj.data?obj.data:obj;
-    if(!data||typeof data!=='object'||data.v!==6||!Array.isArray(data.books)||!Array.isArray(data.titles)){toast('That file isn’t a Reading Room data file.',null,'Choose a .json file made by Download My Data.');return}
+    if(!data||typeof data!=='object'||data.v!==6||!Array.isArray(data.books)||!Array.isArray(data.titles)){toast('That file isn’t a Reading Ember data file.',null,'Choose a .json file made by Download My Data.');return}
     dataPick={data,meta:obj.app==='reading-room'?obj:{},fileName:f.name};dataConfirm()});
   inp.click()}
 function dataConfirm(){const d=dataPick;if(!d)return;const a=dataCounts(d.data),b=dataCounts(S),m=d.meta;
