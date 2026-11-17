@@ -12,7 +12,7 @@
   --bg:#FAF7EE; --surface:#FDFAF0; --surface-alt:#F4F0E6; --card:#FDFAF0;
   --primary:#2E7D52; --primary-hover:#256746; --primary-light:#E8F4EC; --on-primary:#FFFFFF;
   --secondary:#6B7280; --text:#1F2937; --text-2:#6B7280; --border:#E6DCC6;
-  --orange:#F97316; --badge:#C2410C; --badge-ink:#FFFFFF; --green:#2E7D52; --red:#EF4444; --blue:#3B82F6; --purple:#8B5CF6;
+  --orange:#F97316; --badge:#C2410C; --badge-ink:#FFFFFF; --green:#2E7D52; --red:#EF4444; --blue:#3B82F6; --purple:#8B5CF6; --red-ink:#B91C1C; --blue-ink:#1D4ED8;
   --track:#EDE8DA; --shadow:0 1px 2px rgba(31,41,55,.05);
   --hero-scene:linear-gradient(135deg,#E8DCBC 0%,#C9C49A 38%,#9DB084 64%,#56705A 100%); --hero-a:#F1EAD8; --hero-b:#E6DCC4; --shelf:#D8C9A8;
   --sans:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
@@ -27,7 +27,7 @@
     --bg:#0F172A; --surface:#1E293B; --surface-alt:#334155; --card:#1E293B;
     --primary:#34D399; --primary-hover:#10B981; --primary-light:#064E3B; --on-primary:#06281B;
     --secondary:#94A3B8; --text:#F8FAFC; --text-2:#94A3B8; --border:#334155;
-    --orange:#FB923C; --badge:#FB923C; --badge-ink:#0F172A; --green:#34D399; --track:#334155; --shadow:none;
+    --orange:#FB923C; --badge:#FB923C; --badge-ink:#0F172A; --red-ink:#FCA5A5; --blue-ink:#93C5FD; --green:#34D399; --track:#334155; --shadow:none;
     --hero-scene:linear-gradient(135deg,#2C4538,#1C3030 50%,#172638); --hero-a:#1E293B; --hero-b:#16213A; --shelf:#475569; color-scheme:dark;
   }
 }
@@ -35,7 +35,7 @@
   --bg:#0F172A; --surface:#1E293B; --surface-alt:#334155; --card:#1E293B;
   --primary:#34D399; --primary-hover:#10B981; --primary-light:#064E3B; --on-primary:#06281B;
   --secondary:#94A3B8; --text:#F8FAFC; --text-2:#94A3B8; --border:#334155;
-  --orange:#FB923C; --badge:#FB923C; --badge-ink:#0F172A; --green:#34D399; --track:#334155; --shadow:none;
+  --orange:#FB923C; --badge:#FB923C; --badge-ink:#0F172A; --red-ink:#FCA5A5; --blue-ink:#93C5FD; --green:#34D399; --track:#334155; --shadow:none;
   --hero-scene:linear-gradient(135deg,#2C4538,#1C3030 50%,#172638); --hero-a:#1E293B; --hero-b:#16213A; --shelf:#475569; color-scheme:dark;
 }
 *,*::before,*::after{box-sizing:inherit}
@@ -283,7 +283,7 @@ textarea.inp{resize:none;min-height:0;overflow-y:hidden;max-height:240px}#bdNote
 .section-t{font-family:var(--serif);font-weight:600;font-size:16px;margin:2px 0 -4px}
 .calc{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--text-2);background:var(--surface-alt);border-radius:10px;padding:9px 12px}
 .calc b{color:var(--text)}
-.err{color:var(--red);font-size:13px;min-height:0}
+.err{color:var(--red-ink);font-size:13px;min-height:0}
 .chk{display:flex;gap:8px;align-items:center;font-size:14px}
 .chk input{width:18px;height:18px;flex:none;accent-color:var(--primary)}
 .dlg-f{display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end;margin-top:6px}
@@ -346,7 +346,7 @@ textarea.inp{resize:none;min-height:0;overflow-y:hidden;max-height:240px}#bdNote
 .tw-date{color:var(--primary)!important;font-weight:600;margin-top:2px}
 .tw .tn{font-weight:600;font-size:13px;margin-top:6px;overflow-wrap:anywhere}.tw .td{font-size:11px;color:var(--text-2)}
 .tw.locked svg.hex{filter:grayscale(1);opacity:.3}.tw.locked .tn{color:var(--text-2)}
-.tw-x{position:absolute;top:10px;right:10px;background:var(--orange);color:#fff;border-radius:999px;font-size:11px;font-weight:700;padding:1px 7px}
+.tw-x{position:absolute;top:10px;right:10px;background:var(--badge);color:var(--badge-ink);border-radius:999px;font-size:11px;font-weight:700;padding:1px 7px}
 .cf-types{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:6px}
 .cf-types button{border:1px solid var(--border);background:var(--surface);border-radius:10px;padding:8px 4px;display:grid;justify-items:center;gap:4px;font-size:12px;color:var(--text-2)}
 .cf-types button[aria-pressed="true"]{border-color:var(--primary);background:var(--primary-light);color:var(--primary);font-weight:600}
@@ -465,7 +465,7 @@ button.cal-d{border:0;font:inherit;color:inherit;cursor:pointer;position:relativ
 .av-stack .avatar{width:20px;height:20px;font-size:10px;margin-left:-6px;border:2px solid var(--card)}
 .avail{font-size:12px;color:var(--text-2)}
 .avail.ok{color:var(--primary);font-weight:600}
-.avail.loan{color:var(--orange);font-weight:600}
+.avail.loan{color:var(--badge);font-weight:600}
 .lc-act{margin-top:auto;padding-top:4px}
 .btn.sm{padding:6px 10px;font-size:13px;border-radius:9px}
 .lc-act .btn{width:100%}
@@ -474,8 +474,8 @@ button.cal-d{border:0;font:inherit;color:inherit;cursor:pointer;position:relativ
 .st{display:inline-block;font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--surface-alt);color:var(--text-2)}
 .st-reading{background:var(--primary-light);color:var(--primary)}
 .st-paused{background:color-mix(in srgb,var(--orange) 15%,transparent);color:var(--orange)}
-.st-dnf{background:color-mix(in srgb,var(--red) 13%,transparent);color:var(--red)}
-.st-finished{background:color-mix(in srgb,var(--blue) 13%,transparent);color:var(--blue)}
+.st-dnf{background:color-mix(in srgb,var(--red) 13%,transparent);color:var(--red-ink)}
+.st-finished{background:color-mix(in srgb,var(--blue) 13%,transparent);color:var(--blue-ink)}
 .st-want{background:var(--primary-light);color:var(--primary)}
 .rec{font-size:12px;background:var(--surface-alt);border-radius:9px;padding:7px 9px;display:grid;gap:3px}
 .rec .link-btn{justify-self:start;padding:2px 0}
@@ -886,6 +886,9 @@ main section.card .card-h .ico{display:none}
 .cmp{margin-top:4px;color:var(--text-2);display:flex;align-items:center;gap:3px}.cmp.up{color:var(--primary)}.cmp svg.i{width:12px;height:12px}
 .stat-link{border:0;background:none;padding:0;font:inherit;color:inherit;text-decoration:underline;text-decoration-color:color-mix(in srgb,currentColor 35%,transparent);text-underline-offset:4px;cursor:pointer}
 .stat-link:hover{color:var(--primary)}
+/* Sweep (Nov 17): small text buttons get a larger invisible tap area without moving anything. */
+.mb-rate,.sess-b,.dc-get-a,.stat-link{position:relative}
+.mb-rate::after,.sess-b::after,.dc-get-a::after,.stat-link::after{content:'';position:absolute;inset:-6px -6px}
 .rec-books{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
 .rv-acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .tour{position:fixed;inset:0;z-index:60}
@@ -1138,7 +1141,7 @@ body:has(.menu:not([hidden])) .tour-offer{display:none}
 .mbc-side{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:0;position:relative;padding-top:30px}
 .mbc-side .st{max-width:100%;white-space:nowrap}
 .mb-al{padding-left:9px}                       /* lines up with the word inside the status chip (its 9px padding) */
-.mb-rate{border:0;background:none;padding-top:0;padding-bottom:0;padding-right:0;font-size:12px;font-weight:600;color:var(--orange);cursor:pointer;text-align:left}
+.mb-rate{border:0;background:none;padding-top:0;padding-bottom:0;padding-right:0;font-size:12px;font-weight:600;color:var(--badge);cursor:pointer;text-align:left}
 .mb-rate.none{color:var(--text-2);font-weight:500}
 .mb-rate:hover,.mb-rate:focus-visible{text-decoration:underline;text-underline-offset:3px}
 .mbc-fav{position:absolute;top:-4px;right:-4px;border:0;background:none;font-size:24px;line-height:1;padding:4px;color:var(--text-2);cursor:pointer;border-radius:8px}
@@ -1202,7 +1205,7 @@ body:has(.menu:not([hidden])) .tour-offer{display:none}
   .dc-scroll.dc-wrap{grid-auto-flow:row;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-columns:auto;overflow:visible;margin:0;padding:0}
 }
 /* Lean card pieces */
-.dc-nfm{position:absolute;top:10px;right:10px;z-index:1;border:0;background:none;padding:2px 0;font-size:12px;color:var(--text-2);text-decoration:underline;text-underline-offset:3px;text-decoration-color:color-mix(in srgb,var(--text-2) 50%,transparent)}
+.dc-nfm{position:absolute;top:10px;right:10px;z-index:1;border:0;background:none;padding:6px;margin:-4px -6px;font-size:12px;color:var(--text-2);text-decoration:underline;text-underline-offset:3px;text-decoration-color:color-mix(in srgb,var(--text-2) 50%,transparent)}
 .dc-nfm:hover{color:var(--text)}
 /* Ghost card after Not for Me: faded in place, with Hidden · Undo, until the row closes up. */
 .dc-ghost{border-style:dashed;background:transparent;box-shadow:none}
@@ -1213,7 +1216,7 @@ body:has(.menu:not([hidden])) .tour-offer{display:none}
 .dg-sub{font-size:11px;font-weight:500;color:var(--text-2);padding:0 6px 3px 0;white-space:normal;text-align:center;max-width:150px}
 @media (prefers-reduced-motion:no-preference){.dc-ghost>:not(.dc-ghost-bar){transition:opacity .2s}}
 /* Narrow phones: no room beside the cover, so Not for Me sits under the reason line instead. */
-@media (max-width:400px){.dc-nfm{position:static;align-self:flex-start;margin-top:2px}}
+@media (max-width:400px){.dc-nfm{position:static;align-self:flex-start;margin-top:-2px}}
 .dc-why i,.nx-q i{font-style:italic}
 .dc-get{align-self:end;min-width:0}
 .dc-get-a{display:inline-flex;align-items:flex-start;gap:5px;border:0;background:none;padding:0;text-align:left;color:var(--primary);font-weight:600;font-size:12.5px;line-height:1.3;text-decoration:none}
@@ -1759,6 +1762,8 @@ function simActivity(){
   if(mine){const who=rnd(ms),[k,e]=rnd(REACTS);mine.r[who]=k;S.notifs.unshift({id:'n'+uid(),text:`${nameOf(who)} reacted ${e} to your update: ${mine.text}${mine.book?' '+mine.book:''}.`,ts:now,link:null});note=' A reaction to your update is in the bell.'}else note=S.settings.share?' Log some reading to get reactions to your own updates.':' Turn on Share My Activity in your account menu to get reactions to your own updates too.'
   save();closeMenus();view='dashboard';render();toast(`Added ${n} sample activity items from your group.${note}`);
 }
+/* Lookups that sometimes hiccup (Google Books, Wikidata): one quiet second try after a short pause. */
+async function fetchRetry(u,o){for(let i=0;;i++){try{const r=await fetch(u,o);if(i||r.ok||!(r.status===429||r.status>=500))return r}catch(e){if(i||e.name==='AbortError'||e.name==='TimeoutError')throw e}await new Promise(r=>setTimeout(r,700))}}
 function post(kind,text,bk,extra,ch,titleId){if(!S.settings.share)return;S.activity.push({id:uid(),who:'me',kind,text,book:bk||undefined,titleId:titleId||undefined,extra:extra||undefined,ch:ch||undefined,ts:Date.now(),r:{}})}
 function postBook(kind,text,b,extra){const titleId=b.titleId||b.id;post(kind,text,b.title,extra,null,titleId)}
 function evSnap(){
@@ -2674,7 +2679,7 @@ async function wdSeries(title,author){const k=srKey(title)+'|'+srKey(author);if(
   const q=`SELECT ?series ?seriesLabel ?member ?memberLabel ?ord ?myOrd WHERE { VALUES ?lbl { ${lbls} } ?book rdfs:label ?lbl; p:P179 ?bs. ?bs ps:P179 ?series. OPTIONAL{?bs pq:P1545 ?myOrd}
  ${last?`?book wdt:P50 ?a. ?a rdfs:label ?al. FILTER(LANG(?al)="en" && CONTAINS(LCASE(?al),"${esq(last)}"))`:''}
  ?member p:P179 ?st. ?st ps:P179 ?series. ?st pq:P1545 ?ord. SERVICE wikibase:label { bd:serviceParam wikibase:language "en". } } LIMIT 500`;
-  const r=await fetch('https://query.wikidata.org/sparql?query='+encodeURIComponent(q),{headers:{Accept:'application/sparql-results+json'}});
+  const r=await fetchRetry('https://query.wikidata.org/sparql?query='+encodeURIComponent(q),{headers:{Accept:'application/sparql-results+json'}});
   if(!r.ok)throw new Error('wikidata '+r.status);const rows=(await r.json()).results.bindings;
   const by=new Map();for(const x of rows){const id=x.series.value;if(!by.has(id))by.set(id,{name:x.seriesLabel.value,mine:x.myOrd?.value||null,books:new Map()});const o=+x.ord.value;
     if(!Number.isFinite(o)||o<=0)continue;const b=by.get(id).books;if(!b.has(o))b.set(o,x.memberLabel.value)}
@@ -3626,7 +3631,7 @@ async function gbWant(t){
   const q=t.isbn?`isbn:${t.isbn}`:`intitle:${qt}${au?` inauthor:${au}`:''}`;
   gbBusy=t.id;if(bookDlg.open&&bd.id===t.id)renderBD(true);
   try{
-    const r=await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=5&printType=books&country=${GB_COUNTRY}&key=${GB_KEY}&fields=items(volumeInfo(title,authors,description,infoLink,canonicalVolumeLink))`);
+    const r=await fetchRetry(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=5&printType=books&country=${GB_COUNTRY}&key=${GB_KEY}&fields=items(volumeInfo(title,authors,description,infoLink,canonicalVolumeLink))`);
     if(r.ok){
       const same=x=>{const a=normT(x),b=normT(qt);return a&&b&&(a===b||a.startsWith(b)||b.startsWith(a))};
       const v=((await r.json()).items||[]).map(i=>i.volumeInfo||{}).find(v=>v.description&&same(v.title)&&(!au||(v.authors||[]).some(n=>lastName(n).toLowerCase()===au.toLowerCase())));
@@ -4035,7 +4040,7 @@ async function teSearchGB(){
   const current=()=>te===editor&&teSearchSeq===seq&&te.id===id&&te.q.trim()===q&&titleDlg.open&&te.tab==='gb';
   te.gb={q,state:'loading',urls:[]};tePanel();
   try{const isbn=olIsbn(q);
-    const r=await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(isbn?'isbn:'+isbn:q)}&maxResults=30&printType=books&country=${GB_COUNTRY}&key=${GB_KEY}&fields=items(volumeInfo/imageLinks)`,{signal:ctl.signal});
+    const r=await fetchRetry(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(isbn?'isbn:'+isbn:q)}&maxResults=30&printType=books&country=${GB_COUNTRY}&key=${GB_KEY}&fields=items(volumeInfo/imageLinks)`,{signal:ctl.signal});
     if(!r.ok)throw new Error('Google Books '+r.status);
     const urls=[...new Set(((await r.json()).items||[]).map(x=>x.volumeInfo?.imageLinks?.thumbnail).filter(Boolean).map(u=>u.replace(/^http:/,'https:').replace('&edge=curl','')))].slice(0,24);
     if(!current())return;te.gb={q,state:'done',urls};
