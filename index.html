@@ -338,6 +338,7 @@ textarea.inp{resize:none;min-height:0;overflow-y:hidden;max-height:240px}#bdNote
 .b-covers .cover{width:48px;padding:4px;flex:none}.b-covers .cover .ct{font-size:6.5px}.b-covers .cover .ca,.b-covers .cover .fmt{display:none}
 .more-n{font-size:12px;color:var(--text-2);padding:0 6px}
 .b-row{display:flex;align-items:center;gap:10px;padding:8px 0;flex-wrap:wrap}.b-row+.b-row{border-top:1px solid var(--border)}
+.d-stat .d-how{display:block;font:500 11px/1.3 Inter,system-ui,sans-serif;color:var(--text-2);margin-top:2px}
 .b-n{width:20px;text-align:center;color:var(--text-2);font-size:13px}
 .up-open{display:flex;flex-direction:column;align-items:flex-start;gap:1px;border:0;background:none;padding:2px 0;text-align:left;color:inherit;cursor:pointer;max-width:100%}.up-open:hover b{color:var(--primary);text-decoration:underline;text-underline-offset:3px}.b-row .cover-btn{flex:none}
 .b-row .cover{width:34px;padding:3px;flex:none}.b-row .cover .ct{font-size:5px}.b-row .cover .ca,.b-row .cover .fmt{display:none}
@@ -1987,13 +1988,35 @@ function bookStats(b){
   if(audio){const m=ss.map(s=>s.minutes||s.est||0).filter(x=>x>0);if(m.length)per=m.reduce((a,x)=>a+x,0)/m.length}
   else{const own=ss.filter(s=>s.pages>0).map(s=>s.pages),all=S.sessions.filter(s=>s.pages>0&&!isCU(s)).map(s=>s.pages);const use=own.length>=2?own:all;if(use.length)per=use.reduce((a,x)=>a+x,0)/use.length}
   const toGo=per&&left!=null?Math.ceil(left/per):null;
-  const days=new Set(ss.filter(s=>s.date>addDays(t,-14)).map(s=>s.date)).size;
-  const reading=Math.max(1,S.books.filter(x=>x.status==='reading').length);
-  const rate=days?days/14:new Set(S.sessions.filter(s=>s.date>addDays(t,-14)&&!isCU(s)).map(s=>s.date)).size/14/reading;
-  const finish=toGo&&rate?addDays(t,Math.ceil(toGo/rate)):null;
   const started=b.started||ss.map(s=>s.date).sort()[0]||null;
-  return {left,per,toGo,finish,started};
+  /* Finish Around (James, Nov 18). Early on, the date is "on plan": your daily goal, shared among the books you've
+     actually read in the last two weeks in proportion to how much you read each (a newly started book gets an equal
+     share). Once a book has 3 reading days and a week since it started, it uses your actual pace with that book. */
+  const since=started?Math.max(1,Math.round((Date.parse(t)-Date.parse(started))/864e5)+1):14,win=Math.min(14,since);
+  const bookDays=new Set(ss.map(s=>s.date)).size;
+  let finish=null,mode=null;
+  if(left!=null&&left>0){
+    if(bookDays>=3&&since>=7){
+      const days=new Set(ss.filter(s=>s.date>addDays(t,-win)).map(s=>s.date)).size,rate=days/win;
+      if(toGo&&rate){finish=addDays(t,Math.ceil(toGo/rate));mode='pace'}
+    }else if(!isPct(b)){const g=goalShare(b);if(g){const perDay=audio?g.min:g.pages;if(perDay>0){finish=addDays(t,Math.max(1,Math.ceil(left/perDay))-1);mode='goal'}}}
+  }else if(left===0){finish=null}
+  return {left,per,toGo,finish,started,mode};
 }
+/* Your reading speed (pages a minute) from sessions that recorded both, else about a page a minute. */
+function pagesPerMin(){const x=S.sessions.filter(s=>s.pages>0&&s.minutes>0&&!isCU(s)).slice(-60);const p=x.reduce((a,s)=>a+s.pages,0),m=x.reduce((a,s)=>a+s.minutes,0);return m>0?Math.min(3,Math.max(.2,p/m)):1}
+/* This book's share of your daily goal: by how much of your last two weeks' reading went to it, among the books
+   you're reading. Returns the pages and minutes a day that share is worth, or null for a book you haven't read lately. */
+function goalShare(b){
+  const G=S.settings,t=today(),ppm=pagesPerMin(),cut=addDays(t,-14);
+  const gp=G.goalType==='minutes'?G.goalMinutes*ppm:G.goalType==='pages'?G.goalPages:Math.min(G.goalPages,G.goalMinutes*ppm);
+  if(!(gp>0))return null;
+  const reading=S.books.filter(x=>x.status==='reading'),eff={};
+  for(const s of S.sessions){if(s.date<=cut||isCU(s))continue;const x=reading.find(r=>r.id===s.bookId);if(!x)continue;const e=s.minutes>0?s.minutes:(s.pages>0?s.pages/ppm:(s.est||0));if(e>0)eff[x.id]=(eff[x.id]||0)+e}
+  const active=reading.filter(x=>eff[x.id]>0),fresh=reading.filter(x=>!eff[x.id]&&(x.started||'')>cut);
+  const n=active.length+fresh.length;if(!n)return null;
+  let share;if(eff[b.id])share=eff[b.id]/active.reduce((a,x)=>a+eff[x.id],0)*active.length/n;else if(fresh.includes(b))share=1/n;else return null;
+  return {pages:gp*share,min:gp/ppm*share,share}}
 /* Opens a reading book's details on My Reading; books without a Reading Ember title open Edit instead. */
 const openRead=b=>b.titleId&&titleById(b.titleId)?`data-act="openTitle" data-id="${b.titleId}" data-tab="mine"`:`data-act="editBook" data-book="${b.id}"`;
 function detailPanel(b,list){
@@ -2011,7 +2034,7 @@ function detailPanel(b,list){
       ${audio?stat('Time Left',fmtMin(st.left)):stat('Pages Left',st.left)}
       ${stat(audio?'Listening Pace':'Page Pace',st.per?`${Math.round(st.per)}<small>${audio?' min':''}/session</small>`:'—')}
       ${stat('Sessions to Go',st.toGo!=null?`≈ ${st.toGo}`:'—')}
-      ${stat('Finish Around',st.finish?fmtDateY(st.finish):'—','accent')}
+      ${stat('Finish Around',st.finish?`${fmtDateY(st.finish)}<small class="d-how">${st.mode==='goal'?'at your daily goal':'at your recent pace'}</small>`:'—','accent')}
     </div>`:''}
     <div class="d-actions"><button class="btn btn-primary" data-act="log" data-book="${b.id}">${ic('book')}Log Reading</button>${S.timer&&S.timer.bookId===b.id?`<button class="btn btn-ghost" data-act="stopTimer">${ic('clock')}<span data-timer>${fmtClock(tElapsed())}</span></button>`:`<button class="btn btn-ghost" data-act="startTimer" data-book="${b.id}">${ic('play')}Start Timer</button>`}
     </div>
