@@ -2032,7 +2032,7 @@ function detailPanel(b,list){
     ${ms?`<div class="hint">${ms}</div>`:''}
     ${hasLen(b)?`<div class="d-stats">
       ${audio?stat('Time Left',fmtMin(st.left)):stat('Pages Left',st.left)}
-      ${st.mode==='goal'?stat('Daily Share',`${Math.max(1,Math.round(st.daily))}<small>${audio?' min':''}/day</small>`):stat(audio?'Listening Pace':'Page Pace',st.per?`${Math.round(st.per)}<small>${audio?' min':''}/session</small>`:'—')}
+      ${st.mode==='goal'?stat(audio?'Listening Pace':'Page Pace',`${Math.max(1,Math.round(st.daily))}<small>${audio?' min':''}/day</small>`):stat(audio?'Listening Pace':'Page Pace',st.per?`${Math.round(st.per)}<small>${audio?' min':''}/session</small>`:'—')}
       ${st.mode==='goal'?stat('Days to Go',`≈ ${st.daysToGo}`):stat('Sessions to Go',st.toGo!=null?`≈ ${st.toGo}`:'—')}
       ${stat('Finish Around',st.finish?`${fmtDateY(st.finish)}<small class="d-how">${st.mode==='goal'?'at your daily goal':'at your recent pace'}</small>`:'—','accent')}
     </div>`:''}
