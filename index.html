@@ -6009,9 +6009,9 @@ document.addEventListener('click',e=>{
     case 'bTbr':{const b=S.battles.find(x=>x.id===bv.id);if(!b)break;const snap=snapshot(),n=tbrAdd(bList(b).map(x=>x.id));save();renderBattle();render();toast(tbrSaid(n)||'Every book is already in My Books.',n?restoreTo(snap):null);break}
     case 'bPickOL':case 'bPick':{const b=S.battles.find(y=>y.id===bv.id);let t;if(a.dataset.act==='bPickOL'){const x=bv.ol?.items[+a.dataset.i];if(!x)break;t=olTitleFrom(x)}else t=titleById(a.dataset.id);if(!b||!t)break;
       if(bList(b).some(y=>y.id===t.id)){toast(bIsList(b)?'That book is already on the list.':'Someone already picked that book.');break}
-      if(bIsList(b)){if(!bCanList(b))break;(b.setList=b.setList||[]).push(t.id);bv.q='';bv.ol=null;bv.tab='books';save();renderBattle();setTimeout(()=>document.getElementById('bQ')?.focus(),30);toast(`Added ${t.title} to the list.`);break}
+      if(bIsList(b)){if(!bCanList(b))break;(b.setList=b.setList||[]).push(t.id);b.editedAt=Date.now();bv.q='';bv.ol=null;bv.tab='books';save();renderBattle();setTimeout(()=>document.getElementById('bQ')?.focus(),30);toast(`Added ${t.title} to the list.`);break}
       b.readers.me.push(t.id);bv.adding=false;bv.q='';bv.ol=null;bv.tab='books';save();renderBattle();toast(`Added ${t.title} to the shared list.`);break}
-    case 'bRemove':{const b=S.battles.find(x=>x.id===bv.id);if(bIsList(b)){if(bCanList(b))b.setList=(b.setList||[]).filter(x=>x!==a.dataset.id)}else b.readers.me=b.readers.me.filter(x=>x!==a.dataset.id);save();renderBattle();break}
+    case 'bRemove':{const b=S.battles.find(x=>x.id===bv.id);if(bIsList(b)){if(bCanList(b)){b.setList=(b.setList||[]).filter(x=>x!==a.dataset.id);b.editedAt=Date.now()}}else b.readers.me=b.readers.me.filter(x=>x!==a.dataset.id);save();renderBattle();break}
     case 'bNew':bDupSrc=null;openBForm();break;
     case 'bEdit':{const b=S.battles.find(x=>x.id===bv.id);if(b&&bCreator(b)==='me')openBForm(b);break}
     case 'bEditCancel':openBattle(bv.id);break;
@@ -6035,7 +6035,7 @@ document.addEventListener('click',e=>{
       const nm=v('bfMode')==='list'?'list':'picks',was=b.mode==='list'?'list':'picks';let extra='';
       if(nm!==was){if(nm==='list'){b.setList=[...new Set(bList(b).map(x=>x.id))];Object.keys(b.readers).forEach(w=>b.readers[w]=[]);b.mode='list';extra=b.setList.length?' Everyone’s picks are now your list.':' Now add the books with Add Books.'}
         else{const n=(b.setList||[]).length;if(b.readers.me)b.readers.me=[...(b.setList||[])];delete b.mode;delete b.setList;extra=n?(b.readers.me?' The list became your picks.':' The list was cleared; readers add their own books.'):''}}
-      Object.assign(b,{name:v('bfName'),desc:v('bfDesc'),readStart:v('bfStart'),event:v('bfEvent')});save();openBattle(b.id);toast(`Saved changes to ${b.name}.${extra}`);break}
+      Object.assign(b,{name:v('bfName'),desc:v('bfDesc'),readStart:v('bfStart'),event:v('bfEvent'),editedAt:Date.now()});save();openBattle(b.id);   /* editedAt: changed on this device (the live layer sends it; Nov 19) */toast(`Saved changes to ${b.name}.${extra}`);break}
     case 'bCreate':{const v=id=>document.getElementById(id).value.trim(),er=m=>document.getElementById('bfErr').textContent=m;if(!v('bfName'))return er('Give the battle a name.');if(!v('bfStart')||!v('bfEvent'))return er('Choose when reading starts and the battle date.');if(v('bfEvent')<v('bfStart'))return er('The battle date must be after reading starts.');
       const b={id:'bb'+uid(),name:v('bfName'),desc:v('bfDesc'),readStart:v('bfStart'),event:v('bfEvent'),moderator:null,readers:{},progress:{},creator:'me'};
       if(v('bfMode')==='list'){b.mode='list';const src=chMode==='bform'&&bDupSrc?S.battles.find(x=>x.id===bDupSrc):null;b.setList=src&&bIsList(src)?[...(src.setList||[])]:[]}
