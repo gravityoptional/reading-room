@@ -4717,7 +4717,7 @@ const minStr=m=>{m=Math.ceil(m);if(m<60)return `${m} minute${m===1?'':'s'}`;retu
 function chListPace(c,p){
   const td=today();if(!c.end||td>c.end||(c.start&&td<c.start)||!p.t||p.v>=p.t||c.mode==='comp')return '';
   const done=new Set(contrib(c).live.map(i=>i.titleId)),rest=(c.titleIds||[]).filter(id=>!done.has(id));if(!rest.length)return '';
-  const left=Math.max(1,daysBetween(td,c.end)),by=`to finish by ${fmtDateY(c.end)}`,from=c.start&&c.start>addDays(td,-365)?c.start:addDays(td,-30),el=daysBetween(from,td)+1;
+  const from=c.start&&c.start>addDays(td,-365)?c.start:addDays(td,-30),by=`to finish by ${fmtDateY(c.end)}`;let left=Math.max(1,daysBetween(td,c.end)),el=daysBetween(from,td)+1;
   let unit=null,amt=0;
   for(const id of rest){const b=S.books.filter(x=>x.titleId===id&&x.status!=='finished'&&x.status!=='dnf').sort((x,y)=>(y.pos||0)-(x.pos||0))[0],t=titleById(id);
     const audio=b&&b.format==='audio',u=audio?'min':'pages';let n=null;
@@ -4725,17 +4725,20 @@ function chListPace(c,p){
     if(n==null||(unit&&unit!==u)){unit='books';break}unit=u;amt+=n}
   const ids=new Set(c.titleIds||[]),mine=S.books.filter(x=>ids.has(x.titleId)).map(x=>x.id);
   const ses=S.sessions.filter(x=>mine.includes(x.bookId)&&x.date>=from&&x.date<=td&&!isCU(x));
+  if(!ses.some(x=>x.date===td)){el-=1;left+=1}   // today counts once you've read today (Nov 20)
   if(unit==='pages'||unit==='min'){
-    const did=unit==='pages'?ses.reduce((a,x)=>a+(x.pages||0),0):ses.reduce((a,x)=>a+(x.minutes||0),0),avg=did/el,r=amt/left;
+    const did=unit==='pages'?ses.reduce((a,x)=>a+(x.pages||0),0):ses.reduce((a,x)=>a+(x.minutes||0),0),avg=el>0?did/el:0,r=amt/left;
     if(avg>0&&avg>=r)return `On track to finish by ${fmtDateY(addDays(td,Math.ceil(amt/avg)))}`;
     const need=unit==='pages'?`About ${Math.ceil(r).toLocaleString()} page${Math.ceil(r)===1?'':'s'} a day`:`About ${minStr(r)} a day`;
     const avgTxt=unit==='pages'?(avg<1?'under 1':Math.round(avg).toLocaleString()):(avg<1?'under a minute':minStr(Math.round(avg)));
-    return ses.length?`${need} ${by} · you've averaged ${avgTxt} a day`:`${need} ${by}`}   // the average waits for a first session on the list (Nov 20)
+    return ses.length&&el>0?`${need} ${by} · you've averaged ${avgTxt} a day`:`${need} ${by}`}   // the average waits for a first session on the list (Nov 20)
   const n=rest.length;return `${left/n>=3?'1 '+everyStr(left/n):`About ${Math.ceil(n/left*7)} a week`} ${by}`}
 function chPace(c,p){
   if(c.type==='list')return chListPace(c,p);
   if(!['books','pages','minutes'].includes(c.type)||c.mode==='comp'||!c.start||!c.end||!p.t)return '';const td=today();if(td<c.start||td>c.end||p.v>=p.t)return '';
-  const el=daysBetween(c.start,td)+1,tot=daysBetween(c.start,c.end)+1,left=Math.max(1,tot-el);if(el<14&&(c.type==='books'?p.v<2:p.v<=0))return '';   // too early to say
+  const tot=daysBetween(c.start,c.end)+1;let el=daysBetween(c.start,td)+1;if(el<14&&(c.type==='books'?p.v<2:p.v<=0))return '';   // too early to say
+  if(!S.sessions.some(x=>x.date===td&&!isCU(x))&&el>1)el-=1;   // today counts once you've read today (Nov 20): a morning average isn't diluted by a day not yet read, and the pace needed includes today
+  const left=Math.max(1,tot-el);
   const yr=c.start.slice(5)==='01-01'&&c.end.slice(5)==='12-31'&&c.start.slice(0,4)===c.end.slice(0,4),when=yr?(c.start.slice(0,4)===td.slice(0,4)?'this year':`in ${c.start.slice(0,4)}`):`by ${fmtDate(c.end)}`;
   const tgt=c.type==='books'?p.t:c.type==='pages'?Number(p.t).toLocaleString():minStr(p.t);
   const proj=Math.round(p.v/el*tot),out=[];
