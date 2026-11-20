@@ -4711,7 +4711,29 @@ const halfStr=x=>{const w=Math.floor(x),h=x-w>=.5;return w?`${w}${h?'½':''}`:'�
 const everyStr=days=>{if(days>=14){const w=Math.max(1,Math.floor(days/3.5)/2);return w===1?'a week':`every ${halfStr(w)} weeks`}const d=Math.max(1,Math.floor(days));return d===1?'a day':`every ${d} days`};
 const avgEvery=days=>{if(days>=14){const w=Math.round(days/3.5)/2;return w===1?'a week':`every ${halfStr(w)} weeks`}const d=Math.round(days);return d<=1?'a day':`every ${d} days`};
 const minStr=m=>{m=Math.ceil(m);if(m<60)return `${m} minute${m===1?'':'s'}`;return m%60===0?`${m/60} hour${m===60?'':'s'}`:fmtMin(m)};
+/* Book list pace (Nov 20). A challenge is a goal, not a prediction: "to finish by Dec 31, you need this pace". It adds
+   up what's left of the list's unfinished books: pages (minutes for audiobooks), so a one-book list still gets a useful
+   line. A list mixing print and audio, or with books of unknown length, uses books instead. */
+function chListPace(c,p){
+  const td=today();if(!c.end||td>c.end||(c.start&&td<c.start)||!p.t||p.v>=p.t||c.mode==='comp')return '';
+  const done=new Set(contrib(c).live.map(i=>i.titleId)),rest=(c.titleIds||[]).filter(id=>!done.has(id));if(!rest.length)return '';
+  const left=Math.max(1,daysBetween(td,c.end)),by=`to finish by ${fmtDateY(c.end)}`,from=c.start&&c.start>addDays(td,-365)?c.start:addDays(td,-30),el=daysBetween(from,td)+1;
+  let unit=null,amt=0;
+  for(const id of rest){const b=S.books.filter(x=>x.titleId===id&&x.status!=='finished'&&x.status!=='dnf').sort((x,y)=>(y.pos||0)-(x.pos||0))[0],t=titleById(id);
+    const audio=b&&b.format==='audio',u=audio?'min':'pages';let n=null;
+    if(b&&hasLen(b)&&!isPct(b))n=Math.max(0,b.total-(b.pos||0));else if(!audio&&t&&t.pages>0)n=t.pages-(b&&!isPct(b)?(b.pos||0):0);
+    if(n==null||(unit&&unit!==u)){unit='books';break}unit=u;amt+=n}
+  const ids=new Set(c.titleIds||[]),mine=S.books.filter(x=>ids.has(x.titleId)).map(x=>x.id);
+  const ses=S.sessions.filter(x=>mine.includes(x.bookId)&&x.date>=from&&x.date<=td&&!isCU(x));
+  if(unit==='pages'||unit==='min'){
+    const did=unit==='pages'?ses.reduce((a,x)=>a+(x.pages||0),0):ses.reduce((a,x)=>a+(x.minutes||0),0),avg=did/el,r=amt/left;
+    if(avg>0&&avg>=r)return `On track to finish by ${fmtDateY(addDays(td,Math.ceil(amt/avg)))}`;
+    const need=unit==='pages'?`About ${Math.ceil(r).toLocaleString()} page${Math.ceil(r)===1?'':'s'} a day`:`About ${minStr(r)} a day`;
+    const avgTxt=unit==='pages'?(avg<1?'under 1':Math.round(avg).toLocaleString()):(avg<1?'under a minute':minStr(Math.round(avg)));
+    return `${need} ${by} · you've averaged ${avgTxt} a day`}
+  const n=rest.length;return `${left/n>=3?'1 '+everyStr(left/n):`About ${Math.ceil(n/left*7)} a week`} ${by}`}
 function chPace(c,p){
+  if(c.type==='list')return chListPace(c,p);
   if(!['books','pages','minutes'].includes(c.type)||c.mode==='comp'||!c.start||!c.end||!p.t)return '';const td=today();if(td<c.start||td>c.end||p.v>=p.t)return '';
   const el=daysBetween(c.start,td)+1,tot=daysBetween(c.start,c.end)+1,left=Math.max(1,tot-el);if(el<14&&(c.type==='books'?p.v<2:p.v<=0))return '';   // too early to say
   const yr=c.start.slice(5)==='01-01'&&c.end.slice(5)==='12-31'&&c.start.slice(0,4)===c.end.slice(0,4),when=yr?(c.start.slice(0,4)===td.slice(0,4)?'this year':`in ${c.start.slice(0,4)}`):`by ${fmtDate(c.end)}`;
@@ -4746,6 +4768,15 @@ function paceDemos(){if(!BETA||S.paceSeeded)return;S.paceSeeded=true;
     fit(mk('Pace: Reading Time Behind','minutes',Y+'-01-01',Y+'-12-31'),(v,pr)=>Math.ceil(Math.max(v+540,pr+300)/60)*60)];
   S.challenges.push(...add);save()}
 try{paceDemos()}catch(e){}
+function listDemos(){if(!BETA||S.listPaceSeeded)return;S.listPaceSeeded=true;
+  const td=today(),Y=td.slice(0,4),un=S.books.filter(b=>b.status!=='finished'&&b.status!=='dnf'),pick=f=>un.filter(f).map(b=>b.titleId).filter((id,i,a)=>a.indexOf(id)===i);
+  const print=pick(b=>b.format!=='audio'&&((hasLen(b)&&!isPct(b))||titleById(b.titleId)?.pages>0)),aud=pick(b=>b.format==='audio'&&hasLen(b)),reading=pick(b=>b.status==='reading'&&b.format!=='audio'&&hasLen(b)&&!isPct(b));
+  const mk=(name,ids,end)=>ids.length?{id:'pl'+uid(),name,desc:'Pace example (test site).',mode:'personal',type:'list',titleIds:ids,start:addDays(td,-3),end:end||Y+'-12-31',creator:'me',participants:['me']}:null;
+  const add=[mk('Pace: One Book List',reading.slice(0,1)),mk('Pace: Three Book List',print.slice(0,3)),mk('Pace: Audiobook List',aud.slice(0,1)),mk('Pace: Mixed List',[...print.slice(0,1),...aud.slice(0,1)].length===2?[...print.slice(0,1),...aud.slice(0,1)]:[]),
+    (()=>{const cut=addDays(td,-30),ok=S.books.filter(b=>b.status==='reading'&&b.format!=='audio'&&hasLen(b)&&!isPct(b)).map(b=>[b,S.sessions.filter(x=>x.bookId===b.id&&x.date>=cut).reduce((a,x)=>a+(x.pages||0),0)]).filter(([,n])=>n>0).sort((a,b)=>b[1]-a[1])[0];
+      const c=ok&&mk('Pace: On Track List',[ok[0].titleId],addDays(td,200));if(c)c.start=cut;return c})()].filter(Boolean);
+  S.challenges.push(...add);save()}
+try{listDemos()}catch(e){}
 function chStatus(c,p){
   const t=today();
   if(c.start&&t<c.start)return {k:'up',txt:`Starts ${fmtDateY(c.start)}`};
