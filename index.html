@@ -2077,7 +2077,7 @@ function monthBlock(){
 function challengesCard(){
   const ORDK={active:0,up:1,done:2,ended:3};
   const list=S.challenges.filter(isMine).map(c=>{const p=chProg(c);return {c,p,st:chStatus(c,p)}}).filter(x=>x.st.k!=='ended').sort((a,b)=>ORDK[a.st.k]-ORDK[b.st.k]).slice(0,3);
-  const rows=list.map(({c,p})=>{const pc=p.t?Math.min(100,p.v/p.t*100):0;return `<button class="ch ch-btn" data-act="openCh" data-id="${c.id}"><span class="ci" style="background:var(--primary-light);color:var(--primary)">${ic(CT[c.type].ic)}</span><span class="nm">${esc(c.name)}</span><span class="vl">${p.label}</span><div class="bar"><span style="width:${pc}%"></span></div></button>`}).join('');
+  const rows=list.map(({c,p})=>{const pc=p.frac!=null?p.frac*100:p.t?Math.min(100,p.v/p.t*100):0;return `<button class="ch ch-btn" data-act="openCh" data-id="${c.id}"><span class="ci" style="background:var(--primary-light);color:var(--primary)">${ic(CT[c.type].ic)}</span><span class="nm">${esc(c.name)}</span><span class="vl">${p.label}</span><div class="bar"><span style="width:${pc}%"></span></div></button>`}).join('');
   const body=list.length?rows:`<div class="empty">${ic('trophy')}<h3>No Active Challenges</h3><p>Create a personal challenge or join one your group started.</p><button class="btn btn-primary" data-go="challenges">Browse Challenges</button></div>`;
   return `<section class="card" aria-labelledby="chH"><div class="card-h"><span class="ico o">${ic('target')}</span><h2 id="chH">My Challenges</h2><button class="more" data-go="challenges" data-ch="mine">View All</button></div>${body}</section>`;
 }
@@ -4700,8 +4700,17 @@ function chProg(c){
   const t=c.type==='list'?(c.titleIds||[]).length:c.target;
   const v=c.mode==='coop'?(c.participants||[]).reduce((a,w)=>a+valOf(c,w),0):valOf(c,'me');
   const est=myEst(c);
-  return {v,t,label:`${fmtV(c,v)} of ${fmtV(c,t)}${unitOf(c,t)}${est?` (includes ~${fmtMin(est)} estimated)`:''}`};
+  return {v,t,frac:c.type==='list'&&c.mode==='personal'&&v<t?listShare(c):null,label:`${fmtV(c,v)} of ${fmtV(c,t)}${unitOf(c,t)}${est?` (includes ~${fmtMin(est)} estimated)`:''}`};
 }
+/* A book list's percentage and bar follow pages read across the list (minutes for audiobooks); a finished book counts in
+   full. A list mixing print and audio, or with a book of unknown length, counts finished books (Nov 21). */
+function listShare(c){const done=new Set(contrib(c).live.map(i=>i.titleId));let unit=null,tot=0,got=0;
+  for(const id of c.titleIds||[]){const bs=S.books.filter(x=>x.titleId===id),b=bs.filter(x=>x.status!=='dnf').sort((x,y)=>(y.status==='finished')-(x.status==='finished')||(y.pos||0)-(x.pos||0))[0],t=titleById(id);
+    const audio=b&&b.format==='audio',u=audio?'min':'pages';let len=null;
+    if(b&&hasLen(b)&&!isPct(b))len=b.total;else if(!audio&&t&&t.pages>0)len=t.pages;
+    if(!len||(unit&&unit!==u))return null;unit=u;tot+=len;
+    got+=done.has(id)?len:(b&&b.status!=='finished'&&!isPct(b)?Math.min(len,b.pos||0):0)}
+  return tot?got/tot:null}
 /* Challenge pace (Nov 20; days under two weeks, half weeks above, so "1 every 10 days" isn't rounded to "1 a week"): on a Books, Pages, or Reading Time challenge with an end date, project the finish from the
    pace so far ("On track for 26 this year"). Behind pace, it says the pace that reaches the goal and compares it with
    the pace so far: "1 every 10 days reaches 12 · you've averaged 1 every 6 weeks" (days under two weeks, half weeks
@@ -4799,7 +4808,7 @@ function cardActs(kind,id,name,del,hide,hidden){
 }
 function chCard(c){
   const p=chProg(c),st=chStatus(c,p),fam=c.mode!=='personal',joined=(c.participants||[]).includes('me');
-  const pc=p.t?Math.min(100,Math.round(p.v/p.t*100)):0;
+  const pc=p.frac!=null?Math.min(99,Math.round(p.frac*100)):p.t?Math.min(100,Math.round(p.v/p.t*100)):0;
   const inv=c.inviteOnly&&(c.invited||[]).includes('me')&&!joined&&!(c.declined||[]).includes('me');
   const act=fam&&st.k!=='ended'?(joined?`<span class="joined">${ic('check')}Joined</span>`:inv?`<span class="inv-acts"><button class="link-btn sm" data-act="chDecline" data-id="${c.id}">Decline</button><button class="btn btn-primary sm" data-act="chJoin" data-id="${c.id}">${ic('check')}Accept</button></span>`:`<button class="btn btn-ghost sm" data-act="chJoin" data-id="${c.id}">${ic('plus')}Join</button>`):'';
   const fin=st.k==='done'||st.k==='ended',hid=hiddenC().includes(c.id),ca=cardActs('ch',c.id,c.name,c.creator==='me'&&(!fam||!fin),fam&&fin,hid);
@@ -4963,7 +4972,7 @@ let showHiddenC=false;
 function openCh(id){chMode='ch';cv={id,all:false,del:false};renderCh();if(!chDlg.open)chDlg.showModal()}
 function renderCh(){
   const c=S.challenges.find(x=>x.id===cv.id);if(!c){chDlg.close();return}
-  const p=chProg(c),st=chStatus(c,p),fam=c.mode!=='personal',joined=(c.participants||[]).includes('me'),creator=c.creator==='me',pc=p.t?Math.min(100,Math.round(p.v/p.t*100)):0;
+  const p=chProg(c),st=chStatus(c,p),fam=c.mode!=='personal',joined=(c.participants||[]).includes('me'),creator=c.creator==='me',pc=p.frac!=null?Math.min(99,Math.round(p.frac*100)):p.t?Math.min(100,Math.round(p.v/p.t*100)):0;
   const left=c.end?Math.max(0,daysBetween(today(),c.end)):null;
   const stats=c.mode==='comp'?[[joined?p.v:'—',c.type==='goaldays'?'your goal days':'your reading days'],[p.soFar,'days so far'],[left??'—','days left']]
     :[[`${fmtV(c,Math.max(0,p.t-p.v))}`,`${c.type==='minutes'?'':unitOf(c,2).trim()+' '}to go`],[left??'—','days left'],[fam?c.participants.length:pc+'%',fam?'participants':'complete']];
