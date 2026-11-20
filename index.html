@@ -4725,6 +4725,7 @@ function chListPace(c,p){
     if(n==null||(unit&&unit!==u)){unit='books';break}unit=u;amt+=n}
   const ids=new Set(c.titleIds||[]),mine=S.books.filter(x=>ids.has(x.titleId)).map(x=>x.id);
   const ses=S.sessions.filter(x=>mine.includes(x.bookId)&&x.date>=from&&x.date<=td&&!isCU(x));
+  if(ses.length){const first=ses.map(x=>x.date).sort()[0];if(first>from)el=daysBetween(first,td)+1}   // a list's average starts at the first session on one of its books, not at a start date set in advance (Nov 21)
   if(!ses.some(x=>x.date===td)){el-=1;left+=1}   // today counts once you've read today (Nov 20)
   if(unit==='pages'||unit==='min'){
     const did=unit==='pages'?ses.reduce((a,x)=>a+(x.pages||0),0):ses.reduce((a,x)=>a+(x.minutes||0),0),avg=el>0?did/el:0,r=amt/left;
