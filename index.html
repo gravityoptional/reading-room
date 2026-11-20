@@ -4730,7 +4730,7 @@ function chListPace(c,p){
     if(avg>0&&avg>=r)return `On track to finish by ${fmtDateY(addDays(td,Math.ceil(amt/avg)))}`;
     const need=unit==='pages'?`About ${Math.ceil(r).toLocaleString()} page${Math.ceil(r)===1?'':'s'} a day`:`About ${minStr(r)} a day`;
     const avgTxt=unit==='pages'?(avg<1?'under 1':Math.round(avg).toLocaleString()):(avg<1?'under a minute':minStr(Math.round(avg)));
-    return `${need} ${by} · you've averaged ${avgTxt} a day`}
+    return ses.length?`${need} ${by} · you've averaged ${avgTxt} a day`:`${need} ${by}`}   // the average waits for a first session on the list (Nov 20)
   const n=rest.length;return `${left/n>=3?'1 '+everyStr(left/n):`About ${Math.ceil(n/left*7)} a week`} ${by}`}
 function chPace(c,p){
   if(c.type==='list')return chListPace(c,p);
