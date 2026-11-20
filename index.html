@@ -4702,14 +4702,14 @@ function chProg(c){
   const est=myEst(c);
   return {v,t,label:`${fmtV(c,v)} of ${fmtV(c,t)}${unitOf(c,t)}${est?` (includes ~${fmtMin(est)} estimated)`:''}`};
 }
-/* Challenge pace (Nov 20): on a Books, Pages, or Reading Time challenge with an end date, project the finish from the
-   pace so far ("On track for 26 this year"). Behind pace, it says the pace that reaches the goal, in a unit that gives a
-   sensible number, and compares it with the pace so far: "1 every 2½ weeks reaches 12 · you've averaged 1 every 4½
-   weeks". Never a deficit, and the needed pace is never understated. A plain calendar-year personal Books goal adds how
+/* Challenge pace (Nov 20; days under two weeks, half weeks above, so "1 every 10 days" isn't rounded to "1 a week"): on a Books, Pages, or Reading Time challenge with an end date, project the finish from the
+   pace so far ("On track for 26 this year"). Behind pace, it says the pace that reaches the goal and compares it with
+   the pace so far: "1 every 10 days reaches 12 · you've averaged 1 every 6 weeks" (days under two weeks, half weeks
+   above; "About N a week" only when faster than one every 3 days). Never a deficit, and never understated. A plain calendar-year personal Books goal adds how
    far ahead of last year you are, only when you are ahead. */
 const halfStr=x=>{const w=Math.floor(x),h=x-w>=.5;return w?`${w}${h?'½':''}`:'½'};
-const everyStr=days=>{if(days>=7){const w=Math.max(1,Math.floor(days/3.5)/2);return w===1?'a week':`every ${halfStr(w)} weeks`}const d=Math.max(1,Math.floor(days));return d===1?'a day':`every ${d} days`};
-const avgEvery=days=>{if(days>=7){const w=Math.round(days/3.5)/2;return w===1?'a week':`every ${halfStr(w)} weeks`}const d=Math.round(days);return d<=1?'a day':`every ${d} days`};
+const everyStr=days=>{if(days>=14){const w=Math.max(1,Math.floor(days/3.5)/2);return w===1?'a week':`every ${halfStr(w)} weeks`}const d=Math.max(1,Math.floor(days));return d===1?'a day':`every ${d} days`};
+const avgEvery=days=>{if(days>=14){const w=Math.round(days/3.5)/2;return w===1?'a week':`every ${halfStr(w)} weeks`}const d=Math.round(days);return d<=1?'a day':`every ${d} days`};
 const minStr=m=>{m=Math.ceil(m);if(m<60)return `${m} minute${m===1?'':'s'}`;return m%60===0?`${m/60} hour${m===60?'':'s'}`:fmtMin(m)};
 function chPace(c,p){
   if(!['books','pages','minutes'].includes(c.type)||c.mode==='comp'||!c.start||!c.end||!p.t)return '';const td=today();if(td<c.start||td>c.end||p.v>=p.t)return '';
@@ -4720,9 +4720,9 @@ function chPace(c,p){
   if(proj>=p.t)out.push(`On track for ${c.type==='books'?proj:c.type==='pages'?proj.toLocaleString()+' pages':minStr(proj)} ${when}`);
   else{const need=p.t-p.v,r=need/left,a=p.v/el;   // needed and averaged, per day
     if(c.type==='books'){
-      const mon=left>=46&&r*30.44>=1.5,wk=!mon&&r*7>=1;
-      const needTxt=mon?`About ${Math.ceil(r*30.44)} a month`:wk?`About ${Math.ceil(r*7)} a week`:`1 ${everyStr(left/need)}`;
-      const avgTxt=!p.v?'':mon&&a*30.44>=1?`you've averaged about ${Math.round(a*30.44)} a month`:wk&&a*7>=1?`you've averaged about ${halfStr(Math.round(a*14)/2)} a week`:`you've averaged 1 ${avgEvery(el/p.v)}`;
+      // a gap of 3 days or more reads as "1 every N days/weeks" (floored, so never understated); faster than that, "About N a week"
+      const needTxt=left/need>=3?`1 ${everyStr(left/need)}`:`About ${Math.ceil(r*7)} a week`;
+      const avgTxt=!p.v?'':el/p.v>=3?`you've averaged 1 ${avgEvery(el/p.v)}`:`you've averaged about ${halfStr(Math.round(a*14)/2)} a week`;
       out.push(`${needTxt} reaches ${tgt}${avgTxt?' · '+avgTxt:''}`)}
     else if(c.type==='pages')out.push(`About ${Math.ceil(r).toLocaleString()} pages a day reaches ${tgt}${p.v?` · you've averaged ${a<1?'under 1':Math.round(a).toLocaleString()} a day`:''}`);
     else out.push(`About ${minStr(r)} a day reaches ${tgt}${p.v?` · you've averaged ${a<1?'under a minute':minStr(Math.round(a))} a day`:''}`)}
