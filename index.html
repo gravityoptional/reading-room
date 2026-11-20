@@ -4702,21 +4702,50 @@ function chProg(c){
   const est=myEst(c);
   return {v,t,label:`${fmtV(c,v)} of ${fmtV(c,t)}${unitOf(c,t)}${est?` (includes ~${fmtMin(est)} estimated)`:''}`};
 }
-/* Yearly goal pace (Phase 5, built early): on a Books challenge with an end date, project the finish from the pace so
-   far ("On track for 26 this year"). Behind pace says what keeps it on track ("About 2 a month reaches 24"), never
-   a deficit. A calendar-year personal goal adds how far ahead of last year you are, only when you are ahead. */
+/* Challenge pace (Nov 20): on a Books, Pages, or Reading Time challenge with an end date, project the finish from the
+   pace so far ("On track for 26 this year"). Behind pace, it says the pace that reaches the goal, in a unit that gives a
+   sensible number, and compares it with the pace so far: "1 every 2½ weeks reaches 12 · you've averaged 1 every 4½
+   weeks". Never a deficit, and the needed pace is never understated. A plain calendar-year personal Books goal adds how
+   far ahead of last year you are, only when you are ahead. */
+const halfStr=x=>{const w=Math.floor(x),h=x-w>=.5;return w?`${w}${h?'½':''}`:'½'};
+const everyStr=days=>{if(days>=7){const w=Math.max(1,Math.floor(days/3.5)/2);return w===1?'a week':`every ${halfStr(w)} weeks`}const d=Math.max(1,Math.floor(days));return d===1?'a day':`every ${d} days`};
+const avgEvery=days=>{if(days>=7){const w=Math.round(days/3.5)/2;return w===1?'a week':`every ${halfStr(w)} weeks`}const d=Math.round(days);return d<=1?'a day':`every ${d} days`};
+const minStr=m=>{m=Math.ceil(m);if(m<60)return `${m} minute${m===1?'':'s'}`;return m%60===0?`${m/60} hour${m===60?'':'s'}`:fmtMin(m)};
 function chPace(c,p){
-  if(c.type!=='books'||c.mode==='comp'||!c.start||!c.end||!p.t)return '';const td=today();if(td<c.start||td>c.end||p.v>=p.t)return '';
-  const el=daysBetween(c.start,td)+1,tot=daysBetween(c.start,c.end)+1,left=tot-el;if(el<14&&p.v<2)return '';   // too early to say
+  if(!['books','pages','minutes'].includes(c.type)||c.mode==='comp'||!c.start||!c.end||!p.t)return '';const td=today();if(td<c.start||td>c.end||p.v>=p.t)return '';
+  const el=daysBetween(c.start,td)+1,tot=daysBetween(c.start,c.end)+1,left=Math.max(1,tot-el);if(el<14&&(c.type==='books'?p.v<2:p.v<=0))return '';   // too early to say
   const yr=c.start.slice(5)==='01-01'&&c.end.slice(5)==='12-31'&&c.start.slice(0,4)===c.end.slice(0,4),when=yr?(c.start.slice(0,4)===td.slice(0,4)?'this year':`in ${c.start.slice(0,4)}`):`by ${fmtDate(c.end)}`;
+  const tgt=c.type==='books'?p.t:c.type==='pages'?Number(p.t).toLocaleString():minStr(p.t);
   const proj=Math.round(p.v/el*tot),out=[];
-  if(proj>=p.t)out.push(`On track for ${proj} ${when}`);
-  else{const need=p.t-p.v,w=Math.max(1,left/7),m=left/30.44;out.push(m>=1.5?`About ${Math.ceil(need/m)} a month reaches ${p.t}`:`About ${Math.ceil(need/w)} a week reaches ${p.t}`)}
-  if(yr&&c.mode==='personal'&&c.start.slice(0,4)===td.slice(0,4)){const ly=String(+td.slice(0,4)-1),cut=ly+td.slice(4);
+  if(proj>=p.t)out.push(`On track for ${c.type==='books'?proj:c.type==='pages'?proj.toLocaleString()+' pages':minStr(proj)} ${when}`);
+  else{const need=p.t-p.v,r=need/left,a=p.v/el;   // needed and averaged, per day
+    if(c.type==='books'){
+      const mon=left>=46&&r*30.44>=1.5,wk=!mon&&r*7>=1;
+      const needTxt=mon?`About ${Math.ceil(r*30.44)} a month`:wk?`About ${Math.ceil(r*7)} a week`:`1 ${everyStr(left/need)}`;
+      const avgTxt=!p.v?'':mon&&a*30.44>=1?`you've averaged about ${Math.round(a*30.44)} a month`:wk&&a*7>=1?`you've averaged about ${halfStr(Math.round(a*14)/2)} a week`:`you've averaged 1 ${avgEvery(el/p.v)}`;
+      out.push(`${needTxt} reaches ${tgt}${avgTxt?' · '+avgTxt:''}`)}
+    else if(c.type==='pages')out.push(`About ${Math.ceil(r).toLocaleString()} pages a day reaches ${tgt}${p.v?` · you've averaged ${a<1?'under 1':Math.round(a).toLocaleString()} a day`:''}`);
+    else out.push(`About ${minStr(r)} a day reaches ${tgt}${p.v?` · you've averaged ${a<1?'under a minute':minStr(Math.round(a))} a day`:''}`)}
+  if(c.type==='books'&&yr&&c.mode==='personal'&&c.start.slice(0,4)===td.slice(0,4)){const ly=String(+td.slice(0,4)-1),cut=ly+td.slice(4);
     const prev=S.books.filter(b=>b.status==='finished'&&b.finished&&b.finished>=ly+'-01-01'&&b.finished<=cut).length,now=S.books.filter(b=>b.status==='finished'&&b.finished&&b.finished>=td.slice(0,4)+'-01-01'&&b.finished<=td).length;
     if(prev>0&&now>prev)out.push(`${now-prev} ahead of last year`)}
   return out.join(' · ');
 }
+/* Test site only (Nov 20): example challenges that show each kind of pace line, made once from this browser's sample
+   data. Targets are set from the current counts so each lands in its case. The live site never runs this (BETA=false). */
+function paceDemos(){if(!BETA||S.paceSeeded)return;S.paceSeeded=true;
+  const td=today(),Y=td.slice(0,4),mk=(name,type,start,end)=>({id:'pd'+uid(),name,desc:'Pace example (test site).',mode:'personal',type,target:1,start,end,creator:'me',participants:['me']});
+  const fit=(c,f)=>{const p=chProg(c),el=daysBetween(c.start,td)+1,tot=daysBetween(c.start,c.end)+1,proj=Math.round(p.v/el*tot);c.target=Math.max(1,f(p.v,proj));return c};
+  const add=[
+    fit(mk('Pace: Close to the Goal','books',Y+'-01-01',Y+'-12-31'),(v,pr)=>Math.max(v+2,pr+1)),
+    fit(mk('Pace: Short on Time','books',addDays(td,-30),addDays(td,13)),(v,pr)=>Math.max(v+5,pr+3)),
+    fit(mk('Pace: Long Way to Go','books',addDays(td,-60),addDays(td,120)),(v,pr)=>Math.max(v+12,pr+4)),
+    fit(mk('Pace: On Track','books',Y+'-01-01',Y+'-12-31'),(v,pr)=>pr>v+1?v+1:v+1),
+    fit(mk('Pace: Pages Behind','pages',addDays(td,-40),addDays(td,40)),(v,pr)=>Math.max(v+1400,pr+800)),
+    fit(mk('Pace: Pages On Track','pages',Y+'-01-01',Y+'-12-31'),(v,pr)=>pr>v?Math.max(v+1,Math.round((v+pr)/2)):v+1),
+    fit(mk('Pace: Reading Time Behind','minutes',Y+'-01-01',Y+'-12-31'),(v,pr)=>Math.ceil(Math.max(v+540,pr+300)/60)*60)];
+  S.challenges.push(...add);save()}
+try{paceDemos()}catch(e){}
 function chStatus(c,p){
   const t=today();
   if(c.start&&t<c.start)return {k:'up',txt:`Starts ${fmtDateY(c.start)}`};
