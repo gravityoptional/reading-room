@@ -2676,11 +2676,11 @@ function avail(tid,cs=copiesOf(tid)){const ph=cs.filter(c=>c.format==='physical'
 function avStack(tid,cs=copiesOf(tid)){const owners=[...new Set(cs.map(c=>c.owner))];if(!owners.length)return '';
   return `<span class="av-stack" aria-hidden="true">${owners.slice(0,3).map(o=>`<span class="avatar" style="background:${avBg(o)}">${avInit(o)}</span>`).join('')}</span><span class="xs muted">${owners.length===1?`Owned by ${esc(nameOf(owners[0]))}`:`${owners.length} owners`}</span>`}
 const fmtChips=(tid,cs=copiesOf(tid))=>[...new Set(cs.map(c=>c.format))].map(f=>`<span class="fchip">${FMT[f]}</span>`).join('');
-const STATUS={reading:'Currently Reading',paused:'Paused',finished:'Finished',dnf:'Did Not Finish',want:'On To Read'};
+const STATUS={reading:'Currently Reading',paused:'Paused',finished:'Finished',dnf:'Did Not Finish',want:'To Read'};
 const libCover=(t,w)=>cover({title:t.title,author:t.author,c:t.c,cover:(t.id&&myEd(t.id).cover)||t.cover,titleId:t.titleId,format:'print'},w);
 function cardAction(t){
   const r=myReading(t.id);
-  if(r&&r.status==='want')return `<button class="btn btn-ghost sm on" data-act="toggleWant" data-id="${t.id}" aria-pressed="true">${ic('check')}On To Read</button>`;
+  if(r&&r.status==='want')return `<div class="st st-want" style="margin-bottom:6px">To Read</div><button class="btn btn-ghost sm" data-act="bdLog" data-id="${r.id}">${ic('play')}Start Reading</button>`;   // style guide: status as a gray chip, one outlined action (Nov 24)
   if(r&&(r.status==='reading'||r.status==='paused'))return `<div class="xs muted" style="margin-bottom:4px">${STATUS[r.status]}${hasLen(r)?` · ${pct(r)}%`:''}</div><button class="btn btn-ghost sm" data-act="bdLog" data-id="${r.id}">${ic('book')}Log Reading</button>`;
   if(r)return `<div class="st st-${r.status}">${STATUS[r.status]}</div>`;
   return `<button class="btn btn-ghost sm" data-act="toggleWant" data-id="${t.id}" aria-pressed="false">${ic('plus')}Add to To Read</button>`;
@@ -3884,7 +3884,7 @@ function renderBD0(){
   if(S.settings.solo&&bd.tab==='activity')bd.tab='copies';
   let prim='';
   if(r&&(r.status==='reading'||r.status==='paused'))prim=`<button class="btn btn-primary" data-act="bdLog" data-id="${r.id}">${ic('book')}Log Reading</button>`;
-  else if(r&&r.status==='want')prim=`<button class="btn btn-primary" data-act="bdLog" data-id="${r.id}">${ic('play')}Start Reading</button><button class="btn btn-ghost on" data-act="toggleWant" data-id="${t.id}">${ic('check')}On To Read</button>${(S.upNext||[]).includes(r.id)?`<button class="btn btn-ghost on" data-act="upRm" data-id="${r.id}" title="Remove from Reading Queue">${ic('check')}In Reading Queue</button>`:`<button class="btn btn-ghost" data-act="upAdd" data-id="${r.id}">${ic('plus')}Add to Reading Queue</button>`}`;
+  else if(r&&r.status==='want')prim=`<button class="btn btn-primary" data-act="bdLog" data-id="${r.id}">${ic('play')}Start Reading</button><button class="btn btn-ghost on" data-act="toggleWant" data-id="${t.id}">${ic('check')}To Read</button>${(S.upNext||[]).includes(r.id)?`<button class="btn btn-ghost on" data-act="upRm" data-id="${r.id}" title="Remove from Reading Queue">${ic('check')}In Reading Queue</button>`:`<button class="btn btn-ghost" data-act="upAdd" data-id="${r.id}">${ic('plus')}Add to Reading Queue</button>`}`;
   else if(r&&r.status==='finished')prim=`<button class="btn btn-primary" data-act="startTitle" data-id="${t.id}">${ic('play')}Read Again</button>`;
   else if(r&&r.status==='dnf')prim=`<button class="btn btn-primary" data-act="pickup" data-book="${r.id}">${ic('play')}Pick Up Again</button>`;
   else prim=`<button class="btn btn-primary" data-act="toggleWant" data-id="${t.id}">${ic('plus')}Add to To Read</button>`;
@@ -5187,7 +5187,7 @@ function bookAct(id){const r=myReading(id);
   if(r&&r.status==='finished')return `<span class="st st-finished">${ic('check')}Finished</span>`;
   if(r&&r.status==='want')return `<button class="btn btn-ghost sm" data-act="bdLog" data-id="${r.id}">${ic('play')}Start Reading</button>`;
   return `<button class="btn btn-ghost sm" data-act="startTitle" data-id="${id}">${ic('play')}Start Reading</button>`}
-function bookChip(id){const r=myReading(id);if(!r)return `<button class="btn btn-ghost sm" data-act="toggleWant" data-id="${id}">${ic('plus')}To Read</button>`;return `<span class="st st-${r.status}">${r.status==='want'?'On To Read':STATUS[r.status]}</span>`}
+function bookChip(id){const r=myReading(id);if(!r)return `<button class="btn btn-ghost sm" data-act="toggleWant" data-id="${id}">${ic('plus')}To Read</button>`;return `<span class="st st-${r.status}">${r.status==='want'?'To Read':STATUS[r.status]}</span>`}
 /* create / edit challenge */
 /* Duplicate: a month in the name moves to the next month (December also moves the year), a year moves to the next year.
    A challenge that covered a whole calendar month covers the next one (or this month, if that one is already over);
