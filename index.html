@@ -145,7 +145,7 @@ main{max-width:1240px;margin:0 auto;padding:20px 20px 40px}
 .btn-primary{background:var(--primary);color:var(--on-primary)}
 .btn-primary:hover{background:var(--primary-hover)}
 .btn-ghost{background:var(--surface);border-color:var(--border);color:var(--text)}
-.btn-ghost:hover{background:var(--surface-alt)}
+.btn-ghost:hover{border-color:var(--primary);color:var(--primary)}   /* Nov 24: outlined buttons turn green as you reach for them */
 .btn-big{padding:16px 18px;font-size:17px;font-family:var(--serif);font-weight:600;border-radius:14px}
 .btn-big svg.i{width:22px;height:22px}
 .quick{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
@@ -345,6 +345,12 @@ main section.card.fl-card{margin:16px 0 20px;padding:18px 20px;border:2px solid 
 .ch-past-list,.yir-ch{display:grid;gap:0;border-top:1px solid var(--border)}.ch-past-row,.yir-ch-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 2px;border:0;border-bottom:1px solid var(--border);background:none;text-align:left;color:inherit;width:100%}.ch-past-row:hover{background:var(--surface-alt)}.ch-past-n{display:grid;gap:2px;min-width:0}.ch-past-ok{color:var(--primary);font-weight:600;white-space:nowrap}
 .cw-strip{display:flex;gap:6px;margin:10px 0 4px;align-items:flex-end}.cw-strip .cover{width:30px!important;padding:0}.cw-strip .cover .ct,.cw-strip .cover .ca{display:none}.cw-more{font-size:12px;color:var(--text-2);margin-left:4px}
 .cw{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:12px;margin:10px 0 18px}.cw-b{border:0;padding:0;background:none;cursor:pointer;display:block}.cw .cover{width:100%!important}.cw-slot{aspect-ratio:2/3;border:2px dashed var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--text-2);font-size:13px;text-align:center}.cw-faded{opacity:.35;filter:grayscale(1)}.cw-faded:hover{opacity:.6}.cc-h,.cc-g{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}.cc-h{margin:8px 0 4px;font-size:11px;color:var(--text-2);text-align:center}.cc-g{margin-bottom:16px}.cc{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:8px;font-size:13px}.cc-on{background:var(--primary);color:var(--on-primary,#fff);font-weight:600}.cc-ahead{border:2px dashed var(--border);color:var(--text-2)}.cc-today{border:2px solid var(--primary);color:var(--primary);font-weight:600}.cc-miss{background:var(--surface-alt);color:var(--text-2)}.cw-b{position:relative}.cw-tag{position:absolute;right:4px;bottom:4px;background:var(--primary);color:#fff;font:700 11px/1 Inter,system-ui,sans-serif;padding:4px 6px;border-radius:999px;box-shadow:0 1px 3px rgba(0,0,0,.3)}.cw-up{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin:10px 0}.cw-edit{margin-top:6px}.cw-edit>summary{cursor:pointer;padding:8px 0;list-style:none}.cw-edit>summary::-webkit-details-marker{display:none}.cw-edit>summary::after{content:' ▸';color:var(--text-2)}.cw-edit[open]>summary::after{content:' ▾'}
+.rn .detail{display:block;padding:16px}.rn-top{display:grid;grid-template-columns:92px minmax(0,1fr);gap:16px;align-items:start}.rn .d-cover{align-self:start;width:92px}.rn-top .cover{width:92px!important;max-width:92px}#crCard .rn .d-stat .l{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.25}#crCard .rn .d-stat{min-width:0}#crCard .rn .d-how{display:block;white-space:normal;overflow-wrap:anywhere;font-size:11px;line-height:1.3}.rn .d-stats{margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}.rn .d-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.rn .d-actions .btn{justify-content:center}
+.rn-links{display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px;margin-top:10px}.rn-links .link-btn{color:var(--text-2);font-weight:500}.rn-links .link-btn:hover{color:var(--primary);background:none}
+.rn-nav{margin-left:auto;display:flex;align-items:center;gap:8px}.rn-nav .pos{margin:0}
+@media(min-width:360px){#crCard .rn .d-stats{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}#crCard .rn .d-stat .n{font-size:20px}}
+@media(max-width:359px){#crCard .rn .d-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.rn-top{grid-template-columns:72px minmax(0,1fr);gap:12px}.rn-top .cover{width:72px!important}}
+.mbc .own-me{color:var(--text-2)!important;font-weight:500!important;display:flex;align-items:center;gap:4px}.mbc .own-me svg.i{width:13px;height:13px}   /* Nov 24: owning a book is a fact, not an action */
 .b-n{width:20px;text-align:center;color:var(--text-2);font-size:13px}
 .up-open{display:flex;flex-direction:column;align-items:flex-start;gap:1px;border:0;background:none;padding:2px 0;text-align:left;color:inherit;cursor:pointer;max-width:100%}.up-open:hover b{color:var(--primary);text-decoration:underline;text-underline-offset:3px}.b-row .cover-btn{flex:none}
 .b-row .cover{width:34px;padding:3px;flex:none}.b-row .cover .ct{font-size:5px}.b-row .cover .ca,.b-row .cover .fmt{display:none}
@@ -484,7 +490,7 @@ button.cal-d{border:0;font:inherit;color:inherit;cursor:pointer;position:relativ
 .st-paused{background:color-mix(in srgb,var(--orange) 15%,transparent);color:var(--orange-ink)}
 .st-dnf{background:color-mix(in srgb,var(--red) 13%,transparent);color:var(--red-ink)}
 .st-finished{background:color-mix(in srgb,var(--blue) 13%,transparent);color:var(--blue-ink)}
-.st-want{background:var(--primary-light);color:var(--primary)}
+.st-want{background:var(--surface-alt);color:var(--text-2)}   /* Nov 24: To Read is neutral; only Currently Reading is green */
 .rec{font-size:12px;background:var(--surface-alt);border-radius:9px;padding:7px 9px;display:grid;gap:3px}
 .rec .link-btn{justify-self:start;padding:2px 0}
 .link-btn.sm{font-size:13px;padding:4px 6px}
@@ -2038,25 +2044,26 @@ const openRead=b=>b.titleId&&titleById(b.titleId)?`data-act="openTitle" data-id=
 function detailPanel(b,list){
   const audio=b.format==='audio',st=bookStats(b),ms=milestone(b),n=list.length;
   const stat=(l,v,cls='')=>`<div class="d-stat"><div class="l">${l}</div><div class="n ${cls}">${v}</div></div>`;
-  return `<div class="carousel">
-  ${n>1?`<button class="arrow prev" data-act="prevBook" aria-label="Previous book">${ic('chevL')}</button>`:''}
-  <div class="detail" id="detail" aria-live="polite"><div class="d-left"><button class="d-cover cover-btn" ${openRead(b)} aria-label="${esc(b.title)} details">${cover(b,140)}</button>${sideActs(b,'side-acts')}</div><div style="min-width:0">
-    <div class="d-kicker">Reading Now</div><h3 class="d-title"><button class="d-tlink" ${openRead(b)}>${esc(b.title)}</button></h3><div class="muted small">${esc(b.author)}${st.started?`, started ${fmtDateY(st.started)}`:''}${audio?' · audiobook':''}</div>
-    ${sideActs(b,'side-acts-m')}
+  /* Nov 24: compact Reading Now. Arrows and "1 of 3" sit in the card header; a smaller cover beside the title; tiles in
+     one row (2 × 2 on the smallest phones); Log Reading (filled) and Start Timer; Mark Finished, Pause, Did Not Finish,
+     Edit as quiet links at the bottom. */
+  return `<div class="carousel rn">
+  <div class="detail" id="detail" aria-live="polite"><div class="rn-top"><button class="d-cover cover-btn" ${openRead(b)} aria-label="${esc(b.title)} details">${cover(b,92)}</button><div style="min-width:0">
+    <h3 class="d-title"><button class="d-tlink" ${openRead(b)}>${esc(b.title)}</button></h3><div class="muted small">${esc(b.author)}${st.started?` · Started ${fmtDateY(st.started)}`:''}${audio?' · audiobook':''}</div>
     ${hasLen(b)?`<div class="d-prog"><span>${progText(b)}</span><b>${pct(b)}%</b></div>
     <div class="bar"><span style="width:${pct(b)}%"></span></div>`:`<div class="d-prog"><span>${progText(b)}</span>${addLenLink(b)}</div>`}
     ${ms?`<div class="hint">${ms}</div>`:''}
+    </div></div>
     ${hasLen(b)?`<div class="d-stats">
       ${audio?stat('Time Left',fmtMin(st.left)):stat('Pages Left',st.left)}
-      ${st.mode==='goal'?stat(audio?'Listening Pace':'Page Pace',`${Math.max(1,Math.round(st.daily))}<small>${audio?' min':''}/day</small>`):stat(audio?'Listening Pace':'Page Pace',st.per?`${Math.round(st.per)}<small>${audio?' min':''}/session</small>`:'—')}
+      ${st.mode==='goal'?stat(audio?'Listening Pace':'Page Pace',`${Math.max(1,Math.round(st.daily))}<small class="d-how">${audio?'minutes':'pages'} / day</small>`):stat(audio?'Listening Pace':'Page Pace',st.per?`${Math.round(st.per)}<small class="d-how">${audio?'minutes':'pages'} / session</small>`:'—')}
       ${st.mode==='goal'?stat('Days to Go',`≈ ${st.daysToGo}`):stat('Sessions to Go',st.toGo!=null?`≈ ${st.toGo}`:'—')}
       ${stat('Finish Around',st.finish?`${fmtDateY(st.finish)}<small class="d-how">${st.mode==='goal'?'at your daily goal':'at your recent pace'}</small>`:'—','accent')}
     </div>`:''}
     <div class="d-actions"><button class="btn btn-primary" data-act="log" data-book="${b.id}">${ic('book')}Log Reading</button>${S.timer&&S.timer.bookId===b.id?`<button class="btn btn-ghost" data-act="stopTimer">${ic('clock')}<span data-timer>${fmtClock(tElapsed())}</span></button>`:`<button class="btn btn-ghost" data-act="startTimer" data-book="${b.id}">${ic('play')}Start Timer</button>`}
     </div>
-  </div></div>
-  ${n>1?`<button class="arrow next" data-act="nextBook" aria-label="Next book">${ic('chevR')}</button>`:''}
-  </div>`;
+    <div class="rn-links" role="group" aria-label="More for ${esc(b.title)}"><button class="link-btn sm" data-act="finish" data-book="${b.id}">Mark Finished</button><button class="link-btn sm" data-act="pause" data-book="${b.id}">Pause</button><button class="link-btn sm" data-act="dnf" data-book="${b.id}">Did Not Finish</button><button class="link-btn sm" data-act="editBook" data-book="${b.id}">Edit</button></div>
+  </div></div>`;
 }
 function sideActs(b,cls){
   return `<div class="${cls}" role="group" aria-label="More for ${esc(b.title)}"><button class="sa" data-act="finish" data-book="${b.id}">${ic('check')}Mark Finished</button><button class="sa" data-act="pause" data-book="${b.id}">${ic('pause')}Pause</button><button class="sa" data-act="dnf" data-book="${b.id}">${ic('x')}Did Not Finish</button><button class="sa" data-act="editBook" data-book="${b.id}">${ic('pencil')}Edit</button></div>`;
@@ -2073,7 +2080,7 @@ function readingCard(){
     :`<div class="empty">${ic('book')}<h3>Your Reading Journey Starts Here</h3><p>Add a book to your collection or search for a title to get started.</p><button class="btn btn-primary" data-act="startNew">Start a Book</button></div>`;
   const un=upList()[0];
   const upLine=''&&un?`<div class="up-line"><span class="small"><span class="muted">Up Next:</span> <b>${esc(un.title)}</b></span><button class="btn btn-ghost sm" data-act="bdLog" data-id="${un.id}">${ic('play')}Start Reading</button></div>`:'';
-  return `<section class="card" id="crCard" data-tour="current" aria-labelledby="crH"><div class="card-h"><span class="ico">${ic('book')}</span><h2 id="crH">Currently Reading <span class="count">(${n})</span></h2>${n>1?`<span class="pos">${list.indexOf(b)+1} of ${n}</span>`:''}</div>${body}${upLine}</section>`;
+  return `<section class="card" id="crCard" data-tour="current" aria-labelledby="crH"><div class="card-h"><span class="ico">${ic('book')}</span><h2 id="crH">Currently Reading <span class="count">(${n})</span></h2>${n>1?`<span class="rn-nav"><button class="icon-btn" data-act="prevBook" aria-label="Previous book">${ic('chevL')}</button><span class="pos">${list.indexOf(b)+1} of ${n}</span><button class="icon-btn" data-act="nextBook" aria-label="Next book">${ic('chevR')}</button></span>`:''}</div>${body}${upLine}</section>`;
 }
 function stepBook(d,refocus){
   const list=readingList();if(list.length<2)return;
@@ -2883,7 +2890,7 @@ function mbCard(t){
   <div class="mbc-side"><button class="mbc-fav ${fav?'on':''}" data-act="favTog" data-id="${t.id}" aria-pressed="${fav}" aria-label="${fav?'Remove from':'Add to'} Favorites" title="${fav?'Favorite':'Add to Favorites'} (${rateWho()})">${fav?'♥':'♡'}</button>
   <span class="st st-${st==='owned'?'':st}"${full?` title="${full}"`:''}>${full?`<span aria-hidden="true">${sh}</span><span class="sr-only">${full}</span>`:sh}</span>${pc}${rt}</div></div>
   <button class="lc-open" data-act="openTitle" data-id="${t.id}"><span class="lc-t">${esc(dispT(t.title))}</span><span class="bk-a">${esc(t.author)}</span></button>
-  ${when?`<div class="xs muted">${when}</div>`:''}${fin>1?`<div class="xs muted">Read ${fin}×</div>`:fin===1&&st!=='finished'?`<div class="xs muted">Read once before</div>`:''}${mine||cs.length?`<div class="xs ${mine?'own-me':'muted'}">${own}</div>`:''}
+  ${when?`<div class="xs muted">${when}</div>`:''}${fin>1?`<div class="xs muted">Read ${fin}×</div>`:fin===1&&st!=='finished'?`<div class="xs muted">Read once before</div>`:''}${mine||cs.length?`<div class="xs ${mine?'own-me':'muted'}">${mine?ic('shelf'):''}${own}</div>`:''}
   <div class="lc-act">${act}</div></div>`;
 }
 let recEdit=null;
@@ -2913,7 +2920,7 @@ function filtersPanel(){
     <div class="fg"><label class="fl" for="fGenre">Genre</label><select class="inp sm" id="fGenre" data-lsel="genre"><option value="all">All Genres</option>${genres.map(g=>`<option ${f.genre===g?'selected':''}>${esc(g)}</option>`).join('')}</select></div>
     ${lib.tab!=='family'||S.settings.solo?'':(()=>{const own=[...new Set(S.titles.flatMap(t=>sharedCopiesOf(t.id).map(c=>c.owner)))].filter(o=>o!=='me').sort((a,b)=>nameOf(a).localeCompare(nameOf(b)));
       return `<div class="fg"><label class="fl" for="fOwner">Owner</label><select class="inp sm" id="fOwner" data-lsel="owner"><option value="all">All Owners</option><option value="me" ${f.owner==='me'?'selected':''}>You</option>${own.map(o=>`<option value="${esc(o)}" ${f.owner===o?'selected':''}>${esc(nameOf(o))}</option>`).join('')}</select></div>`})()}
-    ${lib.tab!=='family'?'':`<div class="fg"><label class="fl" for="fStatus">My Reading</label><select class="inp sm" id="fStatus" data-lsel="status">${[['any','Any'],['none','Not Started'],['want','On To Read'],['reading','Currently Reading'],['paused','Paused'],['finished','Finished'],['dnf','Did Not Finish']].map(([v,l])=>`<option value="${v}" ${f.status===v?'selected':''}>${l}</option>`).join('')}</select></div>`}
+    ${lib.tab!=='family'?'':`<div class="fg"><label class="fl" for="fStatus">My Reading</label><select class="inp sm" id="fStatus" data-lsel="status">${[['any','Any'],['none','Not Started'],['want','To Read'],['reading','Currently Reading'],['paused','Paused'],['finished','Finished'],['dnf','Did Not Finish']].map(([v,l])=>`<option value="${v}" ${f.status===v?'selected':''}>${l}</option>`).join('')}</select></div>`}
     <div class="f-end"><button class="link-btn" data-act="libClear">Clear Filters</button><button class="btn btn-primary sm" data-act="libFilters">Show ${libTitles().length} Book${libTitles().length===1?'':'s'}</button></div>
   </div>`;
 }
@@ -2937,7 +2944,7 @@ function shareNudge(){if(S.settings.solo||S.settings.shareNudgeOff||Date.now()-(
 function libEmpty(){
   if(lib.q.trim()||nFilters())return `<div class="empty">${ic('search')}<h3>No Books Found</h3><p>Try a different search or clear your filters.</p><button class="btn btn-ghost" data-act="libClear">Clear Filters</button></div>`;
   if(lib.tab==='mybooks'&&lib.mb!=='all')return `<div class="empty">${ic('book')}<h3>No Books Here Yet</h3><p>Books with this status will show up here.</p></div>`;
-  if(lib.tab==='family'&&!S.settings.solo&&S.copies.some(c=>c.owner==='me'))return `<div class="empty">${ic('library')}<h3>The ${esc(GN())} Library Is Empty</h3><p>When people share books they own, they show up here for everyone to browse and borrow.</p><button class="btn btn-primary" data-act="shareStart">Share Books I Own</button></div>`;
+  if(lib.tab==='family'&&!S.settings.solo&&S.copies.some(c=>c.owner==='me'))return `<div class="empty">${ic('library')}<h3>The ${esc(GN())} Library Is Empty</h3><p>When people share books they own, they show up here for everyone to browse and borrow.</p><button class="btn btn-ghost" data-act="shareStart">Share Books I Own</button></div>`;
   const E={family:['library','Your Library Is Empty','Add your first book to get started. Search for it, add it yourself, or import a list.'],
     mybooks:['book','Your Books Will Show Up Here','Everything you’ve read, are reading, want to read, or own appears here.'],
     recs:['send','No Recommendations Yet','When someone in your group recommends a book to you, it shows up here.']}[lib.tab];
@@ -3098,7 +3105,7 @@ ${lib.tab==='mybooks'&&lib.mb==='series'?'':`    <button class="btn btn-ghost" d
     <label class="sortl"><span class="small muted">Sort</span><select class="inp sm" data-lsel="sort">${[['title','Title A–Z'],['titleza','Title Z–A'],['author','Author'],['added','Recently Added'],['read','Recently Read']].concat(lib.tab==='mybooks'?[['finished','Date Finished']]:[]).map(([v,l])=>`<option value="${v}" ${lib.sort===v?'selected':''}>${l}</option>`).join('')}</select></label>
     <span class="vseg" role="group" aria-label="View"><button aria-pressed="${!shelf}" data-act="libView" data-v="grid">${ic('grid')}Grid</button><button aria-pressed="${shelf}" data-act="libView" data-v="shelf">${ic('shelf')}Shelf</button></span>`}
   </div>
-  ${lib.open?filtersPanel():''}`:''}
+  ${lib.open&&!(lib.tab==='mybooks'&&lib.mb==='series')?filtersPanel():''}`:''}
   ${disc?'':`<div id="libResults">${libResults()}</div>`}</div></div>`;
 }
 function toggleWant(tid){
