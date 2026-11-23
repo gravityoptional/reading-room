@@ -4844,6 +4844,13 @@ function justDemos(){if(!BETA||S.justSeeded||!S.members?.josh)return;S.justSeede
     for(let d=1;d<400;d++){l.end=addDays(td,d);if(/^Just/.test(chPace(l,chProg(l)))){add.push(l);break}}}
   S.challenges.push(...add);save()}
 try{justDemos()}catch(e){}
+/* Test site only (Nov 23): a yearly challenge with earlier years, to show repeating challenges (Books in 2024 to 2027). */
+function repeatDemos(){if(!BETA||S.repeatSeeded||!S.members?.josh)return;S.repeatSeeded=true;
+  const mk=(y,target)=>({id:'pr'+y+uid(),name:`Books in ${y}`,desc:'Repeating challenge example (test site).',mode:'personal',type:'books',target,start:`${y}-01-01`,end:`${y}-12-31`,creator:'me',participants:['me']});
+  const fin=y=>S.books.filter(b=>b.status==='finished'&&(b.finished||'').startsWith(String(y))).length;
+  const have=y=>S.challenges.some(c=>c.type==='books'&&new RegExp('^books in '+y+'$','i').test((c.name||'').trim()));
+  [[2024,Math.max(1,fin(2024)-1)],[2025,fin(2025)+3],[2026,Math.max(1,fin(2026))],[2027,30]].forEach(([y,t])=>{if(!have(y))S.challenges.push(mk(y,t))});save()}
+try{repeatDemos()}catch(e){}
 function chStatus(c,p){
   const t=today();
   if(c.start&&t<c.start)return {k:'up',txt:`Starts ${fmtDateY(c.start)}`};
