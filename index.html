@@ -1678,6 +1678,10 @@ let saveFailed=false;
 /* Daily goals stay within a real day: up to 1,440 minutes and 2,000 pages. */
 const GOAL_MAX_MIN=1440,GOAL_MAX_PAGES=2000;
 function prepState(){
+  /* A data file from the live site leaves out what comes from the group (members, recommendations received): fill in
+     anything missing with empty values so a restore on the test site works (Nov 23). */
+  ['books','titles','copies','sessions','challenges','battles','activity','notifs','recs','recsSent','loanReqs','awardsGiven','trophies','calNotes','upNext','journal'].forEach(k=>{if(!Array.isArray(S[k]))S[k]=[]});
+  if(!S.members||typeof S.members!=='object')S.members={};if(!S.group||typeof S.group!=='object')S.group={name:'My Group'};if(!S.notes||typeof S.notes!=='object')S.notes={};
   {const g=S.settings;if(g){if(!(g.goalMinutes>0&&g.goalMinutes<=GOAL_MAX_MIN&&Number.isInteger(g.goalMinutes)))g.goalMinutes=20;if(!(g.goalPages>0&&g.goalPages<=GOAL_MAX_PAGES&&Number.isInteger(g.goalPages)))g.goalPages=15}}
 S.me.admin=true;
 S.settings.hideAct=S.settings.hideAct||[];
@@ -1997,8 +2001,12 @@ function bookStats(b){
   let finish=null,mode=null,daily=null,daysToGo=null;
   if(left!=null&&left>0){
     if(bookDays>=3&&since>=7){
-      const days=new Set(ss.filter(s=>s.date>addDays(t,-win)).map(s=>s.date)).size,rate=days/win;
-      if(toGo&&rate){finish=addDays(t,Math.ceil(toGo/rate));mode='pace'}
+      /* Nov 23: pages (or minutes) per day, not sessions, so several sessions in a day count in full; the same blended
+         forecast as challenges: half the average since starting the book, half the last 14 days. Today counts once read. */
+      const q=x=>audio?(x.minutes||x.est||0):(x.pages||0),readToday=ss.some(x=>x.date===t),end=readToday?t:addDays(t,-1);
+      const el=Math.max(1,since-(readToday?0:1)),k=Math.min(14,el),sinceStart=ss.filter(x=>!started||x.date>=started).reduce((a,x)=>a+q(x),0);
+      const recent=ss.filter(x=>x.date>addDays(end,-k)&&x.date<=end).reduce((a,x)=>a+q(x),0),f=(sinceStart/el+recent/k)/2;
+      if(f>0){finish=addDays(t,Math.ceil(left/f)-(readToday?0:1));mode='pace'}
     }else if(!isPct(b)){const g=goalShare(b);if(g){const perDay=audio?g.min:g.pages;if(perDay>0){daysToGo=Math.max(1,Math.ceil(left/perDay));finish=addDays(t,daysToGo-1);mode='goal';daily=perDay}}}
   }else if(left===0){finish=null}
   return {left,per,toGo,finish,started,mode,daily,daysToGo};
@@ -4737,9 +4745,12 @@ function chListPace(c,p){
   if(ses.length){const first=ses.map(x=>x.date).sort()[0];if(first>from)el=daysBetween(first,td)+1}   // a list's average starts at the first session on one of its books, not at a start date set in advance (Nov 21)
   if(!ses.some(x=>x.date===td)){el-=1;left+=1}   // today counts once you've read today (Nov 20)
   if(unit==='pages'||unit==='min'){
-    const did=unit==='pages'?ses.reduce((a,x)=>a+(x.pages||0),0):ses.reduce((a,x)=>a+(x.minutes||0),0),avg=el>0?did/el:0,r=amt/left;
-    if(avg>0&&avg>=r)return `On track to finish by ${fmtDateY(addDays(td,Math.ceil(amt/avg)))}`;
+    const q=x=>unit==='pages'?(x.pages||0):(x.minutes||0),did=ses.reduce((a,x)=>a+q(x),0),avg=el>0?did/el:0,r=amt/left;
+    const end=ses.some(x=>x.date===td)?td:addDays(td,-1),k=Math.min(14,Math.max(1,el)),rec=ses.filter(x=>x.date>addDays(end,-k)&&x.date<=end).reduce((a,x)=>a+q(x),0)/k;
+    const f=(avg+rec)/2;   // forecast: half the whole average, half the last 14 days (Nov 23 simulation)
     const need=unit==='pages'?`About ${Math.ceil(r).toLocaleString()} page${Math.ceil(r)===1?'':'s'} a day`:`About ${minStr(r)} a day`;
+    if(f>0&&amt/f<=.8*left)return `On track to finish by ${fmtDateY(addDays(td,Math.ceil(amt/f)-(end===td?0:1)))}`;   // today is a reading day until you've read today
+    if(f>0&&amt/f<=left)return `Just on track · ${need.replace('About','about')} keeps it`;
     const avgTxt=unit==='pages'?(avg<1?'under 1':Math.round(avg).toLocaleString()):(avg<1?'under a minute':minStr(Math.round(avg)));
     return ses.length&&el>0?`${need} ${by} · you've averaged ${avgTxt} a day`:`${need} ${by}`}   // the average waits for a first session on the list (Nov 20)
   const n=rest.length;return `${left/n>=3?'1 '+everyStr(left/n):`About ${Math.ceil(n/left*7)} a week`} ${by}`}
@@ -4751,15 +4762,21 @@ function chPace(c,p){
   const left=Math.max(1,tot-el);
   const yr=c.start.slice(5)==='01-01'&&c.end.slice(5)==='12-31'&&c.start.slice(0,4)===c.end.slice(0,4),when=yr?(c.start.slice(0,4)===td.slice(0,4)?'this year':`in ${c.start.slice(0,4)}`):`by ${fmtDate(c.end)}`;
   const tgt=c.type==='books'?p.t:c.type==='pages'?Number(p.t).toLocaleString():minStr(p.t);
-  const proj=Math.round(p.v/el*tot),out=[];
-  if(proj>=p.t)out.push(`On track for ${c.type==='books'?proj:c.type==='pages'?proj.toLocaleString()+' pages':minStr(proj)} ${when}`);
-  else{const need=p.t-p.v,r=need/left,a=p.v/el;   // needed and averaged, per day
+  /* Forecast (Nov 23 simulation of ~6,000 readers): half the whole average, half the last 14 days. It was as accurate as
+     anything tested and catches a slowdown sooner. "On track" only with a 20% margin; closer than that, "Just on track". */
+  const a0=p.v/el;let f=a0;
+  if(c.mode==='personal'){const end=el===daysBetween(c.start,td)+1?td:addDays(td,-1),k=Math.min(c.type==='books'?Math.max(42,Math.ceil(3*el/Math.max(1,p.v))):14,el),from=addDays(end,-k);   // books arrive one at a time: their recent window is long enough to expect about 3 (at least 6 weeks)
+    const rec=contrib(c).live.filter(i=>i.date>from&&i.date<=end).reduce((s,i)=>s+(i.amt||0),0)/k;f=(a0+rec)/2}
+  const proj=Math.round(p.v+f*left),out=[],need=p.t-p.v,r=need/left;
+  const needTxt=c.type==='books'?(left/need>=3?`1 ${everyStr(left/need)}`:`About ${Math.ceil(r*7)} a week`):c.type==='pages'?`About ${Math.ceil(r).toLocaleString()} page${Math.ceil(r)===1?'':'s'} a day`:`About ${minStr(r)} a day`;
+  if(f>0&&need/f<=.8*left)out.push(`On track for ${c.type==='books'?proj:c.type==='pages'?proj.toLocaleString()+' pages':minStr(proj)} ${when}`);
+  else if(f>0&&need/f<=left)out.push(`Just on track · ${needTxt.replace(/^About/,'about')} keeps it`);
+  else{const a=a0;   // needed and averaged, per day
     if(c.type==='books'){
       // a gap of 3 days or more reads as "1 every N days/weeks" (floored, so never understated); faster than that, "About N a week"
-      const needTxt=left/need>=3?`1 ${everyStr(left/need)}`:`About ${Math.ceil(r*7)} a week`;
       const avgTxt=!p.v?'':el/p.v>=3?`you've averaged 1 ${avgEvery(el/p.v)}`:`you've averaged about ${halfStr(Math.round(a*14)/2)} a week`;
       out.push(`${needTxt} reaches ${tgt}${avgTxt?' · '+avgTxt:''}`)}
-    else if(c.type==='pages')out.push(`About ${Math.ceil(r).toLocaleString()} pages a day reaches ${tgt}${p.v?` · you've averaged ${a<1?'under 1':Math.round(a).toLocaleString()} a day`:''}`);
+    else if(c.type==='pages')out.push(`${needTxt} reaches ${tgt}${p.v?` · you've averaged ${a<1?'under 1':Math.round(a).toLocaleString()} a day`:''}`);
     else out.push(`About ${minStr(r)} a day reaches ${tgt}${p.v?` · you've averaged ${a<1?'under a minute':minStr(Math.round(a))} a day`:''}`)}
   if(c.type==='books'&&yr&&c.mode==='personal'&&c.start.slice(0,4)===td.slice(0,4)){const ly=String(+td.slice(0,4)-1),cut=ly+td.slice(4);
     const prev=S.books.filter(b=>b.status==='finished'&&b.finished&&b.finished>=ly+'-01-01'&&b.finished<=cut).length,now=S.books.filter(b=>b.status==='finished'&&b.finished&&b.finished>=td.slice(0,4)+'-01-01'&&b.finished<=td).length;
@@ -4768,7 +4785,7 @@ function chPace(c,p){
 }
 /* Test site only (Nov 20): example challenges that show each kind of pace line, made once from this browser's sample
    data. Targets are set from the current counts so each lands in its case. The live site never runs this (BETA=false). */
-function paceDemos(){if(!BETA||S.paceSeeded)return;S.paceSeeded=true;
+function paceDemos(){if(!BETA||S.paceSeeded||!S.members?.josh)return;S.paceSeeded=true;
   const td=today(),Y=td.slice(0,4),mk=(name,type,start,end)=>({id:'pd'+uid(),name,desc:'Pace example (test site).',mode:'personal',type,target:1,start,end,creator:'me',participants:['me']});
   const fit=(c,f)=>{const p=chProg(c),el=daysBetween(c.start,td)+1,tot=daysBetween(c.start,c.end)+1,proj=Math.round(p.v/el*tot);c.target=Math.max(1,f(p.v,proj));return c};
   const add=[
@@ -4781,15 +4798,24 @@ function paceDemos(){if(!BETA||S.paceSeeded)return;S.paceSeeded=true;
     fit(mk('Pace: Reading Time Behind','minutes',Y+'-01-01',Y+'-12-31'),(v,pr)=>Math.ceil(Math.max(v+540,pr+300)/60)*60)];
   S.challenges.push(...add);save()}
 try{paceDemos()}catch(e){}
-function listDemos(){if(!BETA||S.listPaceSeeded)return;S.listPaceSeeded=true;
+function listDemos(){if(!BETA||S.listPaceSeeded||!S.members?.josh)return;S.listPaceSeeded=true;
   const td=today(),Y=td.slice(0,4),un=S.books.filter(b=>b.status!=='finished'&&b.status!=='dnf'),pick=f=>un.filter(f).map(b=>b.titleId).filter((id,i,a)=>a.indexOf(id)===i);
   const print=pick(b=>b.format!=='audio'&&((hasLen(b)&&!isPct(b))||titleById(b.titleId)?.pages>0)),aud=pick(b=>b.format==='audio'&&hasLen(b)),reading=pick(b=>b.status==='reading'&&b.format!=='audio'&&hasLen(b)&&!isPct(b));
   const mk=(name,ids,end)=>ids.length?{id:'pl'+uid(),name,desc:'Pace example (test site).',mode:'personal',type:'list',titleIds:ids,start:addDays(td,-3),end:end||Y+'-12-31',creator:'me',participants:['me']}:null;
   const add=[mk('Pace: One Book List',reading.slice(0,1)),mk('Pace: Three Book List',print.slice(0,3)),mk('Pace: Audiobook List',aud.slice(0,1)),mk('Pace: Mixed List',[...print.slice(0,1),...aud.slice(0,1)].length===2?[...print.slice(0,1),...aud.slice(0,1)]:[]),
     (()=>{const cut=addDays(td,-30),ok=S.books.filter(b=>b.status==='reading'&&b.format!=='audio'&&hasLen(b)&&!isPct(b)).map(b=>[b,S.sessions.filter(x=>x.bookId===b.id&&x.date>=cut).reduce((a,x)=>a+(x.pages||0),0)]).filter(([,n])=>n>0).sort((a,b)=>b[1]-a[1])[0];
-      const c=ok&&mk('Pace: On Track List',[ok[0].titleId],addDays(td,200));if(c)c.start=cut;return c})()].filter(Boolean);
+      const c=ok&&mk('Pace: On Track List',[ok[0].titleId],addDays(td,400));if(c)c.start=cut;return c})()].filter(Boolean);
   S.challenges.push(...add);save()}
 try{listDemos()}catch(e){}
+/* Test site only (Nov 23): examples of "Just on track", found by searching for a target or end date that lands in it. */
+function justDemos(){if(!BETA||S.justSeeded||!S.members?.josh)return;S.justSeeded=true;const td=today(),Y=td.slice(0,4),add=[];
+  const b={id:'pj'+uid(),name:'Pace: Just on Track',desc:'Pace example (test site).',mode:'personal',type:'pages',target:1,start:addDays(td,-40),end:addDays(td,40),creator:'me',participants:['me']};
+  for(let t=chProg(b).v+1;t<chProg(b).v+5000;t+=5){b.target=t;if(/^Just/.test(chPace(b,chProg(b)))){add.push(b);break}}
+  const src=S.challenges.find(c=>c.name==='Pace: On Track List');
+  if(src){const l={...src,id:'pj'+uid(),name:'Pace: Just on Track List',titleIds:[...src.titleIds]};
+    for(let d=1;d<400;d++){l.end=addDays(td,d);if(/^Just/.test(chPace(l,chProg(l)))){add.push(l);break}}}
+  S.challenges.push(...add);save()}
+try{justDemos()}catch(e){}
 function chStatus(c,p){
   const t=today();
   if(c.start&&t<c.start)return {k:'up',txt:`Starts ${fmtDateY(c.start)}`};
