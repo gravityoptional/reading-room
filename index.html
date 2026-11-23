@@ -5096,7 +5096,10 @@ function ruleText(c){
 /* Cover walls (Nov 23): seeing what you've read. Goodreads readers missed the grid of finished covers. */
 function chCovers(c){if(!(c.type==='books'||c.type==='list'))return [];const seen=new Set();
   return contrib(c).live.filter(i=>i.titleId&&!seen.has(i.titleId)&&seen.add(i.titleId)).sort((a,b)=>(a.date||'').localeCompare(b.date||''))}
-function chStrip(c){const it=chCovers(c);if(!it.length)return '';const last=it.slice(-5).reverse();
+function chStrip(c){
+  if(c.type==='list'){const ids=c.titleIds||[];if(!ids.length)return '';const done=new Set(chCovers(c).map(i=>i.titleId)),ord=[...ids.filter(id=>done.has(id)),...ids.filter(id=>!done.has(id))];   // a list shows its books from the start: finished in color, the rest faded (Nov 24)
+    return `<div class="cw-strip" aria-label="${done.size} of ${ids.length} finished">${ord.slice(0,5).map(id=>`<span class="${done.has(id)?'':'cw-faded'}">${libCover(titleById(id)||{title:'Book'},34)}</span>`).join('')}${ids.length>5?`<span class="cw-more">+${ids.length-5} more</span>`:''}</div>`}
+  const it=chCovers(c);if(!it.length)return '';const last=it.slice(-5).reverse();
   return `<div class="cw-strip" aria-label="${it.length} finished">${last.map(i=>libCover(titleById(i.titleId)||{title:i.label},34)).join('')}${it.length>5?`<span class="cw-more">+${it.length-5} more</span>`:''}</div>`}
 function chWall(c){if(c.mode==='comp'||!(c.type==='books'||c.type==='list'))return '';const it=chCovers(c),p=chProg(c);
   if(c.type==='list'){const done=new Set(it.map(i=>i.titleId));if(!(c.titleIds||[]).length)return '';
