@@ -5830,16 +5830,18 @@ logForm.addEventListener('submit',e=>{
   if(S.timer?.bookId===b.id){if(logForm.dataset.timerStart===String(S.timer.start)&&S.timer.stop&&minutes!=null)S.timer=null;else if(finished&&!S.timer.stop)S.timer.stop=Date.now();}
   logForm.dataset.done='1';draftClear(logForm.dataset.dkey);save();logDlg.close();render();
   const after=goalState(f.date),sk=streak(),g=S.settings,isToday=f.date===today(),logged=range||minutes!=null;
-  if(finished){const un=restoreTo(logSnap),undo=()=>{const ok=un();if(ok)render();return ok};if(!openNextDlg(b,undo))toast(`🎉 You finished ${b.title}!`,()=>{if(undo())toast('Undone.')},`That’s ${yearFinished()} book${yearFinished()===1?'':'s'} this year.`,true)}
+  /* Undo after any save (James, Nov 24): a typo noticed right away is one tap to take back */
+  const unAll=restoreTo(logSnap),undoT=()=>{if(unAll()){render();toast('Undone.')}};
+  if(finished){const un=unAll,undo=()=>{const ok=un();if(ok)render();return ok};if(!openNextDlg(b,undo))toast(`🎉 You finished ${b.title}!`,()=>{if(undo())toast('Undone.')},`That’s ${yearFinished()} book${yearFinished()===1?'':'s'} this year.`,true)}
   else if(started){const g=S.settings,left=[];if(g.goalType!=='pages')left.push(`${Math.max(1,Math.ceil(g.goalMinutes-after.mins))} more minutes`);if(g.goalType!=='minutes')left.push(`${Math.max(1,g.goalPages-after.pages)} more pages`);
     const sub=!logged?'Happy reading!':!before.met&&after.met&&isToday?`Goal met for today, too. 🔥 ${sk} day streak`:after.met||!isToday?`🔥 ${sk} day streak. Happy reading!`:`${left.join(' or ')} to reach today’s goal.`;
-    toast(`📖 You started ${b.title}!`,null,sub,true);if(!before.met&&after.met&&isToday)document.querySelector('.rings')?.classList.add('pop')}
+    toast(`📖 You started ${b.title}!`,undoT,sub,true);if(!before.met&&after.met&&isToday)document.querySelector('.rings')?.classList.add('pop')}
   else if(f.status==='dnf')openDnf(b);
-  else if(!logged)toast('Saved.');
-  else if(!isToday)toast(`Saved for ${fmtDate(f.date)}.`,null,sk>skBefore?`🔥 Your streak is now ${sk} days.`:'');
-  else if(!before.met&&after.met){toast(after.both?'🎉 Both goals met today!':'🎉 Goal met for today!',null,`🔥 ${sk} day streak. Keep it going!`,true);document.querySelector('.rings')?.classList.add('pop')}
-  else if(after.met)toast(`Nice! ${Math.round(after.mins)} minutes${after.pages?` and ${after.pages} pages`:''} today.`,null,`🔥 ${sk} day streak`);
-  else{const left=[];if(g.goalType!=='pages')left.push(`${Math.max(1,Math.ceil(g.goalMinutes-after.mins))} more minutes`);if(g.goalType!=='minutes')left.push(`${Math.max(1,g.goalPages-after.pages)} more pages`);toast('Reading saved.',null,`${left.join(' or ')} to reach today’s goal.`)}
+  else if(!logged)toast('Saved.',undoT);
+  else if(!isToday)toast(`Saved for ${fmtDate(f.date)}.`,undoT,sk>skBefore?`🔥 Your streak is now ${sk} days.`:'');
+  else if(!before.met&&after.met){toast(after.both?'🎉 Both goals met today!':'🎉 Goal met for today!',undoT,`🔥 ${sk} day streak. Keep it going!`,true);document.querySelector('.rings')?.classList.add('pop')}
+  else if(after.met)toast(`Nice! ${Math.round(after.mins)} minutes${after.pages?` and ${after.pages} pages`:''} today.`,undoT,`🔥 ${sk} day streak`);
+  else{const left=[];if(g.goalType!=='pages')left.push(`${Math.max(1,Math.ceil(g.goalMinutes-after.mins))} more minutes`);if(g.goalType!=='minutes')left.push(`${Math.max(1,g.goalPages-after.pages)} more pages`);toast('Reading saved.',undoT,`${left.join(' or ')} to reach today’s goal.`)}
 });
 
 /* ---------- goal settings ---------- */
@@ -6552,6 +6554,8 @@ css.textContent=`
 .one-secs{display:grid;margin-top:4px}
 .one-secs .rm-box{margin-top:0}
 .one-h3{font-size:13px;font-weight:600;margin:0}
+.one-pos-fix{color:var(--orange-ink);margin-top:2px;line-height:1.45}
+.one-pos-fix .link-btn{display:inline;padding:0;min-height:0;font-size:inherit;vertical-align:baseline}
 .one-details{border-top:1px solid var(--border);padding-top:12px;display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
 .one-details .st-btns{gap:10px 6px}
 .one-details .st-btns .one-stc{border:0;cursor:pointer;position:relative;font-family:inherit}
@@ -6625,7 +6629,7 @@ function restructure(b){
   const hasSessions=S.sessions.some(x=>x.bookId===b.id);
   const fmt0=b._fmtWasUnknown?'unknown':b.format;   // a book with no format yet opens with a stand-in format; the list shows Not Specified
   const details=`${statusPicker(b).replace(/ disabled/g,'')}
-    <div class="f2 one-pos-row"><label class="f"><span class="one-posL">${audio?'Current Position (h:mm)':pc?'Current Percent':'Current Page'}</span><input class="inp" name="pos" value="${audio?fmtPos(b.pos):b.pos}"><span class="xs muted one-pos-note" hidden>Set by this session’s end</span></label>
+    <div class="f2 one-pos-row"><label class="f"><span class="one-posL">${audio?'Current Position (h:mm)':pc?'Current Percent':'Current Page'}</span><input class="inp" name="pos" value="${audio?fmtPos(b.pos):b.pos}"><span class="xs muted one-pos-note" hidden>Set by this session’s end</span><span class="xs one-pos-fix" hidden></span></label>
     <label class="f">Started On<input class="inp" type="date" name="started" value="${b.started||''}" max="${today()}"></label></div>
     <div data-one-finish ${cur==='finished'?'':'hidden'}><label class="f"><span>Finished On <span class="sub">(optional)</span></span><input class="inp" type="date" name="finDate" value="${b.finished||''}" max="${today()}"></label><p class="xs muted">Leave blank if the finish date is unknown.</p></div>`;
   // Copy, Edition and Format: the edition fields (no longer behind a link), format and length, and Switched to a different copy?
@@ -6666,10 +6670,16 @@ function restructure(b){
   q('.dlg-f [type=submit]').textContent=edit?'Save Changes':'Save Reading';
   // an unsaved Log Reading entry for this book shows itself instead of saving unseen
   if(edit&&!finishedBook&&(F.end.value.trim()||F.minutes.value.trim()))wrap.querySelector('[data-one=sess]').open=true;
+  // Last session, so a mistake is fixed where people look for it (Nov 24)
+  const ls=oneLastSess(b);if(ls)F.querySelector('.one-details').insertAdjacentHTML('beforeend',`<p class="small one-last" style="margin:0"><span class="muted">Last session: ${oneSessText(ls,b)}</span> <button type="button" class="link-btn sm" data-act="sessEdit" data-id="${ls.id}">Edit</button></p>`);
   F.dataset.prev=sel.value;sync();
 }
 
 // Section summaries and the links between the session and Reading Details
+function oneLastSess(b){return S.sessions.filter(x=>x.bookId===b.id).reduce((a,x)=>!a||x.date>=a.date?x:a,null)}
+function oneSessText(x,b){const audio=b.format==='audio',d=isCU(x)?`${fmtDate(x.from)}–${fmtDate(x.date)}`:fmtDate(x.date);
+  const pg=x.start!=null&&x.end!=null?(audio?`${fmtPos(x.start)}–${fmtPos(x.end)}`:x.unit==='pct'?`${x.start}%–${x.end}%`:`p. ${x.start}–${x.end}`):x.pages?`${x.pages} pages`:'';
+  return [d,pg,x.minutes?fmtMin(x.minutes):''].filter(Boolean).join(' · ')}
 function sync(){
   const F=logForm;if(F.dataset.mode!=='log'||!F.dataset.one)return;
   const b=findB(F.dataset.book);if(!b)return;
@@ -6680,6 +6690,9 @@ function sync(){
   const pos=F.pos,pn=F.querySelector('.one-pos-note');
   if(pos){if(end){pos.dataset.was=pos.dataset.was??pos.value;pos.value=end;pos.readOnly=true;pn.hidden=false}else if(pos.readOnly){pos.value=pos.dataset.was??pos.value;delete pos.dataset.was;pos.readOnly=false;pn.hidden=true}}
   const row=F.querySelector('.one-pos-row');if(row)row.hidden=v==='want'||v==='queue';
+  {const fx=F.querySelector('.one-pos-fix'),ls=oneLastSess(b);if(fx){const num=t=>audio?parsePos(t):pc?pctNum(t):(/^\d+$/.test(String(t).trim())?+t:NaN);
+    const show=pos&&!pos.readOnly&&pos.value!==pos.defaultValue&&ls&&ls.end!=null&&num(pos.value)!==ls.end&&!isNaN(num(pos.value));
+    fx.hidden=!show;if(show)fx.innerHTML=`Your last session ended ${audio?'at '+fmtPos(ls.end):pc?'at '+ls.end+'%':'on page '+ls.end}. If that was a mistake, <button type="button" class="link-btn sm" data-act="sessEdit" data-id="${ls.id}">edit the session</button> instead.`}}
   const set=(k,t)=>{const el=F.querySelector(`[data-sum="${k}"]`);if(el)el.textContent=t?'· '+t:''};
   const r=readLog();
   set('sess',[r.end!=null&&!isNaN(r.end)&&r.start!=null?(audio?`${fmtPos(r.start)}–${fmtPos(r.end)}`:pc?`${r.start}–${r.end}%`:`p. ${r.start}–${r.end}`):'',r.minutes&&!isNaN(r.minutes)?fmtMin(r.minutes):''].filter(Boolean).join(' · ')||'optional');
@@ -6770,6 +6783,7 @@ function applyDetails(b,p,afterLog){
 }
 
 // Back from Edit Book: close the reading window if its book was removed, or show the book's new title
+sessDlg.addEventListener('close',()=>{if(!logDlg.open||!logForm.dataset.one||logForm.dataset.mode!=='log')return;const b=findB(logForm.dataset.book);if(b)drawLog(b)});
 titleDlg.addEventListener('close',()=>{if(!logDlg.open||!logForm.dataset.one)return;const id=logForm.dataset.book,b=book(id);
   if(!b){logForm.dataset.done='1';logDlg.close();return}
   const t=logForm.querySelector('.one-booktitle');if(t)t.textContent=b.title;
