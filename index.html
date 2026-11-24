@@ -3923,6 +3923,9 @@ function renderBD0(){
       ${r.status!=='want'&&r.format!=='unknown'?(hasLen(r)?`<div class="bar" style="margin-top:12px"><span style="width:${pct(r)}%"></span></div><div class="xs muted">${prog} · ${pct(r)}%</div>`:`<div class="len-box"><div class="small">${prog}</div><div class="xs muted">${addLenLink(r)}</div></div>`):''}
       <div class="xs muted" style="margin-top:6px">${[r.started?`Started ${fmtDateY(r.started)}`:'',r.finished?`Finished ${fmtDateY(r.finished)}`:r.status==='finished'?finUnknown(r):'',r.dnfOn?`Set aside ${fmtDateY(r.dnfOn)}`:''].filter(Boolean).join(' · ')}</div>${(r.with||[]).length?`<div class="xs muted">Read with ${esc((n=>n.length>1?n.slice(0,-1).join(', ')+' and '+n.at(-1):n[0])(r.with.map(nameOf)))}</div>`:''}
       ${lastNoteBox(r)}
+      ${(()=>{const ss=S.sessions.filter(x=>x.bookId===r.id).reverse().sort((a,b)=>(b.date+(b.from||'')).localeCompare(a.date+(a.from||'')));if(!ss.length)return '';
+        const row=x=>`<div class="bd-sess"><span class="small">${esc(sessLine(x,r))}${x.note?` <span class="muted">· “${esc(x.note.length>60?x.note.slice(0,60)+'…':x.note)}”</span>`:''}</span><button type="button" class="link-btn sm" data-act="sessEdit" data-id="${x.id}" aria-label="Edit the session on ${esc(fmtDate(x.date))}">Edit</button></div>`;
+        return `<div class="bd-sessions"><div class="small" style="font-weight:600">Your Sessions <span class="muted" style="font-weight:400">${ss.length}</span></div>${ss.slice(0,5).map(row).join('')}${ss.length>5?`<details class="bd-more"><summary class="link-btn sm">Show all ${ss.length}</summary>${ss.slice(5).map(row).join('')}</details>`:''}</div>`})()}
       ${r.edition?`<div class="small" style="margin-top:10px">Edition: ${esc(r.edition)}</div>`:''}
       ${r.status==='finished'?`<div class="rate"><span class="small">Your Rating <span class="muted">(${rateWho()})</span></span>${starsFor(r)}</div>`
         :r.status==='dnf'?`<div class="rate dnf-why"><span class="small">${r.dnfWhy||r.dnfNote?`Why you stopped: <b>${esc(dnfWhyL(r.dnfWhy)||'')}</b>${r.dnfNote?` “${esc(r.dnfNote)}”`:''}`:'<span class="muted">No reason given for stopping.</span>'}</span><button class="link-btn sm" data-act="dnfEdit" data-book="${r.id}">${r.dnfWhy||r.dnfNote?'Change':'Add a Reason'}</button></div>`:''}`;
@@ -4644,6 +4647,16 @@ function draftCancel(form,dlg,reopen,label){
   form.dataset.done='1';clearTimeout(draftTimer);if(k)draftClear(k);dlg.close();
   if(f)toast(`Discarded your ${label}.`,()=>{const d=draftsAll();d[k]={f,ts:Date.now()};draftsPut(d);reopen()});
 }
+/* One line for a session (Last session, Your Sessions), and the figure its Group Activity post shows (Nov 24) */
+function sessLine(x,b){const audio=b?.format==='audio',d=isCU(x)?`${fmtDate(x.from)}–${fmtDate(x.date)}`:fmtDate(x.date);
+  const pg=x.start!=null&&x.end!=null?(audio?`${fmtPos(x.start)}–${fmtPos(x.end)}`:x.unit==='pct'?`${x.start}%–${x.end}%`:`p. ${x.start}–${x.end}`):x.pages?`${x.pages} pages`:'';
+  return [d,pg,x.minutes?fmtMin(x.minutes):x.est?`~${fmtMin(x.est)}`:''].filter(Boolean).join(' · ')}
+function sessPostExtra(x,b){const span=x.start!=null&&x.end!=null?x.end-x.start:0;
+  return x.minutes!=null?fmtMin(x.minutes):b?.format==='audio'?`${fmtMin(span)} of audio`:x.unit==='pct'?`${+span.toFixed(1)}% of the book`:`${x.pages||span} pages`}
+/* B (James, Nov 24): a session's post follows it. Editing the session updates the post's figure; deleting it removes the post. */
+function sessPostsSync(x,b,gone){const mine=S.activity.filter(a=>a.who==='me'&&!a.fromGroup&&a.sid===x.id);if(!mine.length)return;
+  if(gone){S.activity=S.activity.filter(a=>!mine.includes(a));S.actGone=(S.actGone||[]).concat(mine.map(a=>({id:a.id,ts:Date.now()})));return}
+  mine.forEach(a=>{a.extra=sessPostExtra(x,b)})}
 function openSess(id){
   const x=S.sessions.find(y=>y.id===id);if(!x)return;const b=book(x.bookId),audio=b?.format==='audio',pc=x.unit==='pct',v=n=>n==null?'':audio?fmtPos(n):n;
   sessForm.dataset.id=id;
@@ -4685,6 +4698,7 @@ sessForm.addEventListener('submit',e=>{
   if(isCU(x))x.from=f.from;
   Object.assign(x,{date:f.date,start:st,end:en,pages,minutes:mn,note:f.note||''});
   x.est=null;if(!audio&&pages&&mn==null&&S.settings.estimate){const pc=pace(x.bookId);if(pc)x.est=Math.round(pages/pc)}else if(audio&&en!=null&&mn==null&&S.settings.estimate)x.est=en-st;
+  sessPostsSync(x,b,false);
   sessForm.dataset.done='1';draftClear(sessForm.dataset.dkey);syncPos(b);save();sessDlg.close();render();toast('Session updated.',null,'Goals, streaks, challenges, and records recalculate automatically.');
 });
 
@@ -5803,12 +5817,13 @@ logForm.addEventListener('submit',e=>{
   saveReadingEdition(b,readEdition(logForm,'logReading'));
   commitStartCopy(b);
   if(wasWant&&!b.started)b.started=fromD||f.date;
+  let newSid=null;
   if(range||minutes!=null){
     let est=null;
     const pages=audio?0:isPct(b)?pctPages(b,span):span;
     if(minutes==null&&S.settings.estimate){if(audio&&span>0)est=span;else if(pages>0){const p=pace(b.id);if(p)est=Math.round(pages/p)}}
     const withIds=[...logForm.querySelectorAll('[name=with]:checked')].map(x=>x.value);
-    S.sessions.push({id:uid(),bookId:b.id,date:f.date,from:fromD||undefined,start:range?start:null,end:range?end:null,unit:isPct(b)?'pct':undefined,pages,minutes,est,note:f.note||'',with:withIds.length?withIds:undefined});
+    newSid=uid();S.sessions.push({id:newSid,bookId:b.id,date:f.date,from:fromD||undefined,start:range?start:null,end:range?end:null,unit:isPct(b)?'pct':undefined,pages,minutes,est,note:f.note||'',with:withIds.length?withIds:undefined});
     if(withIds.length){extraSub=`Also counted for ${withIds.map(nameOf).join(' and ')}.`;if(S.settings.share)S.activity.push({id:uid(),who:'me',kind:'together',text:`read together with ${withIds.map(nameOf).join(' and ')}`,book:b.title,titleId:b.titleId,ts:Date.now(),r:{}})}
   }
   if(range){if(!['reading','paused'].includes(b.status))b.pos=end;else syncPos(b)}
@@ -5822,7 +5837,7 @@ logForm.addEventListener('submit',e=>{
   if(finished){const c=logForm.querySelector('[name=noSug]');if(c)noSugSet(b.titleId,c.checked)}   // whether or not activity is shared
   if(S.settings.share){
     if(finished&&!wasFinished)S.activity.push({id:uid(),who:'me',kind:'finished',text:'finished',book:b.title,titleId:b.titleId,ts:Date.now(),r:{}});
-    else if(range||minutes!=null)S.activity.push({id:uid(),who:'me',kind:'session',text:'logged a reading session',book:b.title,titleId:b.titleId,extra:minutes!=null?fmtMin(minutes):(audio?`${fmtMin(span)} of audio`:isPct(b)?`${+span.toFixed(1)}% of the book`:`${span} pages`),ts:Date.now(),r:{}});
+    else if(range||minutes!=null)S.activity.push({id:uid(),who:'me',kind:'session',sid:newSid||undefined,text:'logged a reading session',book:b.title,titleId:b.titleId,extra:minutes!=null?fmtMin(minutes):(audio?`${fmtMin(span)} of audio`:isPct(b)?`${+span.toFixed(1)}% of the book`:`${span} pages`),ts:Date.now(),r:{}});
   }
   if(range&&!audio&&b.total&&!finished){const half=Math.ceil(b.total/2);if(start<half&&end>=half)postBook('halfway','reached the halfway point of',b)}
   {const aft=goalState(f.date),sk2=streak();if(f.date===today()){if(!before.both&&aft.both)post('goal','met both daily goals');else if(!before.met&&aft.met)post('goal','met today’s reading goal')}
@@ -6170,7 +6185,7 @@ document.addEventListener('click',e=>{
     case 'sessEdit':openSess(a.dataset.id);break;
     case 'closeSess':sessDlg.close();break;
     case 'cancelSess':{const id=sessForm.dataset.id;draftCancel(sessForm,sessDlg,()=>openSess(id),'changes');break}
-    case 'sessDel':{sessForm.dataset.done='1';draftClear(sessForm.dataset.dkey);const snap=snapshot(),x=S.sessions.find(y=>y.id===sessForm.dataset.id);ensureProgressBase(book(x.bookId));S.sessions=S.sessions.filter(y=>y!==x);trashPut('session',x,book(x.bookId)?.title);syncPos(book(x.bookId));save();sessDlg.close();render();toast('Session deleted.',restoreTo(snap),'Kept in History → Recently Deleted for 30 days.');break}
+    case 'sessDel':{sessForm.dataset.done='1';draftClear(sessForm.dataset.dkey);const snap=snapshot(),x=S.sessions.find(y=>y.id===sessForm.dataset.id);ensureProgressBase(book(x.bookId));S.sessions=S.sessions.filter(y=>y!==x);sessPostsSync(x,book(x.bookId),true);trashPut('session',x,book(x.bookId)?.title);syncPos(book(x.bookId));save();sessDlg.close();render();toast('Session deleted.',restoreTo(snap),'Kept in History → Recently Deleted for 30 days.');break}
     case 'upAdd':{S.upNext=S.upNext||[];if(upList().length>=10){toast('Your Reading Queue holds 10 books. Remove one first.');break}if(!S.upNext.includes(a.dataset.id))S.upNext.push(a.dataset.id);save();refreshLib();toast(`Added ${book(a.dataset.id).title} to your Reading Queue.`);break}
     case 'upRm':{S.upNext=(S.upNext||[]).filter(x=>x!==a.dataset.id);save();refreshLib();break}
     case 'upMove':{const L=upList().map(b=>b.id),i=L.indexOf(a.dataset.id),j=i+(+a.dataset.v);if(j<0||j>=L.length)break;[L[i],L[j]]=[L[j],L[i]];S.upNext=L;save();refreshLib();break}
@@ -6555,6 +6570,11 @@ css.textContent=`
 .one-secs{display:grid;margin-top:4px}
 .one-secs .rm-box{margin-top:0}
 .one-h3{font-size:13px;font-weight:600;margin:0}
+.bd-sessions{margin-top:14px;padding-top:10px;border-top:1px solid var(--border)}
+.bd-sess{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:5px 0;border-bottom:1px solid color-mix(in srgb,var(--border) 60%,transparent)}
+.bd-sess .small{min-width:0}
+.bd-more>summary{list-style:none;cursor:pointer;margin-top:6px}.bd-more>summary::-webkit-details-marker{display:none}
+.bd-more[open]>summary{display:none}
 .one-pos-fix,.one-start-fix{color:var(--orange-ink);margin-top:2px;line-height:1.45}
 .one-start-fix{margin-top:-6px}
 .one-start-fix .link-btn{display:inline;padding:0;min-height:0;font-size:inherit;vertical-align:baseline}
@@ -6680,9 +6700,7 @@ function restructure(b){
 
 // Section summaries and the links between the session and Reading Details
 function oneLastSess(b){return S.sessions.filter(x=>x.bookId===b.id).reduce((a,x)=>!a||x.date>=a.date?x:a,null)}
-function oneSessText(x,b){const audio=b.format==='audio',d=isCU(x)?`${fmtDate(x.from)}–${fmtDate(x.date)}`:fmtDate(x.date);
-  const pg=x.start!=null&&x.end!=null?(audio?`${fmtPos(x.start)}–${fmtPos(x.end)}`:x.unit==='pct'?`${x.start}%–${x.end}%`:`p. ${x.start}–${x.end}`):x.pages?`${x.pages} pages`:'';
-  return [d,pg,x.minutes?fmtMin(x.minutes):''].filter(Boolean).join(' · ')}
+function oneSessText(x,b){return sessLine(x,b)}
 function sync(){
   const F=logForm;if(F.dataset.mode!=='log'||!F.dataset.one)return;
   const b=findB(F.dataset.book);if(!b)return;
@@ -6792,6 +6810,7 @@ function applyDetails(b,p,afterLog){
 // Back from Edit Book: close the reading window if its book was removed, or show the book's new title
 /* Errors clear as soon as you change something in the same window (James, Nov 24) */
 document.addEventListener('input',e=>{const f=e.target.closest?.('form');if(!f)return;f.querySelectorAll('.err[role=alert]').forEach(x=>{if(x.textContent)x.textContent=''})});
+sessDlg.addEventListener('close',()=>{if(bookDlg?.open)renderBD(true)});
 sessDlg.addEventListener('close',()=>{if(!logDlg.open||!logForm.dataset.one||logForm.dataset.mode!=='log')return;const b=findB(logForm.dataset.book);if(b)drawLog(b)});
 titleDlg.addEventListener('close',()=>{if(!logDlg.open||!logForm.dataset.one)return;const id=logForm.dataset.book,b=book(id);
   if(!b){logForm.dataset.done='1';logDlg.close();return}
