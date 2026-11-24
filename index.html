@@ -3925,7 +3925,7 @@ function renderBD0(){
       ${lastNoteBox(r)}
       ${(()=>{const ss=S.sessions.filter(x=>x.bookId===r.id).reverse().sort((a,b)=>(b.date+(b.from||'')).localeCompare(a.date+(a.from||'')));if(!ss.length)return '';
         const row=x=>`<div class="bd-sess"><span class="small">${esc(sessLine(x,r))}${x.note?` <span class="muted">· “${esc(x.note.length>60?x.note.slice(0,60)+'…':x.note)}”</span>`:''}</span><button type="button" class="link-btn sm" data-act="sessEdit" data-id="${x.id}" aria-label="Edit the session on ${esc(fmtDate(x.date))}">Edit</button></div>`;
-        return `<div class="bd-sessions"><div class="small" style="font-weight:600">Your Sessions <span class="muted" style="font-weight:400">${ss.length}</span></div>${ss.slice(0,5).map(row).join('')}${ss.length>5?`<details class="bd-more"><summary class="link-btn sm">Show all ${ss.length}</summary>${ss.slice(5).map(row).join('')}</details>`:''}</div>`})()}
+        return `<div class="bd-sessions"><div class="small" style="font-weight:600">Your Sessions <span class="muted" style="font-weight:400">${ss.length}</span></div>${ss.map(row).join('')}</div>`})()}
       ${r.edition?`<div class="small" style="margin-top:10px">Edition: ${esc(r.edition)}</div>`:''}
       ${r.status==='finished'?`<div class="rate"><span class="small">Your Rating <span class="muted">(${rateWho()})</span></span>${starsFor(r)}</div>`
         :r.status==='dnf'?`<div class="rate dnf-why"><span class="small">${r.dnfWhy||r.dnfNote?`Why you stopped: <b>${esc(dnfWhyL(r.dnfWhy)||'')}</b>${r.dnfNote?` “${esc(r.dnfNote)}”`:''}`:'<span class="muted">No reason given for stopping.</span>'}</span><button class="link-btn sm" data-act="dnfEdit" data-book="${r.id}">${r.dnfWhy||r.dnfNote?'Change':'Add a Reason'}</button></div>`:''}`;
@@ -6573,6 +6573,8 @@ css.textContent=`
 .bd-sessions{margin-top:14px;padding-top:10px;border-top:1px solid var(--border)}
 .bd-sess{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:5px 0;border-bottom:1px solid color-mix(in srgb,var(--border) 60%,transparent)}
 .bd-sess .small{min-width:0}
+.bd-fold-b{margin-top:6px}
+#bookDlg .bd-sess[hidden],#bookDlg .act-top[hidden]{display:none!important}
 .bd-more>summary{list-style:none;cursor:pointer;margin-top:6px}.bd-more>summary::-webkit-details-marker{display:none}
 .bd-more[open]>summary{display:none}
 .one-pos-fix,.one-start-fix{color:var(--orange-ink);margin-top:2px;line-height:1.45}
@@ -6811,6 +6813,19 @@ function applyDetails(b,p,afterLog){
 /* Errors clear as soon as you change something in the same window (James, Nov 24) */
 document.addEventListener('input',e=>{const f=e.target.closest?.('form');if(!f)return;f.querySelectorAll('.err[role=alert]').forEach(x=>{if(x.textContent)x.textContent=''})});
 sessDlg.addEventListener('close',()=>{if(bookDlg?.open)renderBD(true)});
+/* Book window lists (Your Sessions, Activity) fold at the window's full height (its normal maximum), instead of
+   scrolling on and on. At least three rows show; Show all N opens the rest, Show fewer folds them again. */
+let bdOpenAll={};
+function bdFold(){const d=bookDlg;if(!d?.open)return;const box=d.querySelector('.dlg')||d,BD_STD=(parseFloat(getComputedStyle(d).maxHeight)||innerHeight*.9)-40;   // room for Show all
+  const sets=[[d.querySelectorAll('.bd-sess'),'sess'],[d.querySelectorAll('.act-top'),'act']].filter(([r])=>r.length>3);
+  d.querySelectorAll('.bd-fold-b').forEach(b=>b.remove());
+  for(const [rows,k] of sets){const all=[...rows];all.forEach(r=>r.hidden=false);
+    if(!bdOpenAll[k]){let n=all.length;while(n>3&&box.scrollHeight>BD_STD){all[--n].hidden=true}}
+    const hid=all.filter(r=>r.hidden).length;if(!hid&&!bdOpenAll[k])continue;
+    all[all.length-1].insertAdjacentHTML('afterend',`<button type="button" class="link-btn sm bd-fold-b" data-bd-fold="${k}">${bdOpenAll[k]?'Show fewer':`Show all ${all.length}`}</button>`)}}
+document.addEventListener('click',e=>{const b=e.target.closest?.('[data-bd-fold]');if(!b)return;const k=b.dataset.bdFold;bdOpenAll[k]=!bdOpenAll[k];bdFold();if(!bdOpenAll[k])bookDlg.querySelector('.dlg')?.scrollTo?.({top:0})});
+bookDlg.addEventListener('close',()=>{bdOpenAll={}});
+{const _rbd=renderBD;renderBD=function(...a){const r=_rbd(...a);try{bdFold()}catch(e){}return r}}
 sessDlg.addEventListener('close',()=>{if(!logDlg.open||!logForm.dataset.one||logForm.dataset.mode!=='log')return;const b=findB(logForm.dataset.book);if(b)drawLog(b)});
 titleDlg.addEventListener('close',()=>{if(!logDlg.open||!logForm.dataset.one)return;const id=logForm.dataset.book,b=book(id);
   if(!b){logForm.dataset.done='1';logDlg.close();return}
