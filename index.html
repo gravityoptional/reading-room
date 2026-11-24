@@ -1590,7 +1590,9 @@ let S;
 try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){S=null}
 if(!S||S.v!==6)S=seed();
 let savedRaw;try{savedRaw=localStorage.getItem(KEY)}catch(e){savedRaw=null}
-let savedBase=JSON.parse(JSON.stringify(S)),saveConflict=false,conflictDownloaded=false;
+let savedBase=JSON.parse(JSON.stringify(S)),saveConflict=false,conflictDownloaded=false,conflictAsk=false;
+/* Bookkeeping that two tabs write on their own (which note prompts were shown) is never a conflict: this tab's copy wins (Nov 24). */
+const SOFT_KEYS=/^(npKeep|npSeen_)/;
 // Three-way reconciliation preserves independent changes, but never guesses on competing edits.
 function mergeSaved(base,local,remote){
   const eq=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
@@ -1746,13 +1748,15 @@ function showSaveFailure(){
   document.querySelectorAll('.save-warning').forEach(e=>e.remove());if(!saveFailed)return;
   const host=[...document.querySelectorAll('dialog[open]')].pop()?.querySelector('.dlg')||document.body;
   const box=document.createElement('div');box.className='save-warning';box.setAttribute('role','alert');
-  if(saveConflict){box.innerHTML='<div><b>Another tab saved changes to the same information.</b> Your changes are still here, and the other tab’s saved data is safe. Download your unsaved copy before loading the latest saved data.</div><button type="button" class="btn btn-ghost sm" data-act="downloadConflict">Download My Unsaved Copy</button><button type="button" class="btn btn-ghost sm" data-act="loadLatest" '+(conflictDownloaded?'':'disabled')+'>Load Latest Saved Data</button>';host.prepend(box);return;}
+  /* Load Latest Saved Data always answers (Nov 24): without a downloaded copy it first asks, in place. */
+  if(saveConflict&&conflictAsk&&!conflictDownloaded){box.innerHTML='<div><b>Load the latest saved data?</b> Changes in this tab that weren’t saved will be lost. Download them first if you might need them.</div><button type="button" class="btn btn-ghost sm" data-act="downloadConflict">Download My Unsaved Copy</button><button type="button" class="btn btn-ghost sm" data-act="loadLatest">Load Anyway</button>';host.prepend(box);return;}
+  if(saveConflict){box.innerHTML='<div><b>Another tab saved changes to the same information.</b> Your changes are still here, and the other tab’s saved data is safe. Download your unsaved copy before loading the latest saved data.</div><button type="button" class="btn btn-ghost sm" data-act="downloadConflict">Download My Unsaved Copy</button><button type="button" class="btn btn-ghost sm" data-act="loadLatest">Load Latest Saved Data</button>';host.prepend(box);return;}
   box.innerHTML='<div><b>Changes haven’t been saved.</b> This browser could not save your data. Your changes are only in this open page. Keep it open and try again before refreshing or closing.</div><button type="button" class="btn btn-ghost sm" data-act="retrySave">Try Saving Again</button>';host.prepend(box);
 }
 function save(){try{actPrune()}catch(e){}try{
   const raw=localStorage.getItem(KEY);let next=S;
-  if(raw!==savedRaw){try{if(!raw)throw new Error('Saved data was removed');const remote=JSON.parse(raw);next=mergeSaved(savedBase,JSON.parse(JSON.stringify(S)),remote);assertLoanMerge(remote,next);assertTimerMerge(remote,next);}catch(e){saveConflict=true;conflictDownloaded=false;throw e;}}
-  S=next;try{diffEvents()}catch(e){}const encoded=JSON.stringify(S);localStorage.setItem(KEY,encoded);savedRaw=encoded;savedBase=JSON.parse(encoded);saveFailed=false;saveConflict=false;conflictDownloaded=false;document.querySelectorAll('.save-warning').forEach(e=>e.remove());return true;
+  if(raw!==savedRaw){try{if(!raw)throw new Error('Saved data was removed');const remote=JSON.parse(raw),loc=JSON.parse(JSON.stringify(S));for(const k of Object.keys(loc))if(SOFT_KEYS.test(k))remote[k]=loc[k];next=mergeSaved(savedBase,loc,remote);assertLoanMerge(remote,next);assertTimerMerge(remote,next);}catch(e){saveConflict=true;conflictDownloaded=false;conflictAsk=false;throw e;}}
+  S=next;try{diffEvents()}catch(e){}const encoded=JSON.stringify(S);localStorage.setItem(KEY,encoded);savedRaw=encoded;savedBase=JSON.parse(encoded);saveFailed=false;saveConflict=false;conflictDownloaded=false;conflictAsk=false;document.querySelectorAll('.save-warning').forEach(e=>e.remove());return true;
 }catch(e){saveFailed=true;const t=document.getElementById('toast');if(t){if(t.hidePopover){if(t.matches(':popover-open'))t.hidePopover()}else t.hidden=true}queueMicrotask(showSaveFailure);return false}}
 document.addEventListener('close',e=>{if(e.target.matches?.('dialog')&&saveFailed)queueMicrotask(showSaveFailure)},true);
 window.addEventListener('beforeunload',e=>{if(saveFailed){e.preventDefault();e.returnValue=''}});
@@ -6121,7 +6125,7 @@ document.addEventListener('click',e=>{
     case 'dataCancel':dataPick=null;document.getElementById('dataDlg')?.close();break;
     case 'dataGo':dataApply();break;
     case 'downloadConflict':{const blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='Reading-Room-unsaved-copy.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);conflictDownloaded=true;showSaveFailure();break;}
-    case 'loadLatest':if(saveConflict&&conflictDownloaded)location.reload();break;
+    case 'loadLatest':if(!saveConflict)break;if(conflictDownloaded||conflictAsk)location.reload();else{conflictAsk=true;showSaveFailure()}break;
     case 'retrySave':if(save())toast('Changes saved.');break;
     case 'log':openLog(id,a.dataset.focus);break;
     case 'setStatus':{if(a.closest('#editForm')){editForm.dataset.nextStatus=a.dataset.v;editForm.querySelectorAll('[data-act=setStatus]').forEach(x=>{x.disabled=false;x.setAttribute('aria-pressed',String(x===a))});editForm.querySelector('[data-edit-finish]').hidden=a.dataset.v!=='finished';break;}const b=book(a.dataset.book),v=a.dataset.v,snap=snapshot(),has=S.sessions.some(x=>x.bookId===b.id&&(x.pages||x.minutes||x.est)),prev=b.status;
