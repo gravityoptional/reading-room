@@ -5137,7 +5137,7 @@ function ruleText(c){
 function chCovers(c){if(!(c.type==='books'||c.type==='list'))return [];const seen=new Set();
   return contrib(c).live.filter(i=>i.titleId&&!seen.has(i.titleId)&&seen.add(i.titleId)).sort((a,b)=>(a.date||'').localeCompare(b.date||''))}
 function chStrip(c){
-  if(c.type==='list'){const ids=c.titleIds||[];if(!ids.length)return '';const done=new Set(chCovers(c).map(i=>i.titleId)),ord=[...ids.filter(id=>done.has(id)),...ids.filter(id=>!done.has(id))];   // a list shows its books from the start: finished in color, the rest faded (Nov 24)
+  if(c.type==='list'){const ids=c.titleIds||[];if(!ids.length)return '';const done=new Set(chCovers(c).map(i=>i.titleId)),rd=id=>S.books.some(b=>b.titleId===id&&(b.status==='reading'||b.status==='paused')),ord=[...ids.filter(id=>done.has(id)),...ids.filter(id=>!done.has(id)&&rd(id)),...ids.filter(id=>!done.has(id)&&!rd(id))];   // a list shows its books from the start: finished in color, the rest faded (Nov 24)
     return `<div class="cw-strip" aria-label="${done.size} of ${ids.length} finished">${ord.slice(0,5).map(id=>`<span class="${done.has(id)||S.books.some(b=>b.titleId===id&&(b.status==='reading'||b.status==='paused'))?'':'cw-faded'}">${libCover(titleById(id)||{title:'Book'},34)}</span>`).join('')}${ids.length>5?`<span class="cw-more">+${ids.length-5} more</span>`:''}</div>`}
   const it=chCovers(c);if(!it.length)return '';const last=it.slice(-5).reverse();
   return `<div class="cw-strip" aria-label="${it.length} finished">${last.map(i=>libCover(titleById(i.titleId)||{title:i.label},34)).join('')}${it.length>5?`<span class="cw-more">+${it.length-5} more</span>`:''}</div>`}
@@ -5148,7 +5148,8 @@ function chCal(c){if(c.mode==='comp'||!c.start||!c.end)return '';const tot=daysB
   return `<h3 class="sec-h" style="margin-top:14px">Your Days <span class="muted small">${got.size} of ${c.target||tot}</span></h3><div class="cc-h" aria-hidden="true">${['M','T','W','T','F','S','S'].map(x=>`<span>${x}</span>`).join('')}</div><div class="cc-g">${cells.join('')}</div>`}
 function chWall(c){if(c.type==='days'||c.type==='goaldays')return chCal(c);if(c.mode==='comp'||!(c.type==='books'||c.type==='list'))return '';const it=chCovers(c),p=chProg(c);
   if(c.type==='list'){const done=new Set(it.map(i=>i.titleId));if(!(c.titleIds||[]).length)return '';
-    return `<h3 class="sec-h" style="margin-top:14px">The List</h3><div class="cw">${c.titleIds.map(id=>{const t=titleById(id)||{title:'Book'};const rb=!done.has(id)&&S.books.find(b=>b.titleId===id&&(b.status==='reading'||b.status==='paused')),tag=done.has(id)?'<span class="cw-tag">✓</span>':rb?`<span class="cw-tag">${hasLen(rb)?pct(rb)+'%':'Reading'}</span>`:'';
+    const rd=id=>S.books.some(b=>b.titleId===id&&(b.status==='reading'||b.status==='paused')),ids=c.titleIds,ord=[...ids.filter(id=>done.has(id)),...ids.filter(id=>!done.has(id)&&rd(id)),...ids.filter(id=>!done.has(id)&&!rd(id))];   // finished, then reading, then the rest (Nov 24)
+    return `<h3 class="sec-h" style="margin-top:14px">The List</h3><div class="cw">${ord.map(id=>{const t=titleById(id)||{title:'Book'};const rb=!done.has(id)&&S.books.find(b=>b.titleId===id&&(b.status==='reading'||b.status==='paused')),tag=done.has(id)?'<span class="cw-tag">✓</span>':rb?`<span class="cw-tag">${hasLen(rb)?pct(rb)+'%':'Reading'}</span>`:'';
       return `<button type="button" class="cw-b ${done.has(id)||rb?'':'cw-faded'}" data-act="openTitle" data-id="${id}" aria-label="${esc(t.title)}${done.has(id)?', finished':rb?', reading':''}">${libCover(t,74)}${tag}</button>`}).join('')}</div>`}
   if(!it.length&&!p.t)return '';const empty=Math.max(0,(p.t||0)-it.length),show=Math.min(empty,12);
   return `<h3 class="sec-h" style="margin-top:14px">Your Books <span class="muted small">${p.v} of ${p.t}</span></h3><div class="cw">${it.map(i=>`<button type="button" class="cw-b" data-act="openTitle" data-id="${i.titleId}" aria-label="${esc(i.label)}">${libCover(titleById(i.titleId)||{title:i.label},74)}</button>`).join('')}${Array.from({length:show},(_,k)=>`<div class="cw-slot" aria-hidden="true">${it.length+k+1}</div>`).join('')}${empty>show?`<div class="cw-slot cw-rest">+${empty-show} to go</div>`:''}</div>`}
@@ -5618,7 +5619,7 @@ function drawLog(b,focus,preMin,moveTo){
       <label class="f">${audio?'End':isPct(b)?'End %':'End Page'}<span class="sr-only opt-sr"></span><input class="inp" name="end" inputmode="${audio?'text':'numeric'}" placeholder="${audio?'h:mm':''}" data-ph="${audio?'h:mm':''}"></label>
       <label class="f">Minutes<span class="sr-only opt-sr"></span><input class="inp" name="minutes" inputmode="text" autocomplete="off" value="${preMin||''}" placeholder="" data-ph="" aria-describedby="minHint"><span class="xs muted min-hint" id="minHint" aria-live="polite"></span></label>
     </div>
-    <div class="calc" id="calc"></div>
+    <div class="calc" id="calc"></div><div class="xs one-start-fix" hidden></div>
     <div class="xs muted" style="margin-top:-8px" ${!audio&&!isNew&&!isPct(b)?'hidden':''}>${isPct(b)?'Enter the percent your e-reader shows, for example 45. Add minutes for the time you read.':audio?`${hasLen(b)?`Total length ${fmtPos(b.total)}. `:''}Enter positions as h:mm. Add minutes for the time you actually spent listening; otherwise the change in position counts as estimated time.`:(isNew?`New book: the starting page is 0, so reading pages 1–20 counts as 20 pages. Saving starts the book even if you don’t log pages yet.`:`The starting page is where you left off. Enter pages, minutes, or both.`)}</div>
     <details class="rt reading-together"><summary class="link-btn sm">Read with someone?</summary><div class="chips" style="margin-top:8px">${Object.entries(S.members).map(([k,m])=>`<label class="tog"><input type="checkbox" name="with" value="${k}"><span>${esc(m.name)}</span></label>`).join('')}</div><span class="xs muted">Reading aloud or side by side? Everyone you choose gets credit for this session too.</span></details>
     <div class="f lg-when"><div class="f2 cu-dates"><label class="f cu-from" hidden>From<input class="inp" type="date" name="from" max="${today()}"></label><label class="f"><span class="cu-to">Date</span><input class="inp" type="date" name="date" value="${today()}" max="${today()}"></label></div>
@@ -6554,7 +6555,9 @@ css.textContent=`
 .one-secs{display:grid;margin-top:4px}
 .one-secs .rm-box{margin-top:0}
 .one-h3{font-size:13px;font-weight:600;margin:0}
-.one-pos-fix{color:var(--orange-ink);margin-top:2px;line-height:1.45}
+.one-pos-fix,.one-start-fix{color:var(--orange-ink);margin-top:2px;line-height:1.45}
+.one-start-fix{margin-top:-6px}
+.one-start-fix .link-btn{display:inline;padding:0;min-height:0;font-size:inherit;vertical-align:baseline}
 .one-pos-fix .link-btn{display:inline;padding:0;min-height:0;font-size:inherit;vertical-align:baseline}
 .one-details{border-top:1px solid var(--border);padding-top:12px;display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
 .one-details .st-btns{gap:10px 6px}
@@ -6621,10 +6624,10 @@ function restructure(b){
   sel.value=edit?cur:(b.status==='finished'||b.status==='dnf'?b.status:'reading');
   const statusLabel=sel.closest('label');statusLabel.hidden=true;
   // Pieces of the real Log Reading window
-  const edDet=q('.reading-edition-details'),sw=q('.sw-copy'),progH=q('.lg-prog-h'),f3=progH.nextElementSibling,calc=q('#calc'),hint=calc.nextElementSibling,
+  const edDet=q('.reading-edition-details'),sw=q('.sw-copy'),progH=q('.lg-prog-h'),f3=progH.nextElementSibling,calc=q('#calc'),sf0=q('.one-start-fix'),hint=sf0.nextElementSibling,
     togD=q('.reading-together'),when=q('.lg-when'),note=q('[name=note]').closest('label'),np=q('.lg-np'),ns=q('.lg-ns'),fin=q('[name=finished]'),err=q('#logErr'),ask=q('#logAsk');
   fin.hidden=false;fin.removeAttribute('tabindex');fin.removeAttribute('aria-hidden');fin.checked=sel.value==='finished';
-  const sess=document.createElement('div');sess.className='one-sess';sess.append(progH,f3,calc,hint,when,note);
+  const sess=document.createElement('div');sess.className='one-sess';sess.append(progH,f3,calc,sf0,hint,when,note);
   // Reading Details (from Edit Reading). One Pages/% switch: the one beside Reading Progress.
   const hasSessions=S.sessions.some(x=>x.bookId===b.id);
   const fmt0=b._fmtWasUnknown?'unknown':b.format;   // a book with no format yet opens with a stand-in format; the list shows Not Specified
@@ -6690,6 +6693,9 @@ function sync(){
   const pos=F.pos,pn=F.querySelector('.one-pos-note');
   if(pos){if(end){pos.dataset.was=pos.dataset.was??pos.value;pos.value=end;pos.readOnly=true;pn.hidden=false}else if(pos.readOnly){pos.value=pos.dataset.was??pos.value;delete pos.dataset.was;pos.readOnly=false;pn.hidden=true}}
   const row=F.querySelector('.one-pos-row');if(row)row.hidden=v==='want'||v==='queue';
+  {const sf=F.querySelector('.one-start-fix'),ls=oneLastSess(b),r0=readLog();if(sf){const show=ls&&ls.end!=null&&!isCU(ls)&&r0.start!=null&&!isNaN(r0.start)&&r0.start<ls.end&&(ls.unit==='pct')===pc;
+    const at=n=>audio?fmtPos(n):pc?n+'%':'page '+n;sf.hidden=!show;
+    if(show)sf.innerHTML=`Your last session ended at ${at(ls.end)}, so this would count ${audio?'that listening':pc?'that part':'pages '+(r0.start+1)+'–'+ls.end} again. <button type="button" class="link-btn sm" data-one-start="${audio?fmtPos(ls.end):ls.end}">Start at ${at(ls.end).replace('page ','page ')}</button>`}}
   {const fx=F.querySelector('.one-pos-fix'),ls=oneLastSess(b);if(fx){const num=t=>audio?parsePos(t):pc?pctNum(t):(/^\d+$/.test(String(t).trim())?+t:NaN);
     const show=pos&&!pos.readOnly&&pos.value!==pos.defaultValue&&ls&&ls.end!=null&&num(pos.value)!==ls.end&&!isNaN(num(pos.value));
     fx.hidden=!show;if(show)fx.innerHTML=`Your last session ended ${audio?'at '+fmtPos(ls.end):pc?'at '+ls.end+'%':'on page '+ls.end}. If that was a mistake, <button type="button" class="link-btn sm" data-act="sessEdit" data-id="${ls.id}">edit the session</button> instead.`}}
@@ -6707,6 +6713,7 @@ function sync(){
 }
 ['input','change'].forEach(ev=>logForm.addEventListener(ev,()=>setTimeout(sync,0)));
 logForm.addEventListener('change',e=>{if(!logForm.dataset.one||e.target.name!=='with'||!e.target.checked)return;const r=logForm.querySelector(`[name=readWith][value="${e.target.value}"]`);if(r)r.checked=true});
+document.addEventListener('click',e=>{const a=e.target.closest?.('#logForm [data-one-start]');if(!a)return;logForm.start.value=a.dataset.oneStart;logForm.start.dispatchEvent(new Event('input',{bubbles:true}));calcLog();setTimeout(sync,0)});
 document.addEventListener('click',e=>{const a=e.target.closest?.('#logForm [data-one-editbook]');if(!a)return;const b=findB(logForm.dataset.book);if(b?.titleId)openTitleEdit(b.titleId)});
 document.addEventListener('click',e=>{const c=e.target.closest?.('#logForm [data-one-rt]');if(!c)return;const l=logForm.querySelector('.one-rt-list');l.hidden=!l.hidden;c.textContent=l.hidden?'Change':'Done';setTimeout(sync,0)});
 
@@ -6783,6 +6790,8 @@ function applyDetails(b,p,afterLog){
 }
 
 // Back from Edit Book: close the reading window if its book was removed, or show the book's new title
+/* Errors clear as soon as you change something in the same window (James, Nov 24) */
+document.addEventListener('input',e=>{const f=e.target.closest?.('form');if(!f)return;f.querySelectorAll('.err[role=alert]').forEach(x=>{if(x.textContent)x.textContent=''})});
 sessDlg.addEventListener('close',()=>{if(!logDlg.open||!logForm.dataset.one||logForm.dataset.mode!=='log')return;const b=findB(logForm.dataset.book);if(b)drawLog(b)});
 titleDlg.addEventListener('close',()=>{if(!logDlg.open||!logForm.dataset.one)return;const id=logForm.dataset.book,b=book(id);
   if(!b){logForm.dataset.done='1';logDlg.close();return}
