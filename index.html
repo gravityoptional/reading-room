@@ -2058,7 +2058,7 @@ function detailPanel(b,list){
      one row (2 × 2 on the smallest phones); Log Reading (filled) and Start Timer; Mark Finished, Pause, Did Not Finish,
      Edit as quiet links at the bottom. */
   return `<div class="carousel rn">
-  <div class="detail rn-grid" id="detail" aria-live="polite"><div class="rn-left"><button class="d-cover cover-btn rn-cov" ${openRead(b)} aria-label="${esc(b.title)} details">${cover(b,140)}</button>${sideActs(b,'rn-side')}</div><div class="rn-info" style="min-width:0"><div class="d-kicker rn-kick">Reading Now</div>
+  <div class="detail rn-grid" id="detail" aria-live="polite"><div class="rn-left"><button class="d-cover cover-btn rn-cov" ${openRead(b)} aria-label="${esc(b.title)} details">${cover(b,140)}</button>${sideActs(b,'rn-side')}</div><div class="rn-info" style="min-width:0">
     <h3 class="d-title"><button class="d-tlink" ${openRead(b)}>${esc(b.title)}</button></h3><div class="muted small">${esc(b.author)}${st.started?` · Started ${fmtDateY(st.started)}`:''}${audio?' · audiobook':''}</div>
     ${hasLen(b)?`<div class="d-prog"><span>${progText(b)}</span><b>${pct(b)}%</b></div>
     <div class="bar"><span style="width:${pct(b)}%"></span></div>`:`<div class="d-prog"><span>${progText(b)}</span>${addLenLink(b)}</div>`}
@@ -2072,11 +2072,10 @@ function detailPanel(b,list){
     </div>`:''}
     <div class="d-actions"><button class="btn btn-primary" data-act="log" data-book="${b.id}">${ic('book')}Log Reading</button>${S.timer&&S.timer.bookId===b.id?`<button class="btn btn-ghost" data-act="stopTimer">${ic('clock')}<span data-timer>${fmtClock(tElapsed())}</span></button>`:`<button class="btn btn-ghost" data-act="startTimer" data-book="${b.id}">${ic('play')}Start Timer</button>`}
     </div>
-    <div class="rn-links" role="group" aria-label="More for ${esc(b.title)}"><button class="link-btn sm" data-act="finish" data-book="${b.id}">Mark Finished</button><button class="link-btn sm" data-act="pause" data-book="${b.id}">Pause</button><button class="link-btn sm" data-act="dnf" data-book="${b.id}">Did Not Finish</button><button class="link-btn sm" data-act="editBook" data-book="${b.id}">Edit</button></div>
   </div>`;
 }
 function sideActs(b,cls){
-  return `<div class="${cls}" role="group" aria-label="More for ${esc(b.title)}"><button class="sa" data-act="finish" data-book="${b.id}">${ic('check')}Mark Finished</button><button class="sa" data-act="pause" data-book="${b.id}">${ic('pause')}Pause</button><button class="sa" data-act="dnf" data-book="${b.id}">${ic('x')}Did Not Finish</button><button class="sa" data-act="editBook" data-book="${b.id}">${ic('pencil')}Edit</button></div>`;
+  return `<div class="${cls}" role="group" aria-label="More for ${esc(b.title)}"><button class="sa" data-act="finish" data-book="${b.id}">${ic('check')}Mark Finished</button><button class="sa" data-act="pause" data-book="${b.id}">${ic('pause')}Pause</button><button class="sa" data-act="dnf" data-book="${b.id}">${ic('x')}Did Not Finish</button></div>`;
 }
 function miniCard(b,sel){
   return `<button class="mini ${sel?'sel':''}" data-act="select" data-book="${b.id}" aria-pressed="${sel}" aria-label="Show ${esc(b.title)}">${cover(b)}<span class="mini-t">${esc(b.title)}</span><span class="bar"><span style="width:${pct(b)}%"></span></span><span class="bk-meta">${pct(b)}%</span></button>`;
@@ -3920,7 +3919,7 @@ function renderBD0(){
     if(!r)body=`<p class="small muted">You haven’t read this book yet. Add it to your To Read list to keep it handy.</p>`;
     else{
       const prog=progText(r);
-      body=`<div class="st st-${r.status}">${STATUS[r.status]}</div> <button class="link-btn sm" data-act="editBook" data-book="${r.id}">${ic('pencil')}Change Status or Details</button>
+      body=`<div class="st st-${r.status}">${STATUS[r.status]}</div> ${['reading','paused'].includes(r.status)?`<button class="link-btn sm" data-act="log" data-book="${r.id}">${ic('book')}Log Reading</button>`:`<button class="link-btn sm" data-act="editBook" data-book="${r.id}">${ic('pencil')}Change Status or Details</button>`}
       ${r.status!=='want'&&r.format!=='unknown'?(hasLen(r)?`<div class="bar" style="margin-top:12px"><span style="width:${pct(r)}%"></span></div><div class="xs muted">${prog} · ${pct(r)}%</div>`:`<div class="len-box"><div class="small">${prog}</div><div class="xs muted">${addLenLink(r)}</div></div>`):''}
       <div class="xs muted" style="margin-top:6px">${[r.started?`Started ${fmtDateY(r.started)}`:'',r.finished?`Finished ${fmtDateY(r.finished)}`:r.status==='finished'?finUnknown(r):'',r.dnfOn?`Set aside ${fmtDateY(r.dnfOn)}`:''].filter(Boolean).join(' · ')}</div>${(r.with||[]).length?`<div class="xs muted">Read with ${esc((n=>n.length>1?n.slice(0,-1).join(', ')+' and '+n.at(-1):n[0])(r.with.map(nameOf)))}</div>`:''}
       ${lastNoteBox(r)}
@@ -5727,7 +5726,7 @@ function calcLog(){
     else if(isPct(b))parts.push(`Progress <b>${+span.toFixed(1)}%</b>${minutes&&!isNaN(minutes)?'':' (add minutes to count time)'}`);
     else{
       parts.push(`Pages read <b>${span}</b>`);
-      if(minutes&&!isNaN(minutes)&&minutes>0)parts.push(`Speed <b>${Math.round(span/minutes*60)} pages/hr</b>`);
+      if(minutes&&!isNaN(minutes)&&minutes>0)parts.push(`<b>${Math.round(span/minutes*60)} pages/hr</b>`);
       else if(g.estimate&&span>0){const p=pace(b.id);if(p)parts.push(`About <b>${Math.round(span/p)} min</b> (estimated)`)}
     }
     if(hasLen(b)&&end>=b.total)parts.push(isPct(b)?`<b>That’s 100%.</b> Choose Finished if you’re done.`:`<b>That’s the end of the book!</b>`);
@@ -6536,6 +6535,259 @@ document.addEventListener('keydown',e=>{
 let tx=null;
 document.addEventListener('touchstart',e=>{tx=e.target.closest('#detail')?e.touches[0].clientX:null},{passive:true});
 document.addEventListener('touchend',e=>{if(tx==null)return;const dx=e.changedTouches[0].clientX-tx;tx=null;if(Math.abs(dx)>50)stepBook(dx<0?1:-1)});
+/* One reading window (Nov 24, James): Log Reading and Edit Reading in one window. It is the real Log Reading
+   window, regrouped into closed sections, with Edit Reading's fields moved in. Saving runs the real Log Reading save
+   for sessions and status, then applies the reading details the way Edit Reading does. */
+(function(){
+const css=document.createElement('style');
+css.textContent=`
+.one-sec{border-top:1px solid var(--border);margin:0!important;padding:2px 0}
+.one-sec>summary{cursor:pointer;padding:12px 0;list-style:none;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.one-sec>summary::-webkit-details-marker{display:none}
+.one-sec>summary::before{content:'▸';color:var(--text-2);width:12px;flex:none}
+.one-sec[open]>summary::before{content:'▾'}
+.one-sec>summary .one-sum{color:var(--text-2);font-weight:400;min-width:0}
+.one-sec>.one-body{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;padding:0 0 14px}
+.one-sess{display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
+.one-secs{display:grid;margin-top:4px}
+.one-secs .rm-box{margin-top:0}
+.one-h3{font-size:13px;font-weight:600;margin:0}
+.one-details{border-top:1px solid var(--border);padding-top:12px;display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
+.one-details .st-btns{gap:10px 6px}
+.one-details .st-btns .one-stc{border:0;cursor:pointer;position:relative;font-family:inherit}
+.one-details .st-btns .one-stc::after{content:'';position:absolute;inset:-5px -3px}
+.one-details .st-btns .one-stc[aria-pressed=false]{background:transparent;color:var(--text-2);box-shadow:inset 0 0 0 1px var(--border)}
+.one-details .st-btns .one-stc[aria-pressed=false]:hover{color:var(--text);box-shadow:inset 0 0 0 1px var(--text-2)}
+.one-rr{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;justify-content:space-between;padding:6px 0;border-top:1px solid var(--border)}
+.one-secs .inp,.one-sess .inp{box-sizing:border-box;max-width:100%}
+`;
+document.head.appendChild(css);
+
+const css2=document.createElement('style');
+css2.textContent=`#crCard .rn-info>.d-title{margin-top:-0.2em}
+/* Status buttons under the cover at every width (James, Nov 24); the link row under the buttons is gone */
+#crCard .rn-grid .rn-links{display:none!important}
+#crCard .rn-side{display:grid!important;gap:4px;margin-top:8px}
+@media(max-width:719px){#crCard .rn-side .sa{white-space:normal;font-size:11.5px;padding:3px 6px;min-height:24px}#crCard .rn-side .sa svg{display:none}}
+/* 1 of 7 never breaks; when the heading and arrows don't fit on one line, the arrows move under the heading */
+#crCard .card-h{flex-wrap:wrap;row-gap:6px}
+#crCard .rn-nav{flex:none}
+#crCard .rn-nav .pos{white-space:nowrap}
+/* The summary box keeps two fixed lines (Nov 24): what this session adds, then Today after saving with Edit Goal at the right */
+#logForm .calc{display:grid;grid-template-columns:minmax(0,1fr);gap:6px}
+#logForm .calc .one-c1{display:flex;flex-wrap:wrap;gap:2px 12px}
+#logForm .calc .one-c2{display:flex;align-items:center;gap:10px}
+#logForm .calc .one-c2>span{flex:1;min-width:0}
+#logForm .calc .one-c2 .edit-goal{flex:none;margin-left:auto}`;
+document.head.appendChild(css2);
+const _calcLog=calcLog;
+calcLog=function(...a){const r=_calcLog(...a);const el=document.getElementById('calc');if(!el||!logForm.dataset.one)return r;
+  const parts=[...el.children];if(!parts.length)return r;const last=parts.pop(),btn=last.querySelector('.edit-goal');
+  const c1=document.createElement('div');c1.className='one-c1';c1.append(...parts);
+  const c2=document.createElement('div');c2.className='one-c2';if(btn)btn.remove();c2.append(last);if(btn)c2.append(btn);
+  el.replaceChildren(c1,c2);return r};
+let oneFrom='log';
+const _openLog=openLog,_drawLog=drawLog;
+openLog=function(...a){oneFrom='log';return _openLog(...a)};
+openEdit=function(id){
+  const b=book(id);if(!b)return;
+  oneFrom='edit';startSetupDone.add(b);
+  if(b.format==='unknown')b.format='print',b._fmtWasUnknown=true;
+  drawLog(b);logDlg.showModal();
+  if(b._fmtWasUnknown){b.format='unknown';delete b._fmtWasUnknown}
+};
+drawLog=function(b,focus,preMin,moveTo){
+  _drawLog(b,focus,preMin,moveTo);
+  if(logForm.dataset.mode==='log')restructure(b);
+};
+
+const tog=(name,members,checked)=>`<div class="chips">${members.map(([k,m])=>`<label class="tog"><input type="checkbox" name="${name}" value="${k}" ${checked.includes(k)?'checked':''}><span>${esc(m.name)}</span></label>`).join('')}</div>`;
+const sec=(key,title,body,open)=>`<details class="one-sec" data-one="${key}" ${open?'open':''}><summary><b>${title}</b><span class="one-sum" data-sum="${key}"></span></summary><div class="one-body">${body}</div></details>`;
+
+function restructure(b){
+  const F=logForm,form=F.querySelector('.form'),edit=oneFrom==='edit',audio=b.format==='audio',pc=isPct(b);
+  F.dataset.one=oneFrom;F.dataset.done='';
+  const q=s=>F.querySelector(s);
+  // Header: the title says where you came from; Edit shows the book's title instead of the book list.
+  q('#logTitle').textContent=edit?'Edit Reading':'Log Reading';
+  if(edit){const l=F.book.closest('label');l.hidden=true;l.insertAdjacentHTML('afterend',`<div class="muted small one-booktitle">${esc(b.title)}</div>`)}
+  // Status: the chips under Reading Details drive the (now hidden) status list the save already reads.
+  const sel=F.status,cur=b.status==='want'?((S.upNext||[]).includes(b.id)?'queue':'want'):b.status;
+  sel.innerHTML=[['reading','Currently Reading'],['paused','Paused'],['want','To Read'],['queue','Reading Queue'],['finished','Finished'],['dnf','Did Not Finish']].map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
+  sel.value=edit?cur:(b.status==='finished'||b.status==='dnf'?b.status:'reading');
+  const statusLabel=sel.closest('label');statusLabel.hidden=true;
+  // Pieces of the real Log Reading window
+  const edDet=q('.reading-edition-details'),sw=q('.sw-copy'),progH=q('.lg-prog-h'),f3=progH.nextElementSibling,calc=q('#calc'),hint=calc.nextElementSibling,
+    togD=q('.reading-together'),when=q('.lg-when'),note=q('[name=note]').closest('label'),np=q('.lg-np'),ns=q('.lg-ns'),fin=q('[name=finished]'),err=q('#logErr'),ask=q('#logAsk');
+  fin.hidden=false;fin.removeAttribute('tabindex');fin.removeAttribute('aria-hidden');fin.checked=sel.value==='finished';
+  const sess=document.createElement('div');sess.className='one-sess';sess.append(progH,f3,calc,hint,when,note);
+  // Reading Details (from Edit Reading). One Pages/% switch: the one beside Reading Progress.
+  const hasSessions=S.sessions.some(x=>x.bookId===b.id);
+  const fmt0=b._fmtWasUnknown?'unknown':b.format;   // a book with no format yet opens with a stand-in format; the list shows Not Specified
+  const details=`${statusPicker(b).replace(/ disabled/g,'')}
+    <div class="f2 one-pos-row"><label class="f"><span class="one-posL">${audio?'Current Position (h:mm)':pc?'Current Percent':'Current Page'}</span><input class="inp" name="pos" value="${audio?fmtPos(b.pos):b.pos}"><span class="xs muted one-pos-note" hidden>Set by this session’s end</span></label>
+    <label class="f">Started On<input class="inp" type="date" name="started" value="${b.started||''}" max="${today()}"></label></div>
+    <div data-one-finish ${cur==='finished'?'':'hidden'}><label class="f"><span>Finished On <span class="sub">(optional)</span></span><input class="inp" type="date" name="finDate" value="${b.finished||''}" max="${today()}"></label><p class="xs muted">Leave blank if the finish date is unknown.</p></div>`;
+  // Copy, Edition and Format: the edition fields (no longer behind a link), format and length, and Switched to a different copy?
+  const copyBody=`<div class="one-ed"></div>
+    <div class="f2"><label class="f">Format<select class="inp" name="fmtE" ${hasSessions?'disabled':''}>${!hasSessions&&['want','finished','dnf'].includes(b.status)?`<option value="unknown" ${fmt0==='unknown'?'selected':''}>Not Specified</option>`:''}<option value="print" ${fmt0==='print'||fmt0==='ebook'?'selected':''}>Book or Ebook</option><option value="audio" ${audio?'selected':''}>Audiobook</option></select></label>
+    <label class="f" ${pc?'hidden':''}><span>${audio?'Length (h:mm)':'Number of Pages'}</span><input class="inp" name="total" value="${hasLen(b)&&!pc?(audio?fmtPos(b.total):b.total):''}" placeholder="Optional"></label></div>
+    ${hasSessions?`<p class="xs muted">Format is fixed because this reading has logged sessions. This protects the page or audio positions in your history.${['reading','paused'].includes(b.status)?' To change it from here on, use Switched to a different copy?':''}</p>`:''}
+    ${['finished','dnf'].includes(b.status)&&!audio?`<label class="f">Track Progress By<select class="inp" name="unitE"><option value="pages">Pages</option><option value="pct" ${pc?'selected':''}>Percent (what your e-reader shows)</option></select></label>`:''}
+    <div class="one-sw"></div>`;
+  const members=Object.entries(S.members||{}),solo=S.settings.solo||!members.length;
+  // Read Together (Nov 24): one row for this session; ticking a name also adds them to the read-through, which shows
+  // as a line with Change (for buddy reads, or to take someone off). From Edit, the session's picker stays with the
+  // session ("Read with someone?") and this section is the read-through list.
+  const rtList=`<div class="f one-rt-list" hidden><span class="one-h3">The Whole Read-Through</span>${tog('readWith',members,b.with||[])}<span class="xs muted">Shows on the book and counts as reading together. It doesn’t give credit for any session.</span></div>`;
+  const togBody=solo?'':`<div class="f"><span class="one-h3">This Session</span>${tog('with',members,[])}<span class="xs muted">Reading aloud or side by side? Everyone you choose gets credit for this session too, and is added to the read-through.</span></div>
+    <p class="small one-rt-line" style="margin:0"><span class="muted one-rt-names"></span> <button type="button" class="link-btn sm" data-one-rt>Change</button></p>${rtList}`;
+  const finishedBook=['finished','dnf'].includes(b.status);
+  const wrap=document.createElement('div');wrap.className='one-secs';
+  wrap.innerHTML=`${edit&&!finishedBook?sec('sess','Log a Session','',false):''}
+    <div class="one-details">${details}</div>
+    ${sec('copy','Copy, Edition and Format',copyBody,false)}
+    ${solo?'':sec('together','Read Together',togBody,false)}
+    ${sec('privacy','Privacy and Suggestions','',false)}
+    <p class="small" style="margin:12px 0 0"><span class="muted">Title, author, series, cover, your copies, and removing:</span> <button type="button" class="link-btn sm" data-one-editbook>Edit Book</button></p>`;
+  // Place everything: session first (open in Log, a closed section in Edit), then the sections, then errors and buttons.
+  form.insertBefore(wrap,err);
+  if(edit){if(!finishedBook)wrap.querySelector('[data-one=sess] .one-body').append(sess)}else form.insertBefore(sess,wrap);
+  fin.hidden=true;fin.tabIndex=-1;fin.setAttribute('aria-hidden','true');form.append(fin);
+  // Move To uses the Library card chips: short names, the card's size and colors (Nov 24)
+  const CHIP={reading:['Reading','reading'],paused:['Paused','paused'],want:['To Read','want'],queue:['Queued','want'],finished:['Finished','finished'],dnf:['DNF','dnf']};
+  F.querySelectorAll('.st-btns [data-act=setStatus]').forEach(x=>{const [t,c]=CHIP[x.dataset.v];x.setAttribute('aria-label',x.textContent.trim());x.textContent=t;x.className=`st st-${c} one-stc`});
+  if(finishedBook&&edit){sess.hidden=true;form.append(sess)}
+  const ed=edDet.querySelector('.reading-edition');wrap.querySelector('.one-ed').replaceWith(ed);edDet.remove();
+  if(['reading','paused'].includes(b.status))wrap.querySelector('.one-sw').replaceWith(sw);else{sw.hidden=true;wrap.querySelector('.one-sw').remove()}
+  if(togD)togD.remove();
+  const pv=wrap.querySelector('[data-one=privacy] .one-body');if(np)pv.append(np);ns.classList.remove('lg-ns');ns.hidden=false;pv.append(ns);
+  statusLabel.hidden=true;form.append(statusLabel);
+  q('.dlg-f [type=submit]').textContent=edit?'Save Changes':'Save Reading';
+  // an unsaved Log Reading entry for this book shows itself instead of saving unseen
+  if(edit&&!finishedBook&&(F.end.value.trim()||F.minutes.value.trim()))wrap.querySelector('[data-one=sess]').open=true;
+  F.dataset.prev=sel.value;sync();
+}
+
+// Section summaries and the links between the session and Reading Details
+function sync(){
+  const F=logForm;if(F.dataset.mode!=='log'||!F.dataset.one)return;
+  const b=findB(F.dataset.book);if(!b)return;
+  const v=F.status.value,end=F.end?.value.trim(),audio=b.format==='audio',pc=isPct(b),E=F.elements;
+  if(v==='finished'&&F.dataset.prev!=='finished'&&F.finDate&&!F.finDate.value)F.finDate.value=F.date.value||today();F.dataset.prev=v;
+  F.querySelectorAll('[data-act=setStatus]').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.v===v)));
+  const fd=F.querySelector('[data-one-finish]');if(fd)fd.hidden=v!=='finished';
+  const pos=F.pos,pn=F.querySelector('.one-pos-note');
+  if(pos){if(end){pos.dataset.was=pos.dataset.was??pos.value;pos.value=end;pos.readOnly=true;pn.hidden=false}else if(pos.readOnly){pos.value=pos.dataset.was??pos.value;delete pos.dataset.was;pos.readOnly=false;pn.hidden=true}}
+  const row=F.querySelector('.one-pos-row');if(row)row.hidden=v==='want'||v==='queue';
+  const set=(k,t)=>{const el=F.querySelector(`[data-sum="${k}"]`);if(el)el.textContent=t?'· '+t:''};
+  const r=readLog();
+  set('sess',[r.end!=null&&!isNaN(r.end)&&r.start!=null?(audio?`${fmtPos(r.start)}–${fmtPos(r.end)}`:pc?`${r.start}–${r.end}%`:`p. ${r.start}–${r.end}`):'',r.minutes&&!isNaN(r.minutes)?fmtMin(r.minutes):''].filter(Boolean).join(' · ')||'optional');
+  const lbl={reading:'Currently Reading',paused:'Paused',want:'To Read',queue:'Reading Queue',finished:'Finished',dnf:'Did Not Finish'}[v];
+  const copySel=F.querySelector('[data-edition-copy]'),edI=F.querySelector('[id$=Edition]');
+  set('copy',[copySel&&copySel.value?copySel.selectedOptions[0].textContent.split(' · ')[0]:'',edI?.value.trim(),audio?'Audiobook':pc?'Percent':'Pages'].filter(Boolean).join(' · '));
+  const names=n=>[...F.querySelectorAll(`[name=${n}]:checked`)].map(x=>S.members[x.value]?.name||x.value);
+  const sw=names('with'),bw=names('readWith');
+  const rl=F.querySelector('.one-rt-names');if(rl)rl.textContent=bw.length?`Read-through with ${bw.join(', ')} ·`:'Read-through: just you ·';
+  set('together',sw.length||bw.length?[sw.length?'this session: '+sw.join(', '):'',bw.length?'read-through: '+bw.join(', '):''].filter(Boolean).join(' · '):'just you');
+  set('privacy',[F.noPost?(F.noPost.checked?'not posted':'posts to your group'):'',F.noSug?.checked?'left out of suggestions':'in suggestions'].filter(Boolean).join(' · '));
+}
+['input','change'].forEach(ev=>logForm.addEventListener(ev,()=>setTimeout(sync,0)));
+logForm.addEventListener('change',e=>{if(!logForm.dataset.one||e.target.name!=='with'||!e.target.checked)return;const r=logForm.querySelector(`[name=readWith][value="${e.target.value}"]`);if(r)r.checked=true});
+document.addEventListener('click',e=>{const a=e.target.closest?.('#logForm [data-one-editbook]');if(!a)return;const b=findB(logForm.dataset.book);if(b?.titleId)openTitleEdit(b.titleId)});
+document.addEventListener('click',e=>{const c=e.target.closest?.('#logForm [data-one-rt]');if(!c)return;const l=logForm.querySelector('.one-rt-list');l.hidden=!l.hidden;c.textContent=l.hidden?'Change':'Done';setTimeout(sync,0)});
+
+// Move To chips inside this window
+document.addEventListener('click',e=>{
+  const a=e.target.closest?.('#logForm [data-act=setStatus]');if(!a||!logForm.dataset.one)return;
+  e.stopPropagation();e.preventDefault();
+  logForm.status.value=a.dataset.v;logForm.status.dispatchEvent(new Event('input',{bubbles:true}));setTimeout(sync,0);
+},true);
+
+// Saving: check the reading details first; then either save details only, or let the real Log Reading save run and
+// apply the details once it has succeeded.
+let pend=null;
+document.addEventListener('submit',e=>{
+  if(e.target!==logForm||logForm.dataset.mode!=='log'||!logForm.dataset.one)return;
+  const F=logForm,b=findB(F.dataset.book),er=m=>{document.getElementById('logErr').textContent=m;e.preventDefault();e.stopImmediatePropagation()};
+  pend=null;const p=readDetails(F,b);if(p.err)return er(p.err);
+  const r=readLog(),range=r.end!=null&&!isNaN(r.end),mins=r.minutes!=null;
+  const v=F.status.value,base=b.status==='want'&&(S.upNext||[]).includes(b.id)?'queue':b.status;
+  if(['want','queue'].includes(v)){p.status=v;if(!range&&!mins)return finishDetails(e,b,p)}
+  const logRuns=range||mins||(F.finished.checked&&b.status!=='finished')||(['reading','paused','dnf','finished'].includes(v)&&v!==base);
+  if(!logRuns)return finishDetails(e,b,p);
+  if(p.status)F.status.value=b.status==='want'?'reading':b.status;
+  pend={b,p};F.dataset.done='';
+},true);
+document.addEventListener('submit',e=>{
+  if(e.target!==logForm||!pend)return;const {b,p}=pend;pend=null;
+  if(logForm.dataset.done!=='1')return;     // the Log Reading save stopped (an error or "Is that right?")
+  applyDetails(b,p,true);save();render();if(bookDlg?.open)renderBD(true);
+});
+function finishDetails(e,b,p){
+  e.preventDefault();e.stopImmediatePropagation();
+  applyDetails(b,p,false);saveReadingEdition(b,readEdition(logForm,'logReading'));
+  if(logForm.noPost)noPostSet(b.titleId,logForm.noPost.checked);
+  logForm.dataset.done='1';draftClear(logForm.dataset.dkey);if(!save())return;logDlg.close();render();if(bookDlg?.open)renderBD(true);toast(`Saved changes to ${b.title}.`);
+}
+function readDetails(F,b){
+  const audio=b.format==='audio',pc=isPct(b),p={};
+  const num=v=>audio?parsePos(v):(/^\d+$/.test(String(v).trim())?+v:NaN);
+  const E=F.elements;
+  const tv=String(F.total?.value??'').trim();
+  if(!pc&&tv!==''){const t=num(tv);if(!t||isNaN(t)||t<=0)return {err:audio?'Enter the length as h:mm, for example 6:45, or leave it blank.':'Enter the number of pages, or leave it blank.'};p.total=t}else if(!pc)p.total=0;
+  const fe=F.fmtE;if(fe&&!fe.disabled)p.format=fe.value;
+  if(F.pos&&!F.pos.readOnly&&!['want','queue'].includes(F.status.value)){const v=pc?pctNum(F.pos.value):num(F.pos.value);if(v==null||isNaN(v)||v<0)return {err:audio?'Enter the position as h:mm.':pc?'Enter the current percent, from 0 to 100.':'Enter the current page.'};
+    const T=pc?100:(p.total||0);if(T&&v>T)return {err:audio?'The position can’t be past the end.':pc?'The percent can’t be over 100.':'The current page can’t be past the last page.'};p.pos=v}
+  p.started=F.started?.value||'';p.finDate=F.finDate?.value||'';
+  // only what you changed here overrides what the session save sets
+  p.startedCh=!!F.started&&F.started.value!==F.started.defaultValue;p.finCh=!!F.finDate&&F.finDate.value!==F.finDate.defaultValue;
+  if(!validReadingDate(p.started)||!validReadingDate(p.finDate))return {err:'Choose valid dates that are not in the future.'};
+  if(p.started&&p.finDate&&F.status.value==='finished'&&p.finDate<p.started)return {err:'The finish date cannot be before the start date.'};
+  if(F.status.value==='queue'&&!(S.upNext||[]).includes(b.id)&&upList().length>=10)return {err:'Your Reading Queue holds 10 books. Remove one first.'};
+  if(F.status.value==='want'&&b.status!=='want'&&S.timer?.bookId===b.id)return {err:'Log or discard this book’s timer before moving it to To Read.'};
+  p.readWith=F.querySelector('[name=readWith]')?[...F.querySelectorAll('[name=readWith]:checked')].map(x=>x.value):null;
+  p.noSug=!!F.noSug?.checked;
+  if(F.unitE)p.unit=F.unitE.value;
+  return p;
+}
+function applyDetails(b,p,afterLog){
+  const tt=titleById(b.titleId);
+  if(p.format&&p.format!==b.format&&!S.sessions.some(x=>x.bookId===b.id))b.format=p.format;
+  if(p.total!==undefined&&!isPct(b)&&p.total!==(hasLen(b)?b.total:0)){b.total=p.total;if(tt&&b.format!=='audio'&&p.total)tt.pages=p.total}
+  if(!afterLog&&p.pos!==undefined&&p.pos!==b.pos){b.progressBase={pos:p.pos,date:today(),excluded:S.sessions.filter(x=>x.bookId===b.id).map(x=>x.id)};b.pos=p.pos}
+  if(p.startedCh||(!afterLog&&p.started!==(b.started||'')))b.started=p.started||undefined;
+  if(p.status){const next=p.status,ns=next==='queue'?'want':next,had=S.sessions.some(x=>x.bookId===b.id),wasQ=(S.upNext||[]).includes(b.id);
+    S.upNext=(S.upNext||[]).filter(id=>id!==b.id);if(next==='queue')S.upNext.push(b.id);
+    if(ns!==b.status){delete b.finished;delete b.readIt;delete b.markedOn;delete b.pausedOn;delete b.dnfOn;b.status=ns;
+      if(ns==='want'){b.wantSince=b.wantSince||today();if(!had){delete b.started;b.pos=0}}
+      if(ns==='reading'){if(wasQ)b.fromQueue=true;if(!b.started)b.started=today()}}}
+  if(b.status==='finished'&&(!afterLog||p.finCh)){if(p.finDate){b.finished=p.finDate;delete b.readIt;delete b.markedOn}else if(!afterLog){delete b.finished;b.readIt=true;b.markedOn=b.markedOn||today()}}
+  if(p.readWith){const added=p.readWith.filter(x=>!(b.with||[]).includes(x));if(p.readWith.length)b.with=p.readWith;else delete b.with;
+    if(added.length&&S.settings.share&&!S.settings.solo)S.activity.push({id:uid(),who:'me',kind:'together',text:`read together with ${added.map(nameOf).join(' and ')}`,book:b.title,titleId:b.titleId,ts:Date.now(),r:{}})}
+  if(p.unit&&(p.unit==='pct')!==isPct(b)){const t=titleById(b.titleId);if(p.unit==='pct'){b.unit='pct';b.total=100;b.pos=100}else{delete b.unit;const n=p.total||t?.pages||0;b.total=n;b.pos=n}}
+  noSugSet(b.titleId,p.noSug);
+}
+
+// Back from Edit Book: close the reading window if its book was removed, or show the book's new title
+titleDlg.addEventListener('close',()=>{if(!logDlg.open||!logForm.dataset.one)return;const id=logForm.dataset.book,b=book(id);
+  if(!b){logForm.dataset.done='1';logDlg.close();return}
+  const t=logForm.querySelector('.one-booktitle');if(t)t.textContent=b.title;
+  const o=logForm.book?.querySelector(`option[value="${id}"]`);if(o)o.textContent=b.title+(b.format==='audio'?' (audiobook)':'');});
+const _openTitleEdit=openTitleEdit;
+openTitleEdit=function(id){
+  _openTitleEdit(id);if(!titleDlg.open)return;
+  const rs=S.books.filter(x=>x.titleId===id);if(rs.length<2)return;
+  const k=x=>x.started||x.finished||(['reading','paused','want'].includes(x.status)?'9999':'0000');
+  const rows=[...rs].sort((a,b)=>k(a).localeCompare(k(b))).map((b,i)=>`<div class="one-rr"><span class="small">Read-through ${i+1}: ${b.started?`started ${fmtDateY(b.started)}`:'start date unknown'}${b.finished?`, finished ${fmtDateY(b.finished)}`:b.status==='finished'?', finished, date unknown':''} <span class="st st-${b.status}">${STATUS[b.status]}</span></span><button type="button" class="btn btn-ghost sm rm-go" data-one-rmread="${b.id}">Remove This Read-Through</button></div>`).join('');
+  const box=titleForm.querySelector('.rm-box');if(!box)return;
+  box.querySelector('summary').insertAdjacentHTML('afterend',`<div class="one-rrs"><p class="small muted" style="margin:6px 0 4px">Remove one read-through with its sessions and rating. The others stay.</p>${rows}<p class="small muted" style="margin:12px 0 0"><b>Or remove everything:</b></p></div>`);
+};
+document.addEventListener('click',e=>{const a=e.target.closest?.('#titleForm [data-one-rmread]');if(!a)return;e.preventDefault();e.stopPropagation();
+  const id=a.dataset.oneRmread,tid=book(id)?.titleId,m=removeReadings([id]);if(m){document.getElementById('teErr').textContent=m;return}
+  render();if(bookDlg?.open)renderBD(true);if(logDlg.open&&logForm.dataset.book===id)logDlg.close();titleDlg.close();if(tid)openTitleEdit(tid);
+},true);
+})();
 paintIcons();
 readRoute();
 render();
