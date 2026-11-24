@@ -13,11 +13,10 @@ concurrency:
   group: pages
   cancel-in-progress: true
 jobs:
-  publish:
+  # Two jobs, as in GitHub's own Pages template: the deploy job starts only after the build job has finished, so the
+  # uploaded site is listed by the time it is fetched (one job made "No artifacts named github-pages" frequent; Nov 24).
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -32,5 +31,12 @@ jobs:
             '<p>Reading Room Beta has moved to <a href="../">the site address</a>.</p>' > _site/beta/index.html
           touch _site/.nojekyll
       - uses: actions/upload-pages-artifact@v3
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
       - id: deploy
         uses: actions/deploy-pages@v4
