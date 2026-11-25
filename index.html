@@ -2737,7 +2737,7 @@ function libTitles(){
     if(f.avail==='available'&&avail(t.id)?.t!=='Available')return false;
     if(f.avail==='loan'&&!cs.some(c=>c.loanTo))return false;
     if(f.genre!=='all'&&genreKey(t.genre)!==genreKey(f.genre))return false;
-    if(lib.tab==='mybooks'&&(f.rating||'any')!=='any'){const r=libRate(t);if(f.rating==='none'?r!=null||!S.books.some(b=>b.titleId===t.id&&b.status==='finished'):!(r!=null&&r>=+f.rating))return false}
+    if(lib.tab==='mybooks'&&(f.rating||'any')!=='any'){const r=libRate(t);if(f.rating==='none'?r!=null:!(r!=null&&r>=+f.rating))return false /* Not Rated: any book you haven't rated (James, Nov 25); with Finished it's the books still to rate */}
     if((f.length||'any')!=='any'){const p=libPages(t);if(p==null||(f.length==='short'?p>=200:f.length==='medium'?p<200||p>400:p<=400))return false}
     if((f.type||'any')!=='any'&&bookType(t)!==f.type)return false;
     if(lib.tab==='mybooks'&&(f.fin||'any')!=='any'){const ys=libFinYears(t),y=new Date().getFullYear();const want=f.fin==='this'?String(y):f.fin==='last'?String(y-1):f.fin;if(!ys.includes(want))return false}
