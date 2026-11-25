@@ -3932,7 +3932,7 @@ function renderBD0(){
   if(S.settings.solo&&bd.tab==='activity')bd.tab='copies';
   let prim='';
   if(r&&(r.status==='reading'||r.status==='paused'))prim=`<button class="btn btn-primary" data-act="bdLog" data-id="${r.id}">${ic('book')}Log Reading</button>`;
-  else if(r&&r.status==='want')prim=`<button class="btn btn-primary" data-act="bdLog" data-id="${r.id}">${ic('play')}Start Reading</button><button class="btn btn-ghost on" data-act="toggleWant" data-id="${t.id}">${ic('check')}To Read</button>${(S.upNext||[]).includes(r.id)?`<button class="btn btn-ghost on" data-act="upRm" data-id="${r.id}" title="Remove from Reading Queue">${ic('check')}In Reading Queue</button>`:`<button class="btn btn-ghost" data-act="upAdd" data-id="${r.id}">${ic('plus')}Add to Reading Queue</button>`}`;
+  else if(r&&r.status==='want')prim=`<button class="btn btn-primary" data-act="bdLog" data-id="${r.id}">${ic('play')}Start Reading</button><button class="btn btn-ghost on tw" data-act="toggleWant" data-id="${t.id}" title="Remove from To Read" aria-label="On your To Read. Remove from To Read">${ic('check')}<span class="tw-w" aria-hidden="true"><span class="tw-l">To Read</span><span class="tw-h">Remove from To Read</span></span></button>${(S.upNext||[]).includes(r.id)?`<button class="btn btn-ghost on" data-act="upRm" data-id="${r.id}" title="Remove from Reading Queue">${ic('check')}In Reading Queue</button>`:`<button class="btn btn-ghost" data-act="upAdd" data-id="${r.id}">${ic('plus')}Add to Reading Queue</button>`}`;
   else if(r&&r.status==='finished')prim=`<button class="btn btn-primary" data-act="startTitle" data-id="${t.id}">${ic('play')}Read Again</button>`;
   else if(r&&r.status==='dnf')prim=`<button class="btn btn-primary" data-act="pickup" data-book="${r.id}">${ic('play')}Pick Up Again</button>`;
   else prim=`<button class="btn btn-primary" data-act="toggleWant" data-id="${t.id}">${ic('plus')}Add to To Read</button>`;
@@ -5334,8 +5334,15 @@ function cfWarn(){if(cf.mode==='comp'||!cf.start||(cf.type==='list'&&cf.countPri
 document.addEventListener('input',e=>{if(chMode==='form'&&['cfStart','cfPrior','cfEnd'].includes(e.target.id)){captureCf();const w=document.getElementById('cfWarn');if(w)w.innerHTML=cfWarn()}});
 /* Putting a book on a list you mean to read is the same intent as To Read: books that aren't in My Books yet (no
    reading, no copy of mine) go on To Read. Returns how many were added. */
-function tbrAdd(ids){let n=0;[...new Set(ids)].forEach(id=>{const t=titleById(id);if(!t||myReading(id)||copiesOf(id).some(c=>c.owner==='me'))return;
-  S.books.push({id:'r'+uid(),titleId:t.id,title:t.title,author:t.author,format:'unknown',total:0,pos:0,status:'want',c:t.c,wantSince:today()});n++});return n}
+function tbrAdd(ids,chId){let n=0;[...new Set(ids)].forEach(id=>{const t=titleById(id);if(!t||myReading(id)||copiesOf(id).some(c=>c.owner==='me'))return;
+  const rid='r'+uid();S.books.push({id:rid,titleId:t.id,title:t.title,author:t.author,format:'unknown',total:0,pos:0,status:'want',c:t.c,wantSince:today()});n++;
+  if(chId)((S.chTbr=S.chTbr||{})[chId]=S.chTbr[chId]||[]).push(rid)});return n}   // chTbr: which To Read readings each challenge created (Nov 25)
+/* Deleting a challenge takes back the To Read readings it created, only while untouched: still To Read, no reading
+   logged, not in the Reading Queue, not on another challenge's or battle's list, not owned, not a favorite, no book note. */
+function chTbrTakeBack(c){const ids=(S.chTbr||{})[c.id]||[];delete (S.chTbr||{})[c.id];
+  const gone=ids.map(book).filter(b=>b&&b.status==='want'&&!S.sessions.some(x=>x.bookId===b.id)&&!(S.upNext||[]).includes(b.id)&&!S.challenges.some(o=>o!==c&&(o.titleIds||[]).includes(b.titleId))
+    &&!(S.battles||[]).some(bt=>{try{return bList(bt).some(x=>x.id===b.titleId)}catch(e){return false}})&&!S.copies.some(cp=>cp.titleId===b.titleId&&cp.owner==='me')&&!isFav(b.titleId)&&!(S.notes||{})[b.titleId]&&S.books.filter(x=>x.titleId===b.titleId).length===1);
+  S.books=S.books.filter(b=>!gone.includes(b));return gone.length}
 const tbrMissing=ids=>[...new Set(ids)].filter(id=>titleById(id)&&!myReading(id)&&!copiesOf(id).some(c=>c.owner==='me'));
 const tbrSaid=n=>n?`${n===1?'1 book':`${n} books`} added to your To Read list.`:'';
 /* The Book List search: books already here first, then Open Library, so any book can go on the list. */
@@ -5371,10 +5378,10 @@ function saveCf(){
   if(cf.start&&cf.end&&cf.end<cf.start)return er('The end date must be after the start date.');
   if(cf.mode!=='personal'&&!cf.id&&cf.who==='invite'&&!cf.invite.length)return er('Choose at least one person to invite.');
   const data={name:cf.name.trim(),desc:cf.desc.trim(),type:cf.type,target,titleIds:cf.type==='list'?cf.titleIds:undefined,ordered:cf.type==='list'&&!!cf.ordered||undefined,start:cf.start||null,end:cf.end||null,countPrior:cf.type==='list'&&!!cf.countPrior,rule:cf.type==='list'?'all':cf.rule,ruleVal:cf.ruleVal};
-  if(cf.id){const ex=S.challenges.find(x=>x.id===cf.id);Object.assign(ex,data);const n=data.titleIds&&(ex.participants||[]).includes('me')?tbrAdd(data.titleIds):0;save();openCh(cf.id);toast('Challenge updated.',null,tbrSaid(n));return}
+  if(cf.id){const ex=S.challenges.find(x=>x.id===cf.id);Object.assign(ex,data);const n=data.titleIds&&(ex.participants||[]).includes('me')?tbrAdd(data.titleIds,ex.id):0;save();openCh(cf.id);toast('Challenge updated.',null,tbrSaid(n));return}
   const c={id:'ch'+uid(),mode:cf.mode,creator:'me',participants:['me'],sample:{},...data};
   if(c.mode!=='personal'&&cf.who==='invite'){c.inviteOnly=true;c.invited=[...cf.invite]}
-  S.challenges.push(c);const tbrN=c.type==='list'?tbrAdd(c.titleIds):0;
+  S.challenges.push(c);const tbrN=c.type==='list'?tbrAdd(c.titleIds,c.id):0;
   if(c.mode!=='personal'){if(c.inviteOnly)post('invite',`invited ${c.invited.map(nameOf).join(' and ')} to a challenge:`,c.name,null,c.id);else post('challenge','started a group challenge:',c.name)}
   chTab=c.mode==='personal'?'mine':'family';save();chDlg.close();view='challenges';render();toast(`Created ${c.name}.`,null,[c.inviteOnly?`Invitations sent to ${c.invited.map(nameOf).join(' and ')}.`:c.mode!=='personal'?`Everyone in ${GN()} was notified.`:'',tbrSaid(tbrN)].filter(Boolean).join(' '));
 }
@@ -6273,7 +6280,7 @@ document.addEventListener('click',e=>{
     case 'openCh':openCh(a.dataset.id);break;
     case 'closeCh':chDlg.close();break;
     case 'chLog':{chDlg.close();const c=currentSel();if(c)openLog(c.id);else{drawNew();logDlg.showModal()}break}
-    case 'chJoin':{const c=S.challenges.find(x=>x.id===a.dataset.id);if(!c.participants.includes('me'))c.participants.push('me');if(S.settings.share)S.activity.push({id:uid(),who:'me',kind:'challenge',text:(c.inviteOnly&&(c.invited||[]).includes('me'))?'accepted a challenge:':'joined',book:c.name,ch:c.id,ts:Date.now(),r:{}});const tn=c.type==='list'?tbrAdd(c.titleIds||[]):0;save();if(chDlg.open&&chMode==='ch')renderCh();else{const y=window.scrollY;render();window.scrollTo(0,y)}toast(`Joined ${c.name}.`,null,tbrSaid(tn));break}
+    case 'chJoin':{const c=S.challenges.find(x=>x.id===a.dataset.id);if(!c.participants.includes('me'))c.participants.push('me');if(S.settings.share)S.activity.push({id:uid(),who:'me',kind:'challenge',text:(c.inviteOnly&&(c.invited||[]).includes('me'))?'accepted a challenge:':'joined',book:c.name,ch:c.id,ts:Date.now(),r:{}});const tn=c.type==='list'?tbrAdd(c.titleIds||[],c.id):0;save();if(chDlg.open&&chMode==='ch')renderCh();else{const y=window.scrollY;render();window.scrollTo(0,y)}toast(`Joined ${c.name}.`,null,tbrSaid(tn));break}
     case 'chLeave':{const snap=snapshot(),c=S.challenges.find(x=>x.id===a.dataset.id);c.participants=c.participants.filter(w=>w!=='me');save();renderCh();toast(`Left ${c.name}.`,restoreTo(snap));break}
     case 'chInv':cv.inv=!cv.inv;renderCh();if(cv.inv)setTimeout(()=>chBody.querySelector('[name=invTo]:not([disabled])')?.focus(),30);break;
     case 'chInvGo':{const c=S.challenges.find(x=>x.id===cv.id),to=invPicked();if(!c)break;if(!to.length){document.getElementById('invErr').textContent='Choose at least one person.';break}
@@ -6286,7 +6293,7 @@ document.addEventListener('click',e=>{
     case 'chDelAsk':cv.del=!cv.del;renderCh();break;
     case 'chHide':{const c=S.challenges.find(x=>x.id===cv.id),h=hiddenC();if(a.dataset.v==='1'){if(!h.includes(c.id))h.push(c.id)}else S.settings.hiddenCh=h.filter(x=>x!==c.id);save();renderCh();render();toast(a.dataset.v==='1'?`Hid ${c.name} from your lists. Its trophies stay on the Trophy Wall.`:`${c.name} is back in your lists.`);break}
     case 'chShowHidden':showHiddenC=!showHiddenC;render();break;
-    case 'chDel':{const snap=snapshot(),c=S.challenges.find(x=>x.id===a.dataset.id);if(c.mode!=='personal'){const k=chStatus(c,chProg(c)).k;if(c.creator!=='me'||k==='done'||k==='ended')break;S.notifs=S.notifs.filter(n=>!(n.link&&n.link.type==='ch'&&n.link.id===c.id))}S.challenges=S.challenges.filter(x=>x!==c);save();chDlg.close();toast(`Deleted ${c.name}.`,restoreTo(snap));break}
+    case 'chDel':{const snap=snapshot(),c=S.challenges.find(x=>x.id===a.dataset.id);if(c.mode!=='personal'){const k=chStatus(c,chProg(c)).k;if(c.creator!=='me'||k==='done'||k==='ended')break;S.notifs=S.notifs.filter(n=>!(n.link&&n.link.type==='ch'&&n.link.id===c.id))}S.challenges=S.challenges.filter(x=>x!==c);const nTb=chTbrTakeBack(c);save();chDlg.close();render();toast(`Deleted ${c.name}${nTb?` and the ${nTb===1?'book':nTb+' books'} it added to your To Read`:''}.`,restoreTo(snap));break}
     case 'chNew':openChForm(null,a.dataset.mode);break;
     case 'chEdit':openChForm(a.dataset.id);break;
     case 'cfMode':captureCf();cf.mode=a.dataset.v;renderChForm();break;
@@ -6647,6 +6654,7 @@ css.textContent=`
 .one-secs{display:grid;margin-top:4px}
 .one-secs .rm-box{margin-top:0}
 .one-h3{font-size:13px;font-weight:600;margin:0}
+.tw .tw-w{display:inline-grid}.tw .tw-w>span{grid-area:1/1;text-align:center}.tw .tw-h,.tw:hover .tw-l,.tw:focus-visible .tw-l,.tw:active .tw-l{visibility:hidden}.tw:hover .tw-h,.tw:focus-visible .tw-h,.tw:active .tw-h{visibility:visible}   /* both words share one cell, so the button keeps its width */
 .isbn-look{display:grid;gap:4px;justify-items:start;flex-basis:100%;width:100%;grid-column:1/-1}.isbn-l{margin:0;font-size:13px;font-weight:600}.isbn-look [hidden]{display:none!important}.isbn-row{display:flex;gap:8px;align-items:center;width:100%}.isbn-row .inp{flex:1;min-width:0;max-width:300px;box-sizing:border-box}
 .cf-order{list-style:none;margin:6px 0;padding:0;display:grid;gap:4px}
 .cf-order li{display:flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:10px;padding:4px 6px 4px 10px;background:var(--surface)}
