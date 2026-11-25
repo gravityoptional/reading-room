@@ -3845,7 +3845,7 @@ document.addEventListener('change',e=>{
 const copyEditDlg=document.getElementById('copyEditDlg'),copyEditForm=document.getElementById('copyEditForm');
 let copyEditOpener=null;
 const copyHasCommitment=c=>!!c.loanTo||(S.loanReqs||[]).some(r=>r.copyId===c.id&&['pending','approved','loaned'].includes(r.status));
-const isbnLook=()=>`<div class="isbn-look"><button type="button" class="link-btn sm" data-act="isbnOpen">Look up by ISBN</button><span class="isbn-row" hidden><input class="inp" data-isbn inputmode="numeric" autocomplete="off" placeholder="ISBN" aria-label="ISBN of this copy"><button type="button" class="btn btn-ghost sm" data-act="isbnGo">Look Up</button></span><span class="xs muted isbn-msg" aria-live="polite"></span></div>`;
+const isbnLook=()=>`<div class="isbn-look"><label class="fl isbn-l"><span>ISBN <span class="sub">(optional)</span></span></label><span class="isbn-row"><input class="inp" data-isbn inputmode="numeric" autocomplete="off" placeholder="From the back cover or copyright page" aria-label="ISBN of this copy (optional)"><button type="button" class="btn btn-ghost sm" data-act="isbnGo">Look Up</button></span><span class="xs muted isbn-msg" aria-live="polite">Fills in the edition from Open Library.</span></div>`;
 /* The edition text from an Open Library edition: its edition name and format, then publisher and year, e.g.
    "Paperback · Simon & Schuster, 2013". Only the text is kept (copies have no ISBN field on the live site). */
 function isbnEdition(d){const y=(String(d.publish_date||'').match(/\b(1[5-9]|20)\d\d\b/)||[''])[0],pub=(d.publishers||[])[0]||'';
@@ -5244,8 +5244,14 @@ function listMissB(c,id){const r=S.books.filter(b=>b.titleId===id&&b.status==='f
   const C=contrib(c);return C.live.some(i=>i.titleId===id)?null:{r,removed:C.removed.some(i=>i.titleId===id)}}
 function listMiss(c,id){const m=c.mode!=='comp'&&listMissB(c,id);if(!m)return '';
   return `<div class="xs muted">${m.r.finished?`Finished ${fmtDateY(m.r.finished)}`:'Finished, date unknown'} · ${m.removed?'removed from this challenge':c.start&&m.r.finished&&m.r.finished<c.start?'before this challenge started':'not counted'}</div>`}
+/* After adding a book, the search keeps its words and results (the added book leaves the results), the window keeps its
+   place, and the cursor goes back to the end of the search. The X clears it. (James, Nov 25) */
+function cfKeepSearch(){const q=document.getElementById('cfQ'),sc=q&&cfScroller(q),top=sc?.scrollTop;renderChForm();
+  if(sc!=null&&top!=null){const sc2=cfScroller(document.getElementById('cfQ')||document.body);if(sc2)sc2.scrollTop=top}
+  setTimeout(()=>{const n=document.getElementById('cfQ');if(n){n.focus({preventScroll:true});const l=n.value.length;try{n.setSelectionRange(l,l)}catch(e){}}},30)}
 let cfDrag=null;
 const cfScroller=el=>{for(let x=el;x&&x!==document.body;x=x.parentElement){const o=getComputedStyle(x).overflowY;if((o==='auto'||o==='scroll')&&x.scrollHeight>x.clientHeight)return x}return null};
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches?.('[data-isbn]')){e.preventDefault();e.target.closest('.isbn-look')?.querySelector('[data-act=isbnGo]')?.click()}});
 document.addEventListener('pointerdown',e=>{const g=e.target.closest?.('.cf-order .cf-grip');if(!g||e.button>0)return;const li=g.closest('li'),ol=li.parentElement;e.preventDefault();
   try{g.setPointerCapture(e.pointerId)}catch(_){}cfDrag={li,ol,id:e.pointerId,start:[...ol.children].indexOf(li),sc:cfScroller(ol),y:e.clientY};li.classList.add('cf-drag');document.body.classList.add('cf-dragging')});
 document.addEventListener('pointermove',e=>{if(!cfDrag||e.pointerId!==cfDrag.id)return;const {li,ol,sc}=cfDrag;let before=null;
@@ -6285,8 +6291,8 @@ document.addEventListener('click',e=>{
     case 'chEdit':openChForm(a.dataset.id);break;
     case 'cfMode':captureCf();cf.mode=a.dataset.v;renderChForm();break;
     case 'cfType':captureCf();cf.type=a.dataset.v;renderChForm();break;
-    case 'cfAddOL':{const x=cf.ol?.items[+a.dataset.i];if(!x)break;captureCf();const t=olTitleFrom(x);if(!cf.titleIds.includes(t.id))cf.titleIds.push(t.id);cf.q='';cf.ol=null;save();renderChForm();setTimeout(()=>document.getElementById('cfQ')?.focus(),30);break}
-    case 'cfAdd':captureCf();cf.titleIds.push(a.dataset.id);cf.q='';cf.ol=null;renderChForm();setTimeout(()=>document.getElementById('cfQ')?.focus(),30);break;
+    case 'cfAddOL':{const x=cf.ol?.items[+a.dataset.i];if(!x)break;captureCf();const t=olTitleFrom(x);if(!cf.titleIds.includes(t.id))cf.titleIds.push(t.id);save();cfKeepSearch();break}
+    case 'cfAdd':captureCf();cf.titleIds.push(a.dataset.id);cfKeepSearch();break;
     case 'cfRm':captureCf();cf.titleIds=cf.titleIds.filter(x=>x!==a.dataset.id);renderChForm();break;
     case 'cfMove':{captureCf();const i=+a.dataset.i,j=i+(+a.dataset.d),t=cf.titleIds;if(j<0||j>=t.length)break;[t[i],t[j]]=[t[j],t[i]];cf.ordered=true;renderChForm();setTimeout(()=>document.querySelector(`[data-act=cfMove][data-i="${j}"][data-d="${a.dataset.d}"]:not([disabled])`)?.focus()||document.querySelector(`[data-act=cfMove][data-i="${j}"]`)?.focus(),20);break}
     case 'cfSeries':{captureCf();cf.ordered=false;renderChForm();break}
@@ -6435,7 +6441,6 @@ document.addEventListener('click',e=>{
       if(u){const posts=S.activity.slice(nAct).filter(a=>a.who==='me');toast(`Moved ${b.title} to Did Not Finish.`,()=>{const x=book(b.id);if(x){delete x.dnfWhy;delete x.dnfNote}   // take back the reason and its post first, so Undo can restore the rest
         if(posts.length){S.activity=S.activity.filter(a=>!posts.includes(a));S.actGone=(S.actGone||[]).concat(posts.map(a=>({id:a.id,ts:Date.now()})))}save();u();render();toast('Undone.')},b.dnfWhy||b.dnfNote?'Reason saved.':'')}
       else toast(b.dnfWhy||b.dnfNote?'Reason saved.':'Saved.');break}
-    case 'isbnOpen':{const w=a.closest('.isbn-look');a.hidden=true;w.querySelector('.isbn-row').hidden=false;w.querySelector('[data-isbn]').focus();break}
     case 'isbnGo':{const w=a.closest('.isbn-look'),box=a.closest('.inline-copy')||a.closest('form')||a.closest('dialog'),msg=w.querySelector('.isbn-msg'),raw=w.querySelector('[data-isbn]').value.replace(/[\s-]/g,'').toUpperCase();
       if(!/^(\d{9}[\dX]|\d{13})$/.test(raw)){msg.textContent='Enter the 10- or 13-digit ISBN from the back of the book or the copyright page.';break}
       msg.textContent='Looking it up…';a.disabled=true;
@@ -6642,7 +6647,7 @@ css.textContent=`
 .one-secs{display:grid;margin-top:4px}
 .one-secs .rm-box{margin-top:0}
 .one-h3{font-size:13px;font-weight:600;margin:0}
-.isbn-look{display:grid;gap:6px;justify-items:start}.isbn-look [hidden]{display:none!important}.isbn-row{display:flex;gap:8px;align-items:center;width:100%}.isbn-row .inp{flex:1;min-width:0;max-width:220px;box-sizing:border-box}
+.isbn-look{display:grid;gap:4px;justify-items:start;flex-basis:100%;width:100%;grid-column:1/-1}.isbn-l{margin:0;font-size:13px;font-weight:600}.isbn-look [hidden]{display:none!important}.isbn-row{display:flex;gap:8px;align-items:center;width:100%}.isbn-row .inp{flex:1;min-width:0;max-width:300px;box-sizing:border-box}
 .cf-order{list-style:none;margin:6px 0;padding:0;display:grid;gap:4px}
 .cf-order li{display:flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:10px;padding:4px 6px 4px 10px;background:var(--surface)}
 .cf-order .cf-n{color:var(--text-2);font-size:13px;min-width:1.6em}.cf-order .cf-t{flex:1;min-width:0;font-size:14px}
