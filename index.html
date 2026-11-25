@@ -3397,6 +3397,13 @@ function nsSave(){const snap=snapshot(),before=(S.noSug||[]).length;S.noSug=[...
 function ruleShelf(){
   return S.titles.filter(t=>ownNotStarted(t)&&!hiddenT(t)).sort((a,b)=>(a.added||0)-(b.added||0)).slice(0,6)
     .map(t=>({rule:'toread',reason:t.added?`On your shelf since ${fmtMonY(new Date(t.added).toISOString().slice(0,10))}`:'On your shelf, not started yet',t}))}
+/* Quick Reads (James, Nov 25): short books from To Read, the shelf, and the suggestion rows, shortest first, using the
+   same rule as the Quick read line on cards (so never Children's books, picture-book lengths, or audiobooks). */
+function ruleQuick(sugg){const seen=new Set(),out=[],add=it=>{const k=it.t?.id||it.x?.key||(it.x?.title||'')+'|'+(it.x?.author||'');if(!k||seen.has(k))return;if(!quickRead(it.t,it.x,it.kid))return;seen.add(k);out.push(it)};
+  wantList().filter(b=>!hiddenT(titleById(b.titleId))).forEach(b=>add({rule:'toread',reason:b.wantSince?`On your To Read since ${fmtMonY(b.wantSince)}`:'On your To Read',t:titleById(b.titleId)}));
+  S.titles.filter(t=>ownNotStarted(t)&&!hiddenT(t)).forEach(t=>add({rule:'toread',reason:t.added?`On your shelf since ${fmtMonY(new Date(t.added).toISOString().slice(0,10))}`:'On your shelf, not started yet',t}));
+  (sugg||[]).forEach(add);
+  const pg=it=>+(it.t?.pages||it.x?.pages||0);return out.sort((a,b)=>pg(a)-pg(b)).slice(0,6)}
 function ruleSeries(){
   const fin=new Set(S.books.filter(b=>b.status==='finished').map(b=>b.titleId)),busy=new Set(S.books.filter(b=>b.status==='reading'||b.status==='paused').map(b=>b.titleId));
   const by={};S.titles.forEach(t=>{if(t.series&&t.seriesNo!=null)(by[t.series]=by[t.series]||[]).push(t)});
@@ -3505,7 +3512,7 @@ function discoverBody(){
     return `<div class="disc dc-sub">${back}<div class="dc-sec-h dc-sub-h"><h2>Sent by Me</h2><span class="dc-rtools">${fromN?`<span class="vseg" role="group" aria-label="View"><button aria-pressed="${!shelf}" data-act="libView" data-v="grid">${ic('grid')}Grid</button><button aria-pressed="${shelf}" data-act="libView" data-v="shelf">${ic('shelf')}Shelf</button></span>`:''}</span></div>${fromMe()}</div>`}
   if(lib.rv==='to'&&!S.settings.solo){const ids=[...new Set(myRecs().map(r=>r.titleId))],items=ruleRecs(99);
     return `<div class="disc dc-sub">${back}<div class="dc-sec-h dc-sub-h"><h2>Recommended to You</h2>${recTools(fromN)}</div>${items.length?`<div class="dc-scroll dc-wrap">${items.map(dcard).join('')}</div>`:`<div class="empty">${ic('send')}<h3>No Recommendations Yet</h3><p>When someone in your group recommends a book to you, it shows up here.</p></div>`}</div>`}
-  const because=ruleBecause(),award=ruleAward(),shelf=ruleShelf(),recs=ruleRecs(),nRecs=S.settings.solo?0:new Set(recsShown().map(r=>r.titleId)).size,author=ruleAuthor(),series=ruleSeries(),toRead=ruleToRead(),want=wantList().filter(b=>!hiddenT(titleById(b.titleId)));
+  const because=ruleBecause(),award=ruleAward(),shelf=ruleShelf(),recs=ruleRecs(),nRecs=S.settings.solo?0:new Set(recsShown().map(r=>r.titleId)).size,author=ruleAuthor(),series=ruleSeries(),toRead=ruleToRead(),want=wantList().filter(b=>!hiddenT(titleById(b.titleId))),quick=ruleQuick([...recs,...author,...because,...award]);
   if(surprise&&!want.some(b=>b.id===surprise))surprise=null;
   const loading=!author.length&&discBusy?`<p class="xs muted" role="status">Looking for more books by authors you rated highly…</p>`:'';
   const sb=surprise&&book(surprise),sp=sb?[{rule:'toread',reason:'Picked at random from your To Read',t:titleById(sb.titleId)}]:[];
@@ -3513,8 +3520,8 @@ function discoverBody(){
     ${dcRow('dcSurprise','Surprise Me',sp,`<button class="link-btn sm" data-act="surpriseClear">${ic('x')}Clear</button>`)}${dcRow('dcSeries','Continue a Series',series)}${dcRow('dcShelf','Already on Your Shelf',shelf)}${dcRow('dcToRead','From Your To Read',toRead)}</section>`:'';
   const recRow=recs.length?dcRow('dcRecs','Recommended to You',recs,`${nRecs>recs.length?`<button class="link-btn sm" data-act="goRecs">See All ${nRecs}</button>`:''}${recTools(fromN)}`)
     :S.settings.solo?'':`<div class="dc-rh dc-rh-only">${recTools(fromN)}</div>`;
-  const rows=recRow+dcRow('dcAuthor','More by This Author',author)+dcRow('dcBecause','Because You Read',because)+dcRow('dcAward','Award Winners for You',award);
-  const none=!recs.length&&!author.length&&!because.length&&!award.length&&!have&&!loading?`<div class="empty">${ic('compass')}<h3>Suggestions Will Show Up Here</h3><p>Rate the books you finish and add a few to To Read. Discover uses them to suggest what to read next.</p></div>`:'';
+  const rows=recRow+dcRow('dcAuthor','More by This Author',author)+dcRow('dcBecause','Because You Read',because)+dcRow('dcAward','Award Winners for You',award)+dcRow('dcQuick','Quick Reads',quick);
+  const none=!recs.length&&!author.length&&!because.length&&!award.length&&!quick.length&&!have&&!loading?`<div class="empty">${ic('compass')}<h3>Suggestions Will Show Up Here</h3><p>Rate the books you finish and add a few to To Read. Discover uses them to suggest what to read next.</p></div>`:'';
   const nsN=(S.noSug||[]).length,nsLine=S.books.some(b=>b.status!=='want')?`<p class="xs muted dc-ns">Read some books that don’t reflect your taste? <button type="button" class="link-btn sm" data-act="nsOpen" style="padding:0 2px">Leave books out of your suggestions</button>${nsN?` (${nsN} left out)`:''}</p>`:'';
   return `<div class="disc">${rows||loading?`<section class="dc-find" aria-label="Suggestions">${rows}${loading}</section>`:''}${have}${none}${nsLine}</div>`;
 }
@@ -5869,7 +5876,7 @@ logForm.addEventListener('submit',e=>{
   else if(started){const g=S.settings,left=[];if(g.goalType!=='pages')left.push(`${Math.max(1,Math.ceil(g.goalMinutes-after.mins))} more minutes`);if(g.goalType!=='minutes')left.push(`${Math.max(1,g.goalPages-after.pages)} more pages`);
     const sub=!logged?'Happy reading!':!before.met&&after.met&&isToday?`Goal met for today, too. 🔥 ${sk} day streak`:after.met||!isToday?`🔥 ${sk} day streak. Happy reading!`:`${left.join(' or ')} to reach today’s goal.`;
     toast(`📖 You started ${b.title}!`,undoT,sub,true);if(!before.met&&after.met&&isToday)document.querySelector('.rings')?.classList.add('pop')}
-  else if(f.status==='dnf')openDnf(b);
+  else if(f.status==='dnf')openDnf(b,()=>{if(unAll())render()});   // Undo here too (James, Nov 25: the reading window's DNF had none)
   else if(!logged)toast('Saved.',undoT);
   else if(!isToday)toast(`Saved for ${fmtDate(f.date)}.`,undoT,sk>skBefore?`🔥 Your streak is now ${sk} days.`:'');
   else if(!before.met&&after.met){toast(after.both?'🎉 Both goals met today!':'🎉 Goal met for today!',undoT,`🔥 ${sk} day streak. Keep it going!`,true);document.querySelector('.rings')?.classList.add('pop')}
