@@ -2738,7 +2738,14 @@ function libTitles(){
   });
   const rr=t=>{const r=myReading(t.id);return r?(lastRead(r.id)||r.finished||r.started||''):''};
   const by={title:(a,b)=>sortKey(a.title).localeCompare(sortKey(b.title)),titleza:(a,b)=>sortKey(b.title).localeCompare(sortKey(a.title)),author:(a,b)=>lastName(a.author).localeCompare(lastName(b.author))||sortKey(a.title).localeCompare(sortKey(b.title)),added:(a,b)=>(b.added||0)-(a.added||0),finished:(a,b)=>finDate(b).localeCompare(finDate(a))||sortKey(a.title).localeCompare(sortKey(b.title)),read:(a,b)=>rr(b).localeCompare(rr(a))};
-  return list.sort(by[lib.sort]);
+  // More sorting (James, Nov 25; from ChatGPT's mockup): your rating, your edition's pages, and series order; unknowns last
+  const tA=(a,b)=>sortKey(a.title).localeCompare(sortKey(b.title)),rate=t=>{const r=S.books.filter(b=>b.titleId===t.id&&+b.rating>0).map(b=>+b.rating);return r.length?Math.max(...r):null},
+    pg=t=>{const r=myReading(t.id),n=r&&r.format!=='audio'&&!isPct(r)&&r.total>0?r.total:+t.pages||0;return n>0?n:null},sn=t=>String(t.series||'').trim().toLowerCase(),
+    unk=(x,y)=>(x==null)-(y==null);
+  Object.assign(by,{rating:(a,b)=>unk(rate(a),rate(b))||(rate(b)??0)-(rate(a)??0)||tA(a,b),
+    pagesup:(a,b)=>unk(pg(a),pg(b))||(pg(a)??0)-(pg(b)??0)||tA(a,b),pagesdown:(a,b)=>unk(pg(a),pg(b))||(pg(b)??0)-(pg(a)??0)||tA(a,b),
+    series:(a,b)=>(!sn(a))-(!sn(b))||sn(a).localeCompare(sn(b))||unk(a.seriesNo,b.seriesNo)||(a.seriesNo??0)-(b.seriesNo??0)||tA(a,b)});
+  return list.sort(by[lib.sort]||by.title);
 }
 const MB=[['all','All'],['reading','Currently Reading'],['paused','Paused'],['want','To Read'],['finished','Finished'],['dnf','Did Not Finish'],['owned','Own but Not Started']];
 const MB_ORDER=['reading','paused','want','owned','finished','dnf'],MB_LABEL={reading:'Currently Reading',paused:'Paused',want:'To Read',owned:'Own but Not Started',finished:'Finished',dnf:'Did Not Finish'};
@@ -3111,7 +3118,7 @@ function libraryView(){
   ${tools?`<div class="lib-tools">
     <label class="search">${ic('search')}<input id="libQ" type="search" placeholder="${lib.tab==='family'&&!S.settings.solo?'Search by title, author, or owner':'Search by title or author'}" value="${esc(lib.q)}" aria-label="Search the library" autocomplete="off"></label>
 ${lib.tab==='mybooks'&&lib.mb==='series'?'':`    <button class="btn btn-ghost" data-act="libFilters" aria-expanded="${lib.open}" aria-controls="libFilters">${ic('filter')}Filters${n?` (${n})`:''}</button>
-    <label class="sortl"><span class="small muted">Sort</span><select class="inp sm" data-lsel="sort">${[['title','Title A–Z'],['titleza','Title Z–A'],['author','Author'],['added','Recently Added'],['read','Recently Read']].concat(lib.tab==='mybooks'?[['finished','Date Finished']]:[]).map(([v,l])=>`<option value="${v}" ${lib.sort===v?'selected':''}>${l}</option>`).join('')}</select></label>
+    <label class="sortl"><span class="small muted">Sort</span><select class="inp sm" data-lsel="sort">${(o=>[['title','Title A–Z'],['titleza','Title Z–A'],['author','Author'],['added','Recently Added'],['read','Recently Read']].concat(lib.tab==='mybooks'?[['finished','Date Finished']]:[]).map(o).join('')+`<optgroup label="Rating, Length & Series">${(lib.tab==='mybooks'?[['rating','Rating']]:[]).concat([['pagesup','Pages · Shortest First'],['pagesdown','Pages · Longest First'],['series','Series Order']]).map(o).join('')}</optgroup>`)(([v,l])=>`<option value="${v}" ${lib.sort===v?'selected':''}>${l}</option>`)}</select></label>
     <span class="vseg" role="group" aria-label="View"><button aria-pressed="${!shelf}" data-act="libView" data-v="grid">${ic('grid')}Grid</button><button aria-pressed="${shelf}" data-act="libView" data-v="shelf">${ic('shelf')}Shelf</button></span>`}
   </div>
   ${lib.open&&!(lib.tab==='mybooks'&&lib.mb==='series')?filtersPanel():''}`:''}
@@ -6322,7 +6329,7 @@ document.addEventListener('click',e=>{
     case 'awSave':{const n=document.getElementById('awName').value.trim(),to=document.getElementById('awTo').value,note=document.getElementById('awNote').value.trim();if(!n){document.getElementById('awErr').textContent='Give the award a name.';break}
       if(to==='me'){S.trophies.push({id:'aw'+uid(),name:n,desc:note||'Special award',date:today(),tier:'trophy',icon:'trophy',hue:'purple'});post('award','added an award to their Trophy Wall:',n)}else{S.awardsGiven.push({id:uid(),to,name:n,note,date:today()});if(S.settings.share)S.activity.push({id:uid(),who:'me',kind:'award',text:`gave ${nameOf(to)} an award:`,book:n,ts:Date.now(),r:{}})}
       save();chDlg.close();toast(to==='me'?`Added ${n} to your Trophy Wall.`:`Gave ${nameOf(to)} the award ${n}.`);break}
-    case 'libTab':lib.tab=a.dataset.v;if(lib.tab==='discover')lib.rv='disc';if(lib.tab!=='mybooks'){if(lib.sort==='finished')lib.sort='title';if(['year','month','week'].includes(lib.group))lib.group='alpha'}if(lib.tab==='mybooks'&&lib.group==='alpha')lib.group='status';if(lib.tab!=='mybooks'&&lib.group==='status')lib.group='alpha';render();break;
+    case 'libTab':lib.tab=a.dataset.v;if(lib.tab==='discover')lib.rv='disc';if(lib.tab!=='mybooks'){if(lib.sort==='finished'||lib.sort==='rating')lib.sort='title';if(['year','month','week'].includes(lib.group))lib.group='alpha'}if(lib.tab==='mybooks'&&lib.group==='alpha')lib.group='status';if(lib.tab!=='mybooks'&&lib.group==='status')lib.group='alpha';render();break;
     case 'mbChip':lib.mb=lib.mb===a.dataset.v&&a.dataset.v!=='all'?'all':a.dataset.v;   // clicking the chip that's on turns it off (back to All)
       if(lib.mb==='finished'){if(lib.sort==='title')lib.sort='finished';if(lib.group==='status')lib.group='year'}else{if(lib.sort==='finished')lib.sort='title';if(['year','month','week'].includes(lib.group))lib.group='status'}refreshLib();break;
     case 'recView':lib.rv=a.dataset.v;render();window.scrollTo(0,0);break;
