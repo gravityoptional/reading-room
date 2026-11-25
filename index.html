@@ -5205,6 +5205,18 @@ function listMissB(c,id){const r=S.books.filter(b=>b.titleId===id&&b.status==='f
   const C=contrib(c);return C.live.some(i=>i.titleId===id)?null:{r,removed:C.removed.some(i=>i.titleId===id)}}
 function listMiss(c,id){const m=c.mode!=='comp'&&listMissB(c,id);if(!m)return '';
   return `<div class="xs muted">${m.r.finished?`Finished ${fmtDateY(m.r.finished)}`:'Finished, date unknown'} · ${m.removed?'removed from this challenge':c.start&&m.r.finished&&m.r.finished<c.start?'before this challenge started':'not counted'}</div>`}
+let cfDrag=null;
+const cfScroller=el=>{for(let x=el;x&&x!==document.body;x=x.parentElement){const o=getComputedStyle(x).overflowY;if((o==='auto'||o==='scroll')&&x.scrollHeight>x.clientHeight)return x}return null};
+document.addEventListener('pointerdown',e=>{const g=e.target.closest?.('.cf-order .cf-grip');if(!g||e.button>0)return;const li=g.closest('li'),ol=li.parentElement;e.preventDefault();
+  try{g.setPointerCapture(e.pointerId)}catch(_){}cfDrag={li,ol,id:e.pointerId,start:[...ol.children].indexOf(li),sc:cfScroller(ol),y:e.clientY};li.classList.add('cf-drag');document.body.classList.add('cf-dragging')});
+document.addEventListener('pointermove',e=>{if(!cfDrag||e.pointerId!==cfDrag.id)return;const {li,ol,sc}=cfDrag;let before=null;
+  for(const x of ol.children){if(x===li)continue;const r=x.getBoundingClientRect();if(e.clientY<r.top+r.height/2){before=x;break}}
+  if(before!==li.nextElementSibling&&before!==li)ol.insertBefore(li,before);
+  // scroll only toward the edge you're moving to, so starting a drag near an edge doesn't move the list under your finger
+  const dy=e.clientY-cfDrag.y;cfDrag.y=e.clientY;if(sc&&dy){const r=sc.getBoundingClientRect();if(dy<0&&e.clientY<r.top+48)sc.scrollTop-=14;else if(dy>0&&e.clientY>r.bottom-48)sc.scrollTop+=14}});
+const cfDrop=e=>{if(!cfDrag||e.pointerId!==cfDrag.id)return;const {li,ol,start}=cfDrag;cfDrag=null;li.classList.remove('cf-drag');document.body.classList.remove('cf-dragging');
+  if([...ol.children].indexOf(li)===start)return;const ids=[...ol.children].map(x=>x.dataset.id);captureCf();cf.titleIds=ids;cf.ordered=true;renderChForm()};
+document.addEventListener('pointerup',cfDrop);document.addEventListener('pointercancel',cfDrop);
 function seriesOrder(ids){if((ids||[]).length<2)return null;const ts=ids.map(titleById);if(ts.some(t=>!t||!String(t.series||'').trim()))return null;
   const k=t=>String(t.series).trim().toLowerCase();if(ts.some(t=>k(t)!==k(ts[0])))return null;
   return ids.map((id,i)=>({id,i,n:ts[i].seriesNo})).sort((a,b)=>(a.n==null)-(b.n==null)||(a.n??0)-(b.n??0)||a.i-b.i).map(x=>x.id)}
@@ -5246,7 +5258,7 @@ function renderChForm(){
   if(!types.includes(cf.type))cf.type=types[0];
   const unit={books:'books',pages:'pages',minutes:'hours',days:'days'}[cf.type];
   const so=cf.type==='list'&&seriesOrder(cf.titleIds),inSo=so&&!cf.ordered;if(inSo)cf.titleIds=so;
-  const listPick=cf.type==='list'?`<div class="f"><span class="fl" style="margin:0">Books <span class="sub">${cf.titleIds.length>1?'(in reading order)':''}</span></span>${cf.titleIds.length?`<ol class="cf-order">${cf.titleIds.map((id,i,a)=>`<li><span class="cf-n">${i+1}.</span><span class="cf-t">${esc(titleById(id)?.title||'')}${titleById(id)?.seriesNo!=null&&so?` <span class="xs muted">#${titleById(id).seriesNo}</span>`:''}</span>${a.length>1?`<button type="button" class="icon-btn cf-mv" data-act="cfMove" data-i="${i}" data-d="-1" ${i===0?'disabled':''} aria-label="Move ${esc(titleById(id)?.title||'')} up">↑</button><button type="button" class="icon-btn cf-mv" data-act="cfMove" data-i="${i}" data-d="1" ${i===a.length-1?'disabled':''} aria-label="Move ${esc(titleById(id)?.title||'')} down">↓</button>`:''}<button class="icon-btn" style="padding:2px" data-act="cfRm" data-id="${id}" aria-label="Remove ${esc(titleById(id)?.title||'')}">${ic('x')}</button></li>`).join('')}</ol>`:'<span class="xs muted">No books yet.</span>'}${inSo?'<span class="xs muted">In series order, by book number. Move a book to set your own order.</span>':so&&cf.ordered?'<span class="xs muted">Your own order. <button type="button" class="link-btn sm" data-act="cfSeries">Use Series Order</button></span>':''}
+  const listPick=cf.type==='list'?`<div class="f"><span class="fl" style="margin:0">Books <span class="sub">${cf.titleIds.length>1?'(in reading order)':''}</span></span>${cf.titleIds.length?`<ol class="cf-order">${cf.titleIds.map((id,i,a)=>`<li data-id="${id}">${a.length>1?'<span class="cf-grip" aria-hidden="true" title="Drag to reorder">⋮⋮</span>':''}<span class="cf-n">${i+1}.</span><span class="cf-t">${esc(titleById(id)?.title||'')}${titleById(id)?.seriesNo!=null&&so?` <span class="xs muted">#${titleById(id).seriesNo}</span>`:''}</span>${a.length>1?`<button type="button" class="icon-btn cf-mv" data-act="cfMove" data-i="${i}" data-d="-1" ${i===0?'disabled':''} aria-label="Move ${esc(titleById(id)?.title||'')} up">↑</button><button type="button" class="icon-btn cf-mv" data-act="cfMove" data-i="${i}" data-d="1" ${i===a.length-1?'disabled':''} aria-label="Move ${esc(titleById(id)?.title||'')} down">↓</button>`:''}<button class="icon-btn" style="padding:2px" data-act="cfRm" data-id="${id}" aria-label="Remove ${esc(titleById(id)?.title||'')}">${ic('x')}</button></li>`).join('')}</ol>`:'<span class="xs muted">No books yet.</span>'}${inSo?'<span class="xs muted">In series order, by book number. Move a book to set your own order.</span>':so&&cf.ordered?'<span class="xs muted">Your own order. <button type="button" class="link-btn sm" data-act="cfSeries">Use Series Order</button></span>':''}
     <label class="search" style="margin-top:6px">${ic('search')}<input id="cfQ" type="search" placeholder="Add a book by title or author" value="${esc(cf.q)}" autocomplete="off" aria-label="Add a book"></label><div id="cfRes" class="pick-list" style="margin-top:6px">${cfResults()}</div><span class="xs muted">Books that aren’t in My Books yet are added to your To Read list${cf.mode==='personal'?'':', and to each person’s who joins'}.</span></div>`:'';
   chBody.innerHTML=`<div class="dlg-h"><h2 id="chTitle" style="flex:1">${cf.id?'Edit Challenge':cf.dup?'Duplicate Challenge':'Create a Challenge'}</h2><button type="button" class="icon-btn x" data-act="closeCh" aria-label="Close">${ic('x')}</button></div>
   <div class="form">
@@ -6581,6 +6593,9 @@ css.textContent=`
 .cf-order li{display:flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:10px;padding:4px 6px 4px 10px;background:var(--surface)}
 .cf-order .cf-n{color:var(--text-2);font-size:13px;min-width:1.6em}.cf-order .cf-t{flex:1;min-width:0;font-size:14px}
 .cf-order .cf-mv{width:32px;height:32px;font-size:16px}.cf-order .cf-mv[disabled]{opacity:.3}
+.cf-order .cf-grip{cursor:grab;touch-action:none;user-select:none;color:var(--text-2);letter-spacing:-3px;padding:8px 8px 8px 2px;margin-left:-6px;font-size:15px;line-height:1}
+.cf-order li.cf-drag{box-shadow:0 6px 18px rgba(0,0,0,.18);border-color:var(--primary);position:relative;z-index:2}
+body.cf-dragging,body.cf-dragging *{cursor:grabbing!important;user-select:none}
 .bd-sessions{margin-top:14px;padding-top:10px;border-top:1px solid var(--border)}
 .bd-sess{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:5px 0;border-bottom:1px solid color-mix(in srgb,var(--border) 60%,transparent)}
 .bd-sess .small{min-width:0}
