@@ -2701,13 +2701,17 @@ function lcard(t,extra=''){
   ${av?`<div class="avail ${av.cls}">${esc(av.t)}</div>`:''}${extra}
   <div class="lc-act">${cardAction(t)}</div></div>`;
 }
-const LIB0={format:'all',avail:'all',genre:'all',status:'any',owner:'all'};
+const LIB0={format:'all',avail:'all',genre:'all',status:'any',owner:'all',rating:'any',length:'any',type:'any',fin:'any'};
 let lib={tab:'family',q:'',f:{...LIB0},sort:'title',open:false,group:'alpha',mb:'all',rv:'disc',fgroup:'year'};
 const finDate=t=>S.books.filter(b=>b.titleId===t.id&&b.status==='finished'&&b.finished).map(b=>b.finished).sort().pop()||'';
 const PER={year:d=>d.slice(0,4),month:d=>d.slice(0,7),week:d=>weekOf(d)};
 const perLabel=(g,k)=>k==='~'?'Date Unknown':g==='year'?k:g==='month'?`${MONF[+k.slice(5,7)-1]} ${k.slice(0,4)}`:`Week of ${fmtDateY(k)}`;
 function periodGroups(list,g){const groups={};list.forEach(t=>{const d=finDate(t),k=d?PER[g](d):'~';(groups[k]=groups[k]||[]).push(t)});return Object.keys(groups).sort((a,b)=>a==='~'?1:b==='~'?-1:b.localeCompare(a)).map(k=>[k,groups[k]])}
-const nFilters=()=>Object.keys(LIB0).filter(k=>lib.f[k]!==LIB0[k]&&(k!=='owner'||lib.tab==='family')).length;   // Owner applies to the group library only
+const nFilters=()=>Object.keys(LIB0).filter(k=>(lib.f[k]??LIB0[k])!==LIB0[k]&&(k!=='owner'||lib.tab==='family')&&(!['rating','fin'].includes(k)||lib.tab==='mybooks')).length;   // Owner: group library only; Rating and Finished In: My Books only
+/* Filters added Nov 25 (James): your rating, length (your edition's pages), fiction or nonfiction, and the year you finished. */
+const libPages=t=>{const r=myReading(t.id),n=r&&r.format!=='audio'&&!isPct(r)&&r.total>0?r.total:+t.pages||0;return n>0?n:null};
+const libRate=t=>{const r=S.books.filter(b=>b.titleId===t.id&&+b.rating>0).map(b=>+b.rating);return r.length?Math.max(...r):null};
+const libFinYears=t=>S.books.filter(b=>b.titleId===t.id&&b.status==='finished').map(b=>b.finished?b.finished.slice(0,4):'unknown');
 // Own but Not Started: I own a copy and haven't begun any reading of it. Being on To Read or in the Reading Queue
 // doesn't count as starting (before Nov 16 those books dropped out of this filter).
 const ownNotStarted=t=>copiesOf(t.id).some(c=>c.owner==='me')&&!S.books.some(b=>b.titleId===t.id&&b.status!=='want');
@@ -2733,6 +2737,10 @@ function libTitles(){
     if(f.avail==='available'&&avail(t.id)?.t!=='Available')return false;
     if(f.avail==='loan'&&!cs.some(c=>c.loanTo))return false;
     if(f.genre!=='all'&&genreKey(t.genre)!==genreKey(f.genre))return false;
+    if(lib.tab==='mybooks'&&(f.rating||'any')!=='any'){const r=libRate(t);if(f.rating==='none'?r!=null||!S.books.some(b=>b.titleId===t.id&&b.status==='finished'):!(r!=null&&r>=+f.rating))return false}
+    if((f.length||'any')!=='any'){const p=libPages(t);if(p==null||(f.length==='short'?p>=200:f.length==='medium'?p<200||p>400:p<=400))return false}
+    if((f.type||'any')!=='any'&&bookType(t)!==f.type)return false;
+    if(lib.tab==='mybooks'&&(f.fin||'any')!=='any'){const ys=libFinYears(t),y=new Date().getFullYear();const want=f.fin==='this'?String(y):f.fin==='last'?String(y-1):f.fin;if(!ys.includes(want))return false}
     if(lib.tab==='family'&&f.status!=='any'){const r=myReading(t.id);if(f.status==='none'?!!r:r?.status!==f.status)return false}
     return true;
   });
@@ -2929,10 +2937,15 @@ function fromMe(){
 }
 function filtersPanel(){
   const f=lib.f,genres=(()=>{const seen=new Set();return S.titles.map(t=>t.genre).filter(Boolean).map(genreValue).filter(g=>{const k=genreKey(g);if(seen.has(k))return false;seen.add(k);return true}).sort((a,b)=>a.localeCompare(b))})();
-  const chips=(k,opts)=>opts.map(([v,l])=>`<button class="tab sm" aria-pressed="${f[k]===v}" data-act="libF" data-k="${k}" data-v="${v}">${l}</button>`).join('');
+  const chips=(k,opts)=>opts.map(([v,l])=>`<button class="tab sm" aria-pressed="${(f[k]??LIB0[k])===v}" data-act="libF" data-k="${k}" data-v="${v}">${l}</button>`).join('');
   return `<div class="filters card" id="libFilters">
     <div class="fg"><div class="fl">Format</div><div class="chips">${chips('format',[['all','All'],['physical','Physical'],['ebook','Ebook'],['audio','Audiobook']])}</div></div>
     <div class="fg"><div class="fl">Availability</div><div class="chips">${chips('avail',[['all','All'],['available','Available'],['loan','On Loan']])}</div></div>
+    ${lib.tab==='mybooks'?`<div class="fg"><div class="fl">Rating</div><div class="chips">${chips('rating',[['any','Any'],['5','5 ★'],['4','4 ★ and up'],['3','3 ★ and up'],['none','Not Rated']])}</div></div>`:''}
+    <div class="fg"><div class="fl">Length</div><div class="chips">${chips('length',[['any','Any'],['short','Short'],['medium','Medium'],['long','Long']])}</div><div class="xs muted" style="margin-top:4px">Short: under 200 pages · Medium: 200–400 · Long: over 400</div></div>
+    <div class="fg"><div class="fl">Fiction or Nonfiction</div><div class="chips">${chips('type',[['any','Any'],['fiction','Fiction'],['nonfiction','Nonfiction']])}</div></div>
+    ${lib.tab==='mybooks'?(()=>{const y=new Date().getFullYear(),ys=[...new Set(S.books.filter(b=>b.status==='finished'&&b.finished).map(b=>b.finished.slice(0,4)))].filter(x=>+x<y-1).sort().reverse(),unk=S.books.some(b=>b.status==='finished'&&!b.finished);
+      return `<div class="fg"><label class="fl" for="fFin">Finished In</label><select class="inp sm" id="fFin" data-lsel="fin">${[['any','Any Time'],['this','This Year ('+y+')'],['last','Last Year ('+(y-1)+')'],...ys.map(x=>[x,x]),...(unk?[['unknown','Date Unknown']]:[])].map(([v,l])=>`<option value="${v}" ${(f.fin||'any')===v?'selected':''}>${l}</option>`).join('')}</select></div>`})():''}
     <div class="fg"><label class="fl" for="fGenre">Genre</label><select class="inp sm" id="fGenre" data-lsel="genre"><option value="all">All Genres</option>${genres.map(g=>`<option ${f.genre===g?'selected':''}>${esc(g)}</option>`).join('')}</select></div>
     ${lib.tab!=='family'||S.settings.solo?'':(()=>{const own=[...new Set(S.titles.flatMap(t=>sharedCopiesOf(t.id).map(c=>c.owner)))].filter(o=>o!=='me').sort((a,b)=>nameOf(a).localeCompare(nameOf(b)));
       return `<div class="fg"><label class="fl" for="fOwner">Owner</label><select class="inp sm" id="fOwner" data-lsel="owner"><option value="all">All Owners</option><option value="me" ${f.owner==='me'?'selected':''}>You</option>${own.map(o=>`<option value="${esc(o)}" ${f.owner===o?'selected':''}>${esc(nameOf(o))}</option>`).join('')}</select></div>`})()}
