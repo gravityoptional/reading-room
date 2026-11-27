@@ -3423,7 +3423,8 @@ function ruleShelf(){
     .map(t=>({rule:'toread',reason:t.added?`On your shelf since ${fmtMonY(new Date(t.added).toISOString().slice(0,10))}`:'On your shelf, not started yet',t}))}
 /* Quick Reads (James, Nov 25): short books from To Read, the shelf, and the suggestion rows, shortest first, using the
    same rule as the Quick read line on cards (so never Children's books, picture-book lengths, or audiobooks). */
-function ruleQuick(sugg){const seen=new Set(),out=[],add=it=>{const k=it.t?.id||it.x?.key||(it.x?.title||'')+'|'+(it.x?.author||'');if(!k||seen.has(k))return;if(!quickRead(it.t,it.x,it.kid))return;seen.add(k);out.push(it)};
+function ruleQuick(sugg){const queued=new Set((S.upNext||[]).map(id=>book(id)?.titleId).filter(Boolean)),seen=new Set(),out=[],add=it=>{const k=it.t?.id||it.x?.key||(it.x?.title||'')+'|'+(it.x?.author||'');if(!k||seen.has(k)||it.t&&queued.has(it.t.id))return;   // already in the Reading Queue: chosen, not a suggestion (James, Nov 27)
+  if(!quickRead(it.t,it.x,it.kid))return;seen.add(k);out.push(it)};
   wantList().filter(b=>!hiddenT(titleById(b.titleId))).forEach(b=>add({rule:'toread',reason:b.wantSince?`On your To Read since ${fmtMonY(b.wantSince)}`:'On your To Read',t:titleById(b.titleId)}));
   S.titles.filter(t=>ownNotStarted(t)&&!hiddenT(t)).forEach(t=>add({rule:'toread',reason:t.added?`On your shelf since ${fmtMonY(new Date(t.added).toISOString().slice(0,10))}`:'On your shelf, not started yet',t}));
   (sugg||[]).forEach(add);
