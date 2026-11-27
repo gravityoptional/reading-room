@@ -3428,7 +3428,11 @@ function ruleQuick(sugg){const queued=new Set((S.upNext||[]).map(id=>book(id)?.t
   wantList().filter(b=>!hiddenT(titleById(b.titleId))).forEach(b=>add({rule:'toread',reason:b.wantSince?`On your To Read since ${fmtMonY(b.wantSince)}`:'On your To Read',t:titleById(b.titleId)}));
   S.titles.filter(t=>ownNotStarted(t)&&!hiddenT(t)).forEach(t=>add({rule:'toread',reason:t.added?`On your shelf since ${fmtMonY(new Date(t.added).toISOString().slice(0,10))}`:'On your shelf, not started yet',t}));
   (sugg||[]).forEach(add);
-  const pg=it=>+(it.t?.pages||it.x?.pages||0);return out.sort((a,b)=>pg(a)-pg(b)).slice(0,6)}
+  /* The mix (James, Nov 27): up to three from your Library and up to three new suggestions, each side shortest first;
+     when one side has fewer, the other fills the row. Shown shortest first. */
+  const pg=it=>+(it.t?.pages||it.x?.pages||0),mineT=it=>it.rule==='toread',by=(a,b)=>pg(a)-pg(b);
+  const mine=out.filter(mineT).sort(by),fresh=out.filter(it=>!mineT(it)).sort(by),nM=Math.min(mine.length,Math.max(3,6-fresh.length)),nF=Math.min(fresh.length,6-nM);
+  return [...mine.slice(0,nM),...fresh.slice(0,nF)].sort(by)}
 function ruleSeries(){
   const fin=new Set(S.books.filter(b=>b.status==='finished').map(b=>b.titleId)),busy=new Set(S.books.filter(b=>b.status==='reading'||b.status==='paused').map(b=>b.titleId));
   const by={};S.titles.forEach(t=>{if(t.series&&t.seriesNo!=null)(by[t.series]=by[t.series]||[]).push(t)});
