@@ -367,7 +367,7 @@ main section.card.fl-card{margin:16px 0 20px;padding:18px 20px;border:2px solid 
 .tw .tn{font-weight:600;font-size:13px;margin-top:6px;overflow-wrap:anywhere}.tw .td{font-size:11px;color:var(--text-2)}
 .tw.locked svg.hex{filter:grayscale(1);opacity:.3}.tw.locked .tn{color:var(--text-2)}
 .tw-x{position:absolute;top:10px;right:10px;background:var(--badge);color:var(--badge-ink);border-radius:999px;font-size:11px;font-weight:700;padding:1px 7px}
-.cf-types{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:6px}
+.cf-types{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:6px}.cf-types.n6{grid-template-columns:repeat(3,1fr)}@media(max-width:359px){.cf-types.n6{grid-template-columns:repeat(2,1fr)}}   /* six types: 3 + 3, never 5 + 1 */
 .cf-types button{border:1px solid var(--border);background:var(--surface);border-radius:10px;padding:8px 4px;display:grid;justify-items:center;gap:4px;font-size:12px;color:var(--text-2)}
 .cf-types button[aria-pressed="true"]{border-color:var(--primary);background:var(--primary-light);color:var(--primary);font-weight:600}
 .chip-x{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--border);background:var(--surface-alt);border-radius:999px;padding:2px 4px 2px 10px;font-size:12px}
@@ -5327,7 +5327,7 @@ function renderChForm(){
   <div class="form">
     ${cf.id?'':`<div class="vseg addb-tabs" role="group" aria-label="Who is it for">${[['personal','Personal'],['coop','Group Cooperative'],['comp','Group Competition']].map(([k,l])=>`<button aria-pressed="${cf.mode===k}" data-act="cfMode" data-v="${k}">${l}</button>`).join('')}</div>
     <div class="xs muted" style="margin-top:-6px">${{personal:'A goal just for you.',coop:'Everyone who joins adds to one shared group total.',comp:'A friendly competition scored on consistency, not on how many books you finish.'}[cf.mode]}</div>`}
-    <div><span class="fl">${cf.mode==='comp'?'Scored By':'Challenge Type'}</span><div class="cf-types">${types.map(k=>`<button aria-pressed="${cf.type===k}" data-act="cfType" data-v="${k}">${ic(CT[k].ic)}${CT[k].l}</button>`).join('')}</div></div>
+    <div><span class="fl">${cf.mode==='comp'?'Scored By':'Challenge Type'}</span><div class="cf-types${types.length===6?' n6':''}">${types.map(k=>`<button aria-pressed="${cf.type===k}" data-act="cfType" data-v="${k}">${ic(CT[k].ic)}${CT[k].l}</button>`).join('')}</div></div>
     <label class="f">Title<input class="inp" id="cfName" value="${esc(cf.name)}" maxlength="80" autocomplete="off"></label>
     <label class="f"><span>Description <span class="sub">(optional)</span></span><textarea class="inp" id="cfDesc" rows="2" maxlength="200">${esc(cf.desc)}</textarea></label>
     ${cf.mode!=='comp'&&cf.type!=='list'?`<label class="f">Goal (${unit})<input class="inp" id="cfTarget" inputmode="numeric" value="${esc(cf.target)}"></label>`:''}
